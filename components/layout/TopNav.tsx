@@ -46,9 +46,6 @@ export default function TopNav({ user, organizations }: TopNavProps) {
   return (
     <header className="h-14 border-b bg-background flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          LLM Prompt Testing Platform
-        </h2>
       </div>
       <div className="flex items-center gap-4">
         <DropdownMenu>

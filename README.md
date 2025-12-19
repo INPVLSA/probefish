@@ -2,6 +2,10 @@
 
 A web-based LLM prompt and endpoint testing platform. Organize, version, test, and validate Large Language Model prompts and HTTP endpoints through comprehensive test suites with static validation rules and LLM-based judge evaluation.
 
+## Acknowledgments
+
+This project is developed and maintained with support from [GoMage](https://www.gomage.com/).
+
 ## Tech Stack
 
 - **Frontend**: Next.js 16, React 19, TypeScript
@@ -179,10 +183,6 @@ lib/
   llm/              # LLM provider integrations
   testing/          # Test execution logic
 ```
-
-## Acknowledgments
-
-This project is developed and maintained with support from [GoMage](https://www.gomage.com/).
 
 ## License
 
