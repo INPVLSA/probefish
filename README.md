@@ -164,26 +164,6 @@ npm run build
 npm start
 ```
 
-## Project Structure
-
-```
-app/
-  (auth)/           # Login, register pages
-  (dashboard)/      # Main app pages
-    projects/       # Project management
-    settings/       # Organization settings
-  api/              # API routes
-components/
-  ui/               # Base UI components
-  testing/          # Test suite components
-  endpoint/         # Endpoint components
-  prompt/           # Prompt components
-lib/
-  db/models/        # Mongoose models
-  llm/              # LLM provider integrations
-  testing/          # Test execution logic
-```
-
 ## License
 
 Apache License 2.0 - see [LICENSE](LICENSE) for details.
