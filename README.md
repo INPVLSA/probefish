@@ -38,7 +38,7 @@ This project is developed and maintained with support from [GoMage](https://www.
 - System and user prompts with variable substitution (`{{variable}}` syntax)
 - Model configuration per version:
   - Provider: OpenAI, Anthropic, Gemini, custom
-  - Models: GPT-4, Claude 3.5, etc.
+  - Models: GPT-5/4.1/4o series, Claude 4.5/4 series, Gemini 3/2.5 series
   - Parameters: temperature, maxTokens, topP, frequencyPenalty, presencePenalty
 
 ### Endpoint Management
@@ -54,6 +54,7 @@ This project is developed and maintained with support from [GoMage](https://www.
 - Create test suites targeting prompts or endpoints
 - **Test Cases**: Define input variables and expected outputs
 - Duplicate test cases for quick variations
+- Pin suites to specific prompt versions
 
 ### Static Validation Rules
 
@@ -108,8 +109,9 @@ The judge provides reasoning for each validation decision.
 
 #### Judge Configuration
 
-- **Provider**: OpenAI or Anthropic
-- **Model**: Select the model for evaluation (e.g., gpt-4o-mini, claude-3-5-haiku)
+- **Provider**: OpenAI, Anthropic, or Gemini
+- **Model**: Select the model for evaluation (e.g., gpt-4o-mini, claude-haiku-4-5, gemini-2.5-flash)
+- **Minimum Score Threshold**: Optional minimum score (0-100) that must be met for the test to pass
 
 ### Test Results
 
@@ -117,7 +119,9 @@ The judge provides reasoning for each validation decision.
 - Track response times
 - View validation results and judge scores
 - Test run history with statistics
-- Dashboard with pass rates and trends
+- Dashboard with pass rates and suite summaries
+- **Test Run Comparison**: Compare two test runs to identify regressions, improvements, and unchanged results
+- **Project-Level Comparison**: Compare all suites across two dates to see overall quality trends
 
 ### Organization Settings
 
@@ -131,7 +135,7 @@ The judge provides reasoning for each validation decision.
 
 - Node.js 18+
 - MongoDB instance
-- API keys for LLM providers (OpenAI/Anthropic)
+- API keys for LLM providers (OpenAI, Anthropic, and/or Gemini)
 
 ### Installation
 
