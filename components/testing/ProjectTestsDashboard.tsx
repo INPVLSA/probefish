@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import {
@@ -43,8 +43,19 @@ import {
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   ExternalLink,
 } from "lucide-react";
+
+interface TestCaseResult {
+  testCaseId: string;
+  testCaseName: string;
+  passed: boolean;
+  judgeScore?: number;
+  responseTime: number;
+  error?: string;
+  validationErrors: string[];
+}
 
 interface LatestRun {
   suiteId: string;
@@ -58,6 +69,7 @@ interface LatestRun {
   total: number;
   avgScore?: number;
   passRate: number | null;
+  testCases?: TestCaseResult[];
 }
 
 interface ProjectTestsSummary {
@@ -114,6 +126,21 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
 
   // View mode
   const [viewMode, setViewMode] = useState<"summary" | "history">("summary");
+
+  // Expanded suites (to show test cases)
+  const [expandedSuites, setExpandedSuites] = useState<Set<string>>(new Set());
+
+  const toggleSuiteExpanded = (suiteId: string) => {
+    setExpandedSuites((prev) => {
+      const next = new Set(prev);
+      if (next.has(suiteId)) {
+        next.delete(suiteId);
+      } else {
+        next.add(suiteId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -422,55 +449,125 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAndSortedSuites.map((suite) => (
-                    <TableRow key={suite.suiteId}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <FlaskConical className="h-4 w-4 text-purple-500" />
-                          <span className="font-medium">{suite.suiteName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          {suite.targetType === "prompt" ? (
-                            <FileText className="h-3 w-3" />
-                          ) : (
-                            <Globe className="h-3 w-3" />
-                          )}
-                          {suite.targetName}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getPassRateBadge(suite.passed, suite.total)}</TableCell>
-                      <TableCell>
-                        {suite.avgScore !== undefined ? (
-                          <div className="flex items-center gap-1">
-                            <Brain className="h-4 w-4 text-muted-foreground" />
-                            {(suite.avgScore * 100).toFixed(0)}%
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">--</span>
+                  filteredAndSortedSuites.map((suite) => {
+                    const isExpanded = expandedSuites.has(suite.suiteId);
+                    const hasTestCases = suite.testCases && suite.testCases.length > 0;
+
+                    return (
+                      <React.Fragment key={suite.suiteId}>
+                        <TableRow
+                          className={hasTestCases ? "cursor-pointer hover:bg-muted/50" : ""}
+                          onClick={() => hasTestCases && toggleSuiteExpanded(suite.suiteId)}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {hasTestCases && (
+                                <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                              )}
+                              <FlaskConical className="h-4 w-4 text-purple-500" />
+                              <span className="font-medium">{suite.suiteName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              {suite.targetType === "prompt" ? (
+                                <FileText className="h-3 w-3" />
+                              ) : (
+                                <Globe className="h-3 w-3" />
+                              )}
+                              {suite.targetName}
+                            </div>
+                          </TableCell>
+                          <TableCell>{getPassRateBadge(suite.passed, suite.total)}</TableCell>
+                          <TableCell>
+                            {suite.avgScore !== undefined ? (
+                              <div className="flex items-center gap-1">
+                                <Brain className="h-4 w-4 text-muted-foreground" />
+                                {(suite.avgScore * 100).toFixed(0)}%
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">--</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm">
+                                {formatDistanceToNow(new Date(suite.runAt), { addSuffix: true })}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(suite.runAt), "MMM d, h:mm a")}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link href={`/projects/${projectId}/test-suites/${suite.suiteId}`}>
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                View
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {hasTestCases && isExpanded && (
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={6} className="p-0">
+                              <div className="px-4 py-3 ml-6 border-l-2 border-muted-foreground/20">
+                                <div className="text-xs font-medium text-muted-foreground mb-2">
+                                  Test Cases ({suite.testCases?.length})
+                                </div>
+                                <div className="space-y-1">
+                                  {suite.testCases?.map((tc) => (
+                                    <div
+                                      key={tc.testCaseId}
+                                      className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {tc.passed ? (
+                                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        ) : (
+                                          <XCircle className="h-4 w-4 text-red-500" />
+                                        )}
+                                        <span className="text-sm">{tc.testCaseName}</span>
+                                        {tc.error && (
+                                          <span className="text-xs text-red-500 ml-2">
+                                            Error: {tc.error.slice(0, 50)}{tc.error.length > 50 ? "..." : ""}
+                                          </span>
+                                        )}
+                                        {!tc.error && tc.validationErrors.length > 0 && (
+                                          <span className="text-xs text-red-500 ml-2">
+                                            {tc.validationErrors[0].slice(0, 50)}{tc.validationErrors[0].length > 50 ? "..." : ""}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                        {tc.judgeScore !== undefined && (
+                                          <span className="flex items-center gap-1">
+                                            <Brain className="h-3 w-3" />
+                                            {(tc.judgeScore * 100).toFixed(0)}%
+                                          </span>
+                                        )}
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {tc.responseTime >= 1000
+                                            ? `${(tc.responseTime / 1000).toFixed(1)}s`
+                                            : `${tc.responseTime}ms`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="text-sm">
-                            {formatDistanceToNow(new Date(suite.runAt), { addSuffix: true })}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(suite.runAt), "MMM d, h:mm a")}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/projects/${projectId}/test-suites/${suite.suiteId}`}>
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

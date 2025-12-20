@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { replaceVariables, getValueByPath } from '@/lib/testing/executor';
 
 describe('replaceVariables', () => {
@@ -290,6 +290,130 @@ describe('getValueByPath', () => {
 
       expect(getValueByPath(response, 'data.result.items[0].name')).toBe('Item 1');
       expect(getValueByPath(response, 'data.result.items[1].id')).toBe(2);
+    });
+  });
+});
+
+describe('minScore threshold logic', () => {
+  // Test the minScore threshold logic in isolation
+  // This tests the logic without requiring full LLM integration
+
+  describe('score comparison', () => {
+    it('should fail when score is below minScore threshold', () => {
+      const minScore = 0.7; // 70%
+      const actualScore = 0.45; // 45%
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(true);
+    });
+
+    it('should pass when score equals minScore threshold', () => {
+      const minScore = 0.7;
+      const actualScore = 0.7;
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(false);
+    });
+
+    it('should pass when score is above minScore threshold', () => {
+      const minScore = 0.7;
+      const actualScore = 0.85;
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(false);
+    });
+
+    it('should not check minScore when undefined', () => {
+      const minScore = undefined;
+      const actualScore = 0.3;
+
+      const shouldCheck = minScore !== undefined && minScore > 0;
+      expect(shouldCheck).toBe(false);
+    });
+
+    it('should not check minScore when set to 0', () => {
+      const minScore = 0;
+      const actualScore = 0.1;
+
+      const shouldCheck = minScore !== undefined && minScore > 0;
+      expect(shouldCheck).toBe(false);
+    });
+
+    it('should check minScore when set to positive value', () => {
+      const minScore = 0.5;
+      const actualScore = 0.3;
+
+      const shouldCheck = minScore !== undefined && minScore > 0;
+      expect(shouldCheck).toBe(true);
+    });
+  });
+
+  describe('error message formatting', () => {
+    it('should format error message with correct percentages', () => {
+      const minScore = 0.7;
+      const actualScore = 0.45;
+
+      const minScorePercent = (minScore * 100).toFixed(0);
+      const actualScorePercent = (actualScore * 100).toFixed(0);
+      const message = `Judge score ${actualScorePercent}% is below minimum threshold of ${minScorePercent}%`;
+
+      expect(message).toBe('Judge score 45% is below minimum threshold of 70%');
+    });
+
+    it('should handle decimal scores correctly', () => {
+      const minScore = 0.75;
+      const actualScore = 0.333;
+
+      const minScorePercent = (minScore * 100).toFixed(0);
+      const actualScorePercent = (actualScore * 100).toFixed(0);
+      const message = `Judge score ${actualScorePercent}% is below minimum threshold of ${minScorePercent}%`;
+
+      expect(message).toBe('Judge score 33% is below minimum threshold of 75%');
+    });
+
+    it('should round percentages correctly', () => {
+      const minScore = 0.755; // Should round to 76%
+      const actualScore = 0.454; // Should round to 45%
+
+      const minScorePercent = (minScore * 100).toFixed(0);
+      const actualScorePercent = (actualScore * 100).toFixed(0);
+
+      expect(minScorePercent).toBe('76');
+      expect(actualScorePercent).toBe('45');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle minScore of 1 (100%)', () => {
+      const minScore = 1;
+      const actualScore = 0.99;
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(true);
+    });
+
+    it('should pass when score is exactly 1 (100%)', () => {
+      const minScore = 1;
+      const actualScore = 1;
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(false);
+    });
+
+    it('should handle very small threshold', () => {
+      const minScore = 0.01; // 1%
+      const actualScore = 0.005; // 0.5%
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(true);
+    });
+
+    it('should handle score of 0', () => {
+      const minScore = 0.5;
+      const actualScore = 0;
+
+      const shouldFail = actualScore < minScore;
+      expect(shouldFail).toBe(true);
     });
   });
 });

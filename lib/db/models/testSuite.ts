@@ -39,6 +39,7 @@ export interface ILLMJudgeConfig {
   model?: string;
   criteria: IJudgeCriterion[];
   validationRules?: IJudgeValidationRule[]; // Pass/fail gates
+  minScore?: number; // Minimum score threshold (0-1) - test fails if score is below this
 }
 
 // Test Result - result of a single test case execution
@@ -198,6 +199,11 @@ const llmJudgeConfigSchema = new Schema<ILLMJudgeConfig>(
     model: String,
     criteria: [judgeCriterionSchema],
     validationRules: [judgeValidationRuleSchema],
+    minScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+    },
   },
   { _id: false }
 );

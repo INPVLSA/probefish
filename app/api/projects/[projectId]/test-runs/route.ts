@@ -79,6 +79,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     // Collect all runs from all suites with suite info
+    interface TestCaseResult {
+      testCaseId: string;
+      testCaseName: string;
+      passed: boolean;
+      judgeScore?: number;
+      responseTime: number;
+      error?: string;
+      validationErrors: string[];
+    }
+
     interface RunWithSuiteInfo {
       _id: string;
       runAt: Date;
@@ -90,6 +100,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         avgScore?: number;
         avgResponseTime: number;
       };
+      results: TestCaseResult[];
       suiteId: string;
       suiteName: string;
       targetType: string;
@@ -103,11 +114,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       if (suite.runHistory && Array.isArray(suite.runHistory)) {
         for (const run of suite.runHistory) {
+          // Extract simplified test case results
+          const testCaseResults: TestCaseResult[] = (run.results || []).map((r: {
+            testCaseId?: { toString(): string };
+            testCaseName?: string;
+            validationPassed?: boolean;
+            judgeScore?: number;
+            responseTime?: number;
+            error?: string;
+            validationErrors?: string[];
+          }) => ({
+            testCaseId: r.testCaseId?.toString() || '',
+            testCaseName: r.testCaseName || 'Unknown',
+            passed: r.validationPassed ?? false,
+            judgeScore: r.judgeScore,
+            responseTime: r.responseTime || 0,
+            error: r.error,
+            validationErrors: r.validationErrors || [],
+          }));
+
           allRuns.push({
             _id: run._id.toString(),
             runAt: run.runAt,
             status: run.status,
             summary: run.summary,
+            results: testCaseResults,
             suiteId: suite._id.toString(),
             suiteName: suite.name,
             targetType: suite.targetType,
@@ -212,6 +243,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           passRate: run.summary.total > 0
             ? Math.round((run.summary.passed / run.summary.total) * 1000) / 10
             : null,
+          testCases: run.results,
         })),
       };
     }
