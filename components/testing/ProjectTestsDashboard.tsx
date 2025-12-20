@@ -45,7 +45,10 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  GitCompare,
+  History,
 } from "lucide-react";
+import { ProjectRunComparison } from "./ProjectRunComparison";
 
 interface TestCaseResult {
   testCaseId: string;
@@ -110,7 +113,7 @@ interface ProjectTestsDashboardProps {
 
 type SortField = "suiteName" | "runAt" | "passRate" | "avgScore" | "total";
 type SortDirection = "asc" | "desc";
-type StatusFilter = "all" | "passing" | "failing" | "never-run";
+type StatusFilter = "all" | "passing" | "failing";
 
 export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps) {
   const [summary, setSummary] = useState<ProjectTestsSummary | null>(null);
@@ -124,8 +127,8 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // View mode
-  const [viewMode, setViewMode] = useState<"summary" | "history">("summary");
+  // Compare mode
+  const [showCompare, setShowCompare] = useState(false);
 
   // Expanded suites (to show test cases)
   const [expandedSuites, setExpandedSuites] = useState<Set<string>>(new Set());
@@ -176,12 +179,12 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
     }
     return sortDirection === "asc" ? (
-      <ChevronUp className="h-4 w-4 ml-1" />
+      <ChevronUp className="h-3 w-3 ml-1" />
     ) : (
-      <ChevronDown className="h-4 w-4 ml-1" />
+      <ChevronDown className="h-3 w-3 ml-1" />
     );
   };
 
@@ -235,13 +238,25 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
     return suites;
   }, [summary, sortField, sortDirection, statusFilter, searchQuery]);
 
+  const filteredRuns = useMemo(() => {
+    if (!searchQuery) return allRuns.slice(0, 10);
+    const query = searchQuery.toLowerCase();
+    return allRuns
+      .filter(
+        (run) =>
+          run.suiteName.toLowerCase().includes(query) ||
+          run.targetName.toLowerCase().includes(query)
+      )
+      .slice(0, 10);
+  }, [allRuns, searchQuery]);
+
   const getPassRateBadge = (passed: number, total: number) => {
     if (total === 0) return <Badge variant="outline">No tests</Badge>;
     const rate = (passed / total) * 100;
     const variant = rate === 100 ? "default" : rate >= 50 ? "secondary" : "destructive";
     return (
-      <Badge variant={variant}>
-        {passed}/{total} ({rate.toFixed(0)}%)
+      <Badge variant={variant} className="text-xs">
+        {passed}/{total}
       </Badge>
     );
   };
@@ -283,6 +298,20 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (showCompare) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Compare Test Runs</h3>
+          <Button variant="outline" size="sm" onClick={() => setShowCompare(false)}>
+            Back to Dashboard
+          </Button>
+        </div>
+        <ProjectRunComparison projectId={projectId} />
+      </div>
     );
   }
 
@@ -328,7 +357,7 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
             <div className={`text-2xl font-bold ${summary.passRate !== null && summary.passRate >= 80 ? "text-green-500" : summary.passRate !== null && summary.passRate >= 50 ? "text-yellow-500" : "text-red-500"}`}>
               {summary.passRate !== null ? `${summary.passRate}%` : "--"}
             </div>
-            <div className="text-xs text-muted-foreground">Overall Pass Rate</div>
+            <div className="text-xs text-muted-foreground">Pass Rate</div>
           </CardContent>
         </Card>
         <Card>
@@ -337,115 +366,93 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
               {summary.avgScore !== null ? `${summary.avgScore}%` : "--"}
               <Brain className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="text-xs text-muted-foreground">Avg Judge Score</div>
+            <div className="text-xs text-muted-foreground">Avg Score</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* View Toggle and Filters */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg">
-                {viewMode === "summary" ? "Latest Results by Suite" : "All Test Runs"}
-              </CardTitle>
-              <CardDescription>
-                {viewMode === "summary"
-                  ? `${summary.suitesWithRuns} suite${summary.suitesWithRuns !== 1 ? "s" : ""} with results`
-                  : `${allRuns.length} total run${allRuns.length !== 1 ? "s" : ""}`}
-              </CardDescription>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 w-full sm:w-48"
-                />
-              </div>
-              {viewMode === "summary" && (
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-                >
-                  <SelectTrigger className="w-full sm:w-36">
-                    <SelectValue placeholder="Filter status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Suites</SelectItem>
-                    <SelectItem value="passing">Passing</SelectItem>
-                    <SelectItem value="failing">With Failures</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              <Select
-                value={viewMode}
-                onValueChange={(v) => setViewMode(v as "summary" | "history")}
-              >
-                <SelectTrigger className="w-full sm:w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="summary">Suite Summary</SelectItem>
-                  <SelectItem value="history">Run History</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {viewMode === "summary" ? (
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search suites..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Suites</SelectItem>
+            <SelectItem value="passing">Passing</SelectItem>
+            <SelectItem value="failing">Failing</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={() => setShowCompare(true)}>
+          <GitCompare className="h-4 w-4 mr-2" />
+          Compare Runs
+        </Button>
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Suite Summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" />
+              Test Suites
+            </CardTitle>
+            <CardDescription>
+              {summary.suitesWithRuns} of {summary.totalSuites} suites have results
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
                     <button
                       onClick={() => handleSort("suiteName")}
-                      className="flex items-center hover:text-foreground transition-colors"
+                      className="flex items-center hover:text-foreground transition-colors text-xs"
                     >
-                      Test Suite
+                      Suite
                       <SortIcon field="suiteName" />
                     </button>
                   </TableHead>
-                  <TableHead>Target</TableHead>
                   <TableHead>
                     <button
                       onClick={() => handleSort("passRate")}
-                      className="flex items-center hover:text-foreground transition-colors"
+                      className="flex items-center hover:text-foreground transition-colors text-xs"
                     >
-                      Pass Rate
+                      Result
                       <SortIcon field="passRate" />
                     </button>
                   </TableHead>
                   <TableHead>
                     <button
-                      onClick={() => handleSort("avgScore")}
-                      className="flex items-center hover:text-foreground transition-colors"
-                    >
-                      Score
-                      <SortIcon field="avgScore" />
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
                       onClick={() => handleSort("runAt")}
-                      className="flex items-center hover:text-foreground transition-colors"
+                      className="flex items-center hover:text-foreground transition-colors text-xs"
                     >
                       Last Run
                       <SortIcon field="runAt" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAndSortedSuites.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No suites match the current filters.
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">
+                      No suites match filters
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -459,105 +466,71 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
                           className={hasTestCases ? "cursor-pointer hover:bg-muted/50" : ""}
                           onClick={() => hasTestCases && toggleSuiteExpanded(suite.suiteId)}
                         >
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-1.5">
                               {hasTestCases && (
-                                <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                                <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                               )}
-                              <FlaskConical className="h-4 w-4 text-purple-500" />
-                              <span className="font-medium">{suite.suiteName}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              {suite.targetType === "prompt" ? (
-                                <FileText className="h-3 w-3" />
-                              ) : (
-                                <Globe className="h-3 w-3" />
-                              )}
-                              {suite.targetName}
-                            </div>
-                          </TableCell>
-                          <TableCell>{getPassRateBadge(suite.passed, suite.total)}</TableCell>
-                          <TableCell>
-                            {suite.avgScore !== undefined ? (
-                              <div className="flex items-center gap-1">
-                                <Brain className="h-4 w-4 text-muted-foreground" />
-                                {(suite.avgScore * 100).toFixed(0)}%
+                              <div className="min-w-0">
+                                <div className="font-medium text-sm truncate max-w-[140px]">
+                                  {suite.suiteName}
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  {suite.targetType === "prompt" ? (
+                                    <FileText className="h-3 w-3 flex-shrink-0" />
+                                  ) : (
+                                    <Globe className="h-3 w-3 flex-shrink-0" />
+                                  )}
+                                  <span className="truncate max-w-[100px]">{suite.targetName}</span>
+                                </div>
                               </div>
-                            ) : (
-                              <span className="text-muted-foreground">--</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-sm">
-                                {formatDistanceToNow(new Date(suite.runAt), { addSuffix: true })}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(suite.runAt), "MMM d, h:mm a")}
-                              </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="py-2">
+                            {getPassRateBadge(suite.passed, suite.total)}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <span className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(suite.runAt), { addSuffix: true })}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-2">
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="h-7 w-7 p-0"
                               asChild
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Link href={`/projects/${projectId}/test-suites/${suite.suiteId}`}>
-                                <ExternalLink className="h-4 w-4 mr-1" />
-                                View
+                                <ExternalLink className="h-3.5 w-3.5" />
                               </Link>
                             </Button>
                           </TableCell>
                         </TableRow>
                         {hasTestCases && isExpanded && (
                           <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            <TableCell colSpan={6} className="p-0">
-                              <div className="px-4 py-3 ml-6 border-l-2 border-muted-foreground/20">
-                                <div className="text-xs font-medium text-muted-foreground mb-2">
-                                  Test Cases ({suite.testCases?.length})
-                                </div>
+                            <TableCell colSpan={4} className="p-0">
+                              <div className="px-3 py-2 ml-4 border-l-2 border-muted-foreground/20">
                                 <div className="space-y-1">
                                   {suite.testCases?.map((tc) => (
                                     <div
                                       key={tc.testCaseId}
-                                      className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50"
+                                      className="flex items-center justify-between py-1 text-xs"
                                     >
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1.5">
                                         {tc.passed ? (
-                                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                          <CheckCircle2 className="h-3 w-3 text-green-500" />
                                         ) : (
-                                          <XCircle className="h-4 w-4 text-red-500" />
+                                          <XCircle className="h-3 w-3 text-red-500" />
                                         )}
-                                        <span className="text-sm">{tc.testCaseName}</span>
-                                        {tc.error && (
-                                          <span className="text-xs text-red-500 ml-2">
-                                            Error: {tc.error.slice(0, 50)}{tc.error.length > 50 ? "..." : ""}
-                                          </span>
-                                        )}
-                                        {!tc.error && tc.validationErrors.length > 0 && (
-                                          <span className="text-xs text-red-500 ml-2">
-                                            {tc.validationErrors[0].slice(0, 50)}{tc.validationErrors[0].length > 50 ? "..." : ""}
-                                          </span>
-                                        )}
+                                        <span className="truncate max-w-[150px]">{tc.testCaseName}</span>
                                       </div>
-                                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                        {tc.judgeScore !== undefined && (
-                                          <span className="flex items-center gap-1">
-                                            <Brain className="h-3 w-3" />
-                                            {(tc.judgeScore * 100).toFixed(0)}%
-                                          </span>
-                                        )}
-                                        <span className="flex items-center gap-1">
-                                          <Clock className="h-3 w-3" />
-                                          {tc.responseTime >= 1000
-                                            ? `${(tc.responseTime / 1000).toFixed(1)}s`
-                                            : `${tc.responseTime}ms`}
+                                      {tc.judgeScore !== undefined && (
+                                        <span className="text-muted-foreground">
+                                          {(tc.judgeScore * 100).toFixed(0)}%
                                         </span>
-                                      </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -571,104 +544,100 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
                 )}
               </TableBody>
             </Table>
-          ) : (
+          </CardContent>
+        </Card>
+
+        {/* Right: Recent Runs */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Recent Runs
+            </CardTitle>
+            <CardDescription>
+              {allRuns.length} total runs across all suites
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Test Suite</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Results</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Time</TableHead>
+                  <TableHead className="text-xs">When</TableHead>
+                  <TableHead className="text-xs">Suite</TableHead>
+                  <TableHead className="text-xs">Result</TableHead>
+                  <TableHead className="text-xs">Time</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allRuns.length === 0 ? (
+                {filteredRuns.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No test runs yet.
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">
+                      No runs yet
                     </TableCell>
                   </TableRow>
                 ) : (
-                  allRuns
-                    .filter((run) => {
-                      if (!searchQuery) return true;
-                      const query = searchQuery.toLowerCase();
-                      return (
-                        run.suiteName.toLowerCase().includes(query) ||
-                        run.targetName.toLowerCase().includes(query)
-                      );
-                    })
-                    .map((run) => (
-                      <TableRow key={run._id}>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {format(new Date(run.runAt), "MMM d, yyyy")}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(run.runAt), "h:mm a")}
-                            </span>
+                  filteredRuns.map((run) => (
+                    <TableRow key={run._id}>
+                      <TableCell className="py-2">
+                        <div className="text-xs">
+                          <div className="font-medium">
+                            {format(new Date(run.runAt), "MMM d")}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <FlaskConical className="h-4 w-4 text-purple-500" />
-                              <span className="font-medium">{run.suiteName}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              {run.targetType === "prompt" ? (
-                                <FileText className="h-3 w-3" />
-                              ) : (
-                                <Globe className="h-3 w-3" />
-                              )}
-                              {run.targetName}
-                            </div>
+                          <div className="text-muted-foreground">
+                            {format(new Date(run.runAt), "h:mm a")}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={run.status === "completed" ? "default" : "destructive"}>
-                            {run.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {run.summary.failed === 0 ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate max-w-[120px]">
+                            {run.suiteName}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {run.targetType === "prompt" ? (
+                              <FileText className="h-3 w-3 flex-shrink-0" />
                             ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
+                              <Globe className="h-3 w-3 flex-shrink-0" />
                             )}
-                            <span>
-                              {run.summary.passed}/{run.summary.total}
-                            </span>
+                            <span className="truncate max-w-[80px]">{run.targetName}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {run.summary.avgScore !== undefined ? (
-                            <div className="flex items-center gap-1">
-                              <Brain className="h-4 w-4 text-muted-foreground" />
-                              {(run.summary.avgScore * 100).toFixed(0)}%
-                            </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-1.5">
+                          {run.summary.failed === 0 ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                           ) : (
-                            <span className="text-muted-foreground">--</span>
+                            <XCircle className="h-3.5 w-3.5 text-red-500" />
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            {run.summary.avgResponseTime}ms
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          <span className="text-xs">
+                            {run.summary.passed}/{run.summary.total}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {run.summary.avgResponseTime >= 1000
+                            ? `${(run.summary.avgResponseTime / 1000).toFixed(1)}s`
+                            : `${run.summary.avgResponseTime}ms`}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+            {allRuns.length > 10 && (
+              <div className="px-4 py-2 border-t text-center">
+                <span className="text-xs text-muted-foreground">
+                  Showing 10 of {allRuns.length} runs
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

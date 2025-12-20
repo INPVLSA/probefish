@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
   TestResults,
   TestRunsGrid,
 } from "@/components/testing";
+import { TestRunComparison } from "@/components/testing/TestRunComparison";
 
 interface TestSuite {
   _id: string;
@@ -85,6 +86,8 @@ export default function TestSuiteDetailPage({
 }) {
   const { projectId, suiteId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "test-cases";
 
   const [testSuite, setTestSuite] = useState<TestSuite | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
@@ -354,7 +357,7 @@ export default function TestSuiteDetailPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Tabs defaultValue="test-cases">
+          <Tabs defaultValue={defaultTab}>
             <TabsList>
               <TabsTrigger value="test-cases">
                 Test Cases
@@ -389,6 +392,9 @@ export default function TestSuiteDetailPage({
                     {runHistory.length}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="compare">
+                Compare
               </TabsTrigger>
             </TabsList>
 
@@ -463,6 +469,14 @@ export default function TestSuiteDetailPage({
               <TestRunsGrid
                 runs={runHistory}
                 onSelectRun={(run) => setLastRun(run)}
+              />
+            </TabsContent>
+
+            <TabsContent value="compare" className="mt-4">
+              <TestRunComparison
+                projectId={projectId}
+                suiteId={suiteId}
+                runs={runHistory}
               />
             </TabsContent>
           </Tabs>
