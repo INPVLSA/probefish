@@ -92,7 +92,7 @@ function generateInvitationEmailHtml(
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
         <h1 style="color: #0070f3; margin: 0;">Probefish</h1>
-        <p style="color: #666; margin: 5px 0 0;">LLM Prompt Testing Platform</p>
+        <p style="color: #666; margin: 5px 0 0;">A web-based LLM prompt and endpoint testing platform</p>
       </div>
 
       <div style="background: #f9fafb; border-radius: 8px; padding: 30px; margin-bottom: 20px;">

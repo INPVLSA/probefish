@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Probefish - LLM Prompt Testing Platform",
+  title: "Probefish - A web-based LLM prompt and endpoint testing platform",
   description: "Test and validate your LLM prompts with static rules and AI-powered evaluation",
   icons: {
     icon: "/ico.png",

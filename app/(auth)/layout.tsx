@@ -13,7 +13,7 @@ export default function AuthLayout({
             <Fish className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold">Probefish</h1>
-          <p className="text-muted-foreground text-sm mt-1">LLM Prompt Testing Platform</p>
+          <p className="text-muted-foreground text-sm mt-1">A web-based LLM prompt and endpoint testing platform</p>
         </div>
         {children}
       </div>
