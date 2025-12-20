@@ -6,9 +6,11 @@ import {
   LLMMessage,
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
+  GEMINI_MODELS,
 } from "./types";
 import { openaiProvider } from "./providers/openai";
 import { anthropicProvider } from "./providers/anthropic";
+import { geminiProvider } from "./providers/gemini";
 
 export class LLMService {
   private getProvider(provider: LLMProvider) {
@@ -17,6 +19,8 @@ export class LLMService {
         return openaiProvider;
       case "anthropic":
         return anthropicProvider;
+      case "gemini":
+        return geminiProvider;
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
@@ -37,6 +41,11 @@ export class LLMService {
           throw new Error("Anthropic API key not configured");
         }
         return credentials.anthropicApiKey;
+      case "gemini":
+        if (!credentials.geminiApiKey) {
+          throw new Error("Gemini API key not configured");
+        }
+        return credentials.geminiApiKey;
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
@@ -99,6 +108,8 @@ export class LLMService {
         return [...OPENAI_MODELS];
       case "anthropic":
         return [...ANTHROPIC_MODELS];
+      case "gemini":
+        return [...GEMINI_MODELS];
       default:
         return [];
     }
@@ -106,7 +117,7 @@ export class LLMService {
 
   // Get all providers
   getProviders(): LLMProvider[] {
-    return ["openai", "anthropic"];
+    return ["openai", "anthropic", "gemini"];
   }
 
   // Check if credentials are configured for a provider
@@ -119,6 +130,8 @@ export class LLMService {
         return !!credentials.openaiApiKey;
       case "anthropic":
         return !!credentials.anthropicApiKey;
+      case "gemini":
+        return !!credentials.geminiApiKey;
       default:
         return false;
     }

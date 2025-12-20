@@ -38,7 +38,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from "@/lib/llm/types";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface JudgeCriterion {
@@ -56,7 +56,7 @@ export interface JudgeValidationRule {
 
 export interface LLMJudgeConfig {
   enabled: boolean;
-  provider?: "openai" | "anthropic";
+  provider?: "openai" | "anthropic" | "gemini";
   model?: string;
   criteria: JudgeCriterion[];
   validationRules?: JudgeValidationRule[];
@@ -120,9 +120,18 @@ export function JudgeConfigEditor({
     onChange(newConfig);
   };
 
-  const handleProviderChange = (provider: "openai" | "anthropic") => {
-    const model =
-      provider === "openai" ? "gpt-4o-mini" : "claude-3-5-haiku-20241022";
+  const handleProviderChange = (provider: "openai" | "anthropic" | "gemini") => {
+    let model: string;
+    switch (provider) {
+      case "anthropic":
+        model = "claude-haiku-4-5-20251015";
+        break;
+      case "gemini":
+        model = "gemini-2.5-flash";
+        break;
+      default:
+        model = "gpt-4o-mini";
+    }
     onChange({ ...config, provider, model });
   };
 
@@ -214,7 +223,11 @@ export function JudgeConfigEditor({
   const weightsValid = Math.abs(totalWeight - 1) < 0.01;
 
   const models =
-    config.provider === "anthropic" ? ANTHROPIC_MODELS : OPENAI_MODELS;
+    config.provider === "anthropic"
+      ? ANTHROPIC_MODELS
+      : config.provider === "gemini"
+        ? GEMINI_MODELS
+        : OPENAI_MODELS;
 
   return (
     <Card>
@@ -240,7 +253,7 @@ export function JudgeConfigEditor({
               <Select
                 value={config.provider || "openai"}
                 onValueChange={(v) =>
-                  handleProviderChange(v as "openai" | "anthropic")
+                  handleProviderChange(v as "openai" | "anthropic" | "gemini")
                 }
               >
                 <SelectTrigger className="w-full">
@@ -249,6 +262,7 @@ export function JudgeConfigEditor({
                 <SelectContent>
                   <SelectItem value="openai">OpenAI</SelectItem>
                   <SelectItem value="anthropic">Anthropic</SelectItem>
+                  <SelectItem value="gemini">Google Gemini</SelectItem>
                 </SelectContent>
               </Select>
             </div>

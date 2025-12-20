@@ -35,7 +35,7 @@ export interface IJudgeValidationRule {
 // LLM Judge Configuration
 export interface ILLMJudgeConfig {
   enabled: boolean;
-  provider?: "openai" | "anthropic";
+  provider?: "openai" | "anthropic" | "gemini";
   model?: string;
   criteria: IJudgeCriterion[];
   validationRules?: IJudgeValidationRule[]; // Pass/fail gates
@@ -194,7 +194,7 @@ const llmJudgeConfigSchema = new Schema<ILLMJudgeConfig>(
     },
     provider: {
       type: String,
-      enum: ["openai", "anthropic"],
+      enum: ["openai", "anthropic", "gemini"],
     },
     model: String,
     criteria: [judgeCriterionSchema],
