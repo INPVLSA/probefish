@@ -29,6 +29,7 @@ import {
   TestRunner,
   TestRunResult,
   TestResults,
+  TestRunsGrid,
 } from "@/components/testing";
 
 interface TestSuite {
@@ -42,12 +43,13 @@ interface TestSuite {
   validationRules: ValidationRule[];
   llmJudgeConfig: LLMJudgeConfig;
   lastRun?: TestRun;
+  runHistory?: TestRun[];
 }
 
 interface TestRun {
   _id: string;
   runAt: string;
-  status: string;
+  status: "running" | "completed" | "failed";
   results: Array<{
     testCaseId: string;
     testCaseName: string;
@@ -96,6 +98,7 @@ export default function TestSuiteDetailPage({
     validationRules: [],
   });
   const [lastRun, setLastRun] = useState<TestRun | null>(null);
+  const [runHistory, setRunHistory] = useState<TestRun[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -129,6 +132,7 @@ export default function TestSuiteDetailPage({
         suite.llmJudgeConfig || { enabled: false, criteria: [], validationRules: [] }
       );
       setLastRun(suite.lastRun || null);
+      setRunHistory(suite.runHistory || []);
 
       // Fetch target (prompt or endpoint)
       const targetUrl =
@@ -264,7 +268,9 @@ export default function TestSuiteDetailPage({
 
   const handleRunComplete = (result: TestRunResult) => {
     if (result.success && result.testRun) {
-      setLastRun(result.testRun as TestRun);
+      const newRun = result.testRun as TestRun;
+      setLastRun(newRun);
+      setRunHistory((prev) => [newRun, ...prev]);
       toast.success("Tests completed!");
     }
   };
@@ -376,6 +382,14 @@ export default function TestSuiteDetailPage({
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="history">
+                History
+                {runHistory.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {runHistory.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="test-cases" className="mt-4">
@@ -443,6 +457,13 @@ export default function TestSuiteDetailPage({
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-4">
+              <TestRunsGrid
+                runs={runHistory}
+                onSelectRun={(run) => setLastRun(run)}
+              />
             </TabsContent>
           </Tabs>
         </div>

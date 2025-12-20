@@ -52,4 +52,4 @@ process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-purposes-only-32chars!
 process.env.ENCRYPTION_KEY = 'a'.repeat(64); // 64 hex chars = 32 bytes
 process.env.MONGODB_URI = 'mongodb://localhost:27017/probefish-test';
 process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
-process.env.NODE_ENV = 'test';
+// NODE_ENV is set by vitest automatically, no need to set it here

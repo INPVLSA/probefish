@@ -28,6 +28,7 @@ import {
   Eye,
   EyeOff,
   Shield,
+  Activity,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { DeleteIcon } from "@/components/ui/delete";
 import { toast } from "sonner";
+import { ProjectTestsDashboard } from "@/components/testing";
 
 interface Project {
   _id: string;
@@ -289,9 +291,13 @@ export default function ProjectDetailPage({
         </div>
       </div>
 
-      <Tabs defaultValue="prompts" className="space-y-4">
+      <Tabs defaultValue="test-results" className="space-y-4">
         <div className="flex items-center justify-between">
           <TabsList>
+            <TabsTrigger value="test-results" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Test Results
+            </TabsTrigger>
             <TabsTrigger value="prompts" className="gap-2">
               <FileText className="h-4 w-4" />
               Prompts
@@ -342,6 +348,11 @@ export default function ProjectDetailPage({
             </Button>
           </div>
         </div>
+
+        {/* Test Results Tab */}
+        <TabsContent value="test-results" className="space-y-3">
+          <ProjectTestsDashboard projectId={projectId} />
+        </TabsContent>
 
         {/* Prompts Tab */}
         <TabsContent value="prompts" className="space-y-3">

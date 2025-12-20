@@ -103,25 +103,25 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6 text-center">
+          <CardContent className="text-center">
             <p className="text-3xl font-bold">{stats?.promptCount ?? 0}</p>
             <p className="text-muted-foreground text-sm">Total Prompts</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6 text-center">
+          <CardContent className="text-center">
             <p className="text-3xl font-bold">{stats?.testSuiteCount ?? 0}</p>
             <p className="text-muted-foreground text-sm">Test Suites</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6 text-center">
+          <CardContent className="text-center">
             <p className="text-3xl font-bold">{stats?.totalRuns ?? 0}</p>
             <p className="text-muted-foreground text-sm">Test Runs</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6 text-center">
+          <CardContent className="text-center">
             <p className={`text-3xl font-bold ${stats?.avgPassRate != null ? "text-green-600" : ""}`}>
               {stats?.avgPassRate != null ? `${stats.avgPassRate}%` : "--"}
             </p>

@@ -113,7 +113,7 @@ export function TestResults({ testRun }: TestResultsProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-green-500">
               {summary.passed}
@@ -134,8 +134,12 @@ export function TestResults({ testRun }: TestResultsProps) {
               <div className="text-xs text-muted-foreground">Avg Score</div>
             </div>
           )}
-          <div className={`bg-muted/50 rounded-lg p-3 text-center ${summary.avgScore === undefined ? "col-span-2" : ""}`}>
-            <div className="text-2xl font-bold">{summary.avgResponseTime}ms</div>
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold">
+              {summary.avgResponseTime >= 1000
+                ? `${(summary.avgResponseTime / 1000).toFixed(1)}s`
+                : `${summary.avgResponseTime}ms`}
+            </div>
             <div className="text-xs text-muted-foreground">Avg Time</div>
           </div>
         </div>

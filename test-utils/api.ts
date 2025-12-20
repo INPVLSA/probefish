@@ -26,7 +26,7 @@ export function createMockRequest(
     requestInit.body = JSON.stringify(body);
   }
 
-  const request = new NextRequest(new URL(url, 'http://localhost:3000'), requestInit);
+  const request = new NextRequest(new URL(url, 'http://localhost:3000'), requestInit as ConstructorParameters<typeof NextRequest>[1]);
 
   // Set cookies
   for (const [name, value] of Object.entries(cookies)) {

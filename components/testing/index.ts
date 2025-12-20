@@ -8,3 +8,5 @@ export {
 } from "./JudgeConfigEditor";
 export { TestRunner, type TestRunResult } from "./TestRunner";
 export { TestResults } from "./TestResults";
+export { TestRunsGrid } from "./TestRunsGrid";
+export { ProjectTestsDashboard } from "./ProjectTestsDashboard";
