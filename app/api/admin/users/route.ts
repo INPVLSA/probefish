@@ -43,6 +43,9 @@ export async function GET(request: NextRequest) {
         name: u.name,
         avatar: u.avatar,
         isSuperAdmin: u.isSuperAdmin || false,
+        isBlocked: u.isBlocked || false,
+        blockedAt: u.blockedAt,
+        blockedReason: u.blockedReason,
         organizationCount: u.organizationIds.length,
         createdAt: u.createdAt,
         lastLoginAt: u.lastLoginAt,
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error) {

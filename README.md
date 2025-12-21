@@ -36,10 +36,12 @@ This project is developed and maintained with support from [![GoMage](https://ww
 
 - Create and version prompts with full version history
 - System and user prompts with variable substitution (`{{variable}}` syntax)
-- Model configuration per version:
-  - Provider: OpenAI, Anthropic, Gemini, custom
-  - Models: GPT-5/4.1/4o series, Claude 4.5/4 series, Gemini 3/2.5 series
-  - Parameters: temperature, maxTokens, topP, frequencyPenalty, presencePenalty
+- **Model Configuration UI**: Visual editor for configuring model settings per prompt version
+  - Provider selection: OpenAI, Anthropic, Gemini
+  - Model selection from available models per provider
+  - Temperature slider with real-time preview
+  - Max tokens configuration
+  - Advanced parameters: topP, frequencyPenalty, presencePenalty
 
 ### Endpoint Management
 
@@ -124,6 +126,16 @@ The judge provides reasoning for each validation decision.
 - Dashboard with pass rates and suite summaries
 - **Test Run Comparison**: Compare two test runs to identify regressions, improvements, and unchanged results
 - **Project-Level Comparison**: Compare all suites across two dates to see overall quality trends
+
+### Multi-Model Comparison
+
+Run the same test suite against multiple LLM models simultaneously and compare results side-by-side:
+
+- **Model Selection**: Choose any combination of models from OpenAI, Anthropic, and Gemini
+- **Parallel Execution**: Run tests across all selected models with progress tracking
+- **Comparison Table**: View pass rates, scores, and response times across models
+- **Detailed Results**: Expand each model to see individual test case outputs
+- **Quick Insights**: Identify which models perform best for specific prompts
 
 ### Webhooks
 

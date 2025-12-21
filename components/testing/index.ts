@@ -6,7 +6,12 @@ export {
   type JudgeValidationRule,
   type LLMJudgeConfig,
 } from "./JudgeConfigEditor";
-export { TestRunner, type TestRunResult } from "./TestRunner";
+export { TestRunner } from "./TestRunner";
+export { TestExecutionPanel, type TestRunResult, type MultiModelRunResult } from "./TestExecutionPanel";
+export { ModelCardSelector, type ModelSelection } from "./ModelCardSelector";
 export { TestResults } from "./TestResults";
 export { TestRunsGrid } from "./TestRunsGrid";
 export { ProjectTestsDashboard } from "./ProjectTestsDashboard";
+export { MultiModelResults } from "./MultiModelResults";
+// Legacy export for backward compatibility
+export { MultiModelSelector } from "./MultiModelSelector";

@@ -166,7 +166,7 @@ export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge variant="default">Completed</Badge>;
+        return <Badge className="bg-green-600 hover:bg-green-600">Completed</Badge>;
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       case "running":
@@ -178,9 +178,15 @@ export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
 
   const getPassRateBadge = (summary: TestRun["summary"]) => {
     const rate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;
-    const variant = rate === 100 ? "default" : rate >= 50 ? "secondary" : "destructive";
+    const badgeClass = rate === 100
+      ? "bg-green-600 hover:bg-green-600"
+      : rate >= 70
+      ? "bg-green-500 hover:bg-green-500"
+      : rate >= 50
+      ? "bg-yellow-500 hover:bg-yellow-500"
+      : "";
     return (
-      <Badge variant={variant}>
+      <Badge variant={rate < 50 ? "destructive" : "default"} className={badgeClass}>
         {summary.passed}/{summary.total} ({rate.toFixed(0)}%)
       </Badge>
     );
@@ -319,8 +325,18 @@ export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
                   <TableCell>
                     {run.summary.avgScore !== undefined ? (
                       <div className="flex items-center gap-1">
-                        <Brain className="h-4 w-4 text-muted-foreground" />
-                        <span>{(run.summary.avgScore * 100).toFixed(0)}%</span>
+                        <Brain className={`h-4 w-4 ${
+                          run.summary.avgScore >= 0.8 ? "text-green-500" :
+                          run.summary.avgScore >= 0.6 ? "text-yellow-500" :
+                          "text-red-500"
+                        }`} />
+                        <span className={`font-medium ${
+                          run.summary.avgScore >= 0.8 ? "text-green-600" :
+                          run.summary.avgScore >= 0.6 ? "text-yellow-600" :
+                          "text-red-600"
+                        }`}>
+                          {(run.summary.avgScore * 100).toFixed(0)}%
+                        </span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">--</span>

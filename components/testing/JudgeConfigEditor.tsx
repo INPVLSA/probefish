@@ -306,7 +306,7 @@ export function JudgeConfigEditor({
                   }
                 }}
                 placeholder="Not set"
-                className="w-24"
+                className="w-24 min-w-[80px]"
               />
               <span className="text-sm text-muted-foreground">%</span>
               {config.minScore !== undefined && config.minScore > 0 && (

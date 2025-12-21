@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { replaceVariables, getValueByPath } from '@/lib/testing/executor';
+import { replaceVariables, getValueByPath, ModelOverride } from '@/lib/testing/executor';
 
 describe('replaceVariables', () => {
   describe('basic variable substitution', () => {
@@ -414,6 +414,289 @@ describe('minScore threshold logic', () => {
 
       const shouldFail = actualScore < minScore;
       expect(shouldFail).toBe(true);
+    });
+  });
+});
+
+describe('ModelOverride', () => {
+  describe('type structure', () => {
+    it('should accept valid OpenAI model override', () => {
+      const override: ModelOverride = {
+        provider: 'openai',
+        model: 'gpt-4o',
+      };
+      expect(override.provider).toBe('openai');
+      expect(override.model).toBe('gpt-4o');
+    });
+
+    it('should accept valid Anthropic model override', () => {
+      const override: ModelOverride = {
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-5-20250929',
+      };
+      expect(override.provider).toBe('anthropic');
+      expect(override.model).toBe('claude-sonnet-4-5-20250929');
+    });
+
+    it('should accept valid Gemini model override', () => {
+      const override: ModelOverride = {
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+      };
+      expect(override.provider).toBe('gemini');
+      expect(override.model).toBe('gemini-2.5-flash');
+    });
+  });
+
+  describe('model override logic', () => {
+    it('should use override provider when provided', () => {
+      const versionProvider = 'openai';
+      const versionModel = 'gpt-4o-mini';
+      const override: ModelOverride = {
+        provider: 'anthropic',
+        model: 'claude-haiku-4-5-20251015',
+      };
+
+      const effectiveProvider = override?.provider || versionProvider;
+      const effectiveModel = override?.model || versionModel;
+
+      expect(effectiveProvider).toBe('anthropic');
+      expect(effectiveModel).toBe('claude-haiku-4-5-20251015');
+    });
+
+    it('should use version config when no override', () => {
+      const versionProvider = 'openai';
+      const versionModel = 'gpt-4o-mini';
+      const override: ModelOverride | undefined = undefined;
+
+      const effectiveProvider = override?.provider || versionProvider;
+      const effectiveModel = override?.model || versionModel;
+
+      expect(effectiveProvider).toBe('openai');
+      expect(effectiveModel).toBe('gpt-4o-mini');
+    });
+
+    it('should fall back to default when no version config and no override', () => {
+      const versionProvider: string | undefined = undefined;
+      const versionModel: string | undefined = undefined;
+      const override: ModelOverride | undefined = undefined;
+
+      const effectiveProvider = override?.provider || versionProvider || 'openai';
+      const effectiveModel = override?.model || versionModel || 'gpt-4o-mini';
+
+      expect(effectiveProvider).toBe('openai');
+      expect(effectiveModel).toBe('gpt-4o-mini');
+    });
+  });
+});
+
+describe('Multi-model comparison logic', () => {
+  describe('model selection', () => {
+    interface ModelSelection {
+      provider: 'openai' | 'anthropic' | 'gemini';
+      model: string;
+    }
+
+    it('should create valid model selection array', () => {
+      const selectedModels: ModelSelection[] = [
+        { provider: 'openai', model: 'gpt-4o' },
+        { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+        { provider: 'gemini', model: 'gemini-2.5-flash' },
+      ];
+
+      expect(selectedModels).toHaveLength(3);
+      expect(selectedModels[0].provider).toBe('openai');
+      expect(selectedModels[1].provider).toBe('anthropic');
+      expect(selectedModels[2].provider).toBe('gemini');
+    });
+
+    it('should filter models by provider', () => {
+      const selectedModels: ModelSelection[] = [
+        { provider: 'openai', model: 'gpt-4o' },
+        { provider: 'openai', model: 'gpt-4o-mini' },
+        { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+      ];
+
+      const openaiModels = selectedModels.filter((m) => m.provider === 'openai');
+      const anthropicModels = selectedModels.filter((m) => m.provider === 'anthropic');
+
+      expect(openaiModels).toHaveLength(2);
+      expect(anthropicModels).toHaveLength(1);
+    });
+
+    it('should identify unique providers in selection', () => {
+      const selectedModels: ModelSelection[] = [
+        { provider: 'openai', model: 'gpt-4o' },
+        { provider: 'openai', model: 'gpt-4o-mini' },
+        { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+      ];
+
+      const uniqueProviders = [...new Set(selectedModels.map((m) => m.provider))];
+
+      expect(uniqueProviders).toHaveLength(2);
+      expect(uniqueProviders).toContain('openai');
+      expect(uniqueProviders).toContain('anthropic');
+    });
+  });
+
+  describe('result aggregation', () => {
+    interface TestRunSummary {
+      total: number;
+      passed: number;
+      failed: number;
+      avgScore?: number;
+      avgResponseTime: number;
+    }
+
+    interface ModelResult {
+      model: { provider: string; model: string };
+      testRun?: { summary: TestRunSummary };
+      error?: string;
+    }
+
+    it('should count successful runs', () => {
+      const results: ModelResult[] = [
+        {
+          model: { provider: 'openai', model: 'gpt-4o' },
+          testRun: { summary: { total: 5, passed: 5, failed: 0, avgResponseTime: 1000 } },
+        },
+        {
+          model: { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+          testRun: { summary: { total: 5, passed: 4, failed: 1, avgResponseTime: 1200 } },
+        },
+        {
+          model: { provider: 'gemini', model: 'gemini-2.5-flash' },
+          error: 'API key not configured',
+        },
+      ];
+
+      const successfulRuns = results.filter((r) => r.testRun);
+      const failedRuns = results.filter((r) => r.error);
+
+      expect(successfulRuns).toHaveLength(2);
+      expect(failedRuns).toHaveLength(1);
+    });
+
+    it('should calculate pass rate per model', () => {
+      const results: ModelResult[] = [
+        {
+          model: { provider: 'openai', model: 'gpt-4o' },
+          testRun: { summary: { total: 10, passed: 8, failed: 2, avgResponseTime: 1000 } },
+        },
+        {
+          model: { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+          testRun: { summary: { total: 10, passed: 9, failed: 1, avgResponseTime: 1200 } },
+        },
+      ];
+
+      const passRates = results
+        .filter((r) => r.testRun)
+        .map((r) => ({
+          model: r.model.model,
+          passRate: Math.round((r.testRun!.summary.passed / r.testRun!.summary.total) * 100),
+        }));
+
+      expect(passRates[0].passRate).toBe(80);
+      expect(passRates[1].passRate).toBe(90);
+    });
+
+    it('should identify best performing model', () => {
+      const results: ModelResult[] = [
+        {
+          model: { provider: 'openai', model: 'gpt-4o' },
+          testRun: { summary: { total: 10, passed: 8, failed: 2, avgScore: 0.75, avgResponseTime: 1000 } },
+        },
+        {
+          model: { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+          testRun: { summary: { total: 10, passed: 9, failed: 1, avgScore: 0.85, avgResponseTime: 1200 } },
+        },
+        {
+          model: { provider: 'gemini', model: 'gemini-2.5-flash' },
+          testRun: { summary: { total: 10, passed: 7, failed: 3, avgScore: 0.70, avgResponseTime: 800 } },
+        },
+      ];
+
+      const successfulResults = results.filter((r) => r.testRun);
+      const bestByPassRate = successfulResults.reduce((best, current) => {
+        const bestPassRate = best.testRun!.summary.passed / best.testRun!.summary.total;
+        const currentPassRate = current.testRun!.summary.passed / current.testRun!.summary.total;
+        return currentPassRate > bestPassRate ? current : best;
+      });
+
+      const bestByScore = successfulResults
+        .filter((r) => r.testRun?.summary.avgScore !== undefined)
+        .reduce((best, current) => {
+          return (current.testRun!.summary.avgScore || 0) > (best.testRun!.summary.avgScore || 0)
+            ? current
+            : best;
+        });
+
+      expect(bestByPassRate.model.model).toBe('claude-sonnet-4-5-20250929');
+      expect(bestByScore.model.model).toBe('claude-sonnet-4-5-20250929');
+    });
+
+    it('should identify fastest model', () => {
+      const results: ModelResult[] = [
+        {
+          model: { provider: 'openai', model: 'gpt-4o' },
+          testRun: { summary: { total: 10, passed: 8, failed: 2, avgResponseTime: 1500 } },
+        },
+        {
+          model: { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+          testRun: { summary: { total: 10, passed: 9, failed: 1, avgResponseTime: 1200 } },
+        },
+        {
+          model: { provider: 'gemini', model: 'gemini-2.5-flash' },
+          testRun: { summary: { total: 10, passed: 7, failed: 3, avgResponseTime: 600 } },
+        },
+      ];
+
+      const fastestModel = results
+        .filter((r) => r.testRun)
+        .reduce((fastest, current) => {
+          return current.testRun!.summary.avgResponseTime < fastest.testRun!.summary.avgResponseTime
+            ? current
+            : fastest;
+        });
+
+      expect(fastestModel.model.model).toBe('gemini-2.5-flash');
+    });
+  });
+
+  describe('progress tracking', () => {
+    it('should calculate progress percentage', () => {
+      const total = 5;
+      const current = 2;
+
+      const progressPercent = Math.round((current / total) * 100);
+
+      expect(progressPercent).toBe(40);
+    });
+
+    it('should track current model in progress', () => {
+      const models = ['gpt-4o', 'claude-sonnet-4-5-20250929', 'gemini-2.5-flash'];
+      let currentIndex = 0;
+
+      const progress = {
+        current: currentIndex + 1,
+        total: models.length,
+        currentModel: models[currentIndex],
+      };
+
+      expect(progress.current).toBe(1);
+      expect(progress.total).toBe(3);
+      expect(progress.currentModel).toBe('gpt-4o');
+
+      // Simulate moving to next model
+      currentIndex = 1;
+      const progress2 = {
+        current: currentIndex + 1,
+        total: models.length,
+        currentModel: models[currentIndex],
+      };
+
+      expect(progress2.current).toBe(2);
+      expect(progress2.currentModel).toBe('claude-sonnet-4-5-20250929');
     });
   });
 });

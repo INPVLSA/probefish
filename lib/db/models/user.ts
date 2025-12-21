@@ -9,6 +9,9 @@ export interface IUser extends Document {
   avatar?: string;
   organizationIds: mongoose.Types.ObjectId[];
   isSuperAdmin: boolean;
+  isBlocked: boolean;
+  blockedAt?: Date;
+  blockedReason?: string;
   apiKey?: string;
   apiKeyCreatedAt?: Date;
   settings: {
@@ -61,6 +64,16 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     isSuperAdmin: {
       type: Boolean,
       default: false,
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    blockedAt: {
+      type: Date,
+    },
+    blockedReason: {
+      type: String,
     },
     apiKey: {
       type: String,

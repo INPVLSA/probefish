@@ -121,6 +121,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       "testCases",
       "validationRules",
       "llmJudgeConfig",
+      "comparisonModels",
     ];
 
     for (const key of allowedUpdates) {

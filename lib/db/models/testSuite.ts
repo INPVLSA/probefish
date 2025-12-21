@@ -42,6 +42,13 @@ export interface ILLMJudgeConfig {
   minScore?: number; // Minimum score threshold (0-1) - test fails if score is below this
 }
 
+// Model selection for multi-model comparison
+export interface IModelSelection {
+  provider: "openai" | "anthropic" | "gemini";
+  model: string;
+  isPrimary?: boolean;
+}
+
 // Test Result - result of a single test case execution
 export interface ITestResult {
   testCaseId: mongoose.Types.ObjectId;
@@ -71,6 +78,10 @@ export interface ITestRun {
   runAt: Date;
   runBy: mongoose.Types.ObjectId;
   status: "running" | "completed" | "failed";
+  modelOverride?: {
+    provider: string;
+    model: string;
+  };
   results: ITestResult[];
   summary: {
     total: number;
@@ -96,6 +107,7 @@ export interface ITestSuite extends Document {
   testCases: ITestCase[];
   validationRules: IValidationRule[];
   llmJudgeConfig: ILLMJudgeConfig;
+  comparisonModels?: IModelSelection[]; // Saved models for multi-model comparison
 
   lastRun?: ITestRun;
   runHistory: ITestRun[];
@@ -267,6 +279,10 @@ const testRunSchema = new Schema<ITestRun>(
       enum: ["running", "completed", "failed"],
       default: "running",
     },
+    modelOverride: {
+      provider: String,
+      model: String,
+    },
     results: [testResultSchema],
     summary: {
       total: { type: Number, default: 0 },
@@ -320,6 +336,23 @@ const testSuiteSchema = new Schema<ITestSuite>(
       type: llmJudgeConfigSchema,
       default: { enabled: false, criteria: [], validationRules: [] },
     },
+    comparisonModels: [
+      {
+        provider: {
+          type: String,
+          enum: ["openai", "anthropic", "gemini"],
+          required: true,
+        },
+        model: {
+          type: String,
+          required: true,
+        },
+        isPrimary: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
     lastRun: testRunSchema,
     runHistory: {
       type: [testRunSchema],

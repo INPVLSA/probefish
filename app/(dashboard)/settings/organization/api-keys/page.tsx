@@ -43,6 +43,9 @@ import {
   X,
 } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
+import { OpenAILogo } from "@/components/ui/openai-logo";
+import { AnthropicLogo } from "@/components/ui/anthropic-logo";
+import { GeminiLogo } from "@/components/ui/gemini-logo";
 
 interface ApiKeyInfo {
   configured: boolean;
@@ -57,16 +60,19 @@ const providerInfo = {
     name: "OpenAI",
     description: "GPT-4, GPT-3.5, and other OpenAI models",
     placeholder: "sk-...",
+    icon: OpenAILogo,
   },
   anthropic: {
     name: "Anthropic",
     description: "Claude 3, Claude 2, and other Anthropic models",
     placeholder: "sk-ant-...",
+    icon: AnthropicLogo,
   },
   gemini: {
     name: "Google Gemini",
     description: "Gemini Pro and other Google AI models",
     placeholder: "AIza...",
+    icon: GeminiLogo,
   },
 };
 
@@ -231,7 +237,7 @@ export default function ApiKeysPage() {
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                    <Key className="h-5 w-5" />
+                    <info.icon size={20} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">

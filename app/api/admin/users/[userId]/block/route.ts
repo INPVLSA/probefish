@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongodb";
 import { User } from "@/lib/db/models";
 import { requireSuperAdmin, authError } from "@/lib/auth/authorization";
-import bcrypt from "bcryptjs";
 
 interface RouteParams {
   params: Promise<{ userId: string }>;
 }
 
-// POST /api/admin/users/[userId]/super-admin - Grant super admin status
+// POST /api/admin/users/[userId]/block - Block a user
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { userId } = await params;
@@ -18,61 +17,49 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return authError(authResult);
     }
 
-    const body = await request.json();
-    const { password } = body;
-
-    if (!password) {
+    // Prevent blocking yourself
+    if (authResult.context.user.id === userId) {
       return NextResponse.json(
-        { error: "Password is required to grant super admin status" },
-        { status: 400 }
+        { error: "Cannot block yourself" },
+        { status: 403 }
       );
     }
+
+    const body = await request.json().catch(() => ({}));
+    const { reason } = body;
 
     await connectDB();
-
-    // Verify current super admin's password
-    const currentAdmin = await User.findById(authResult.context.user.id).select("+passwordHash");
-    if (!currentAdmin || !currentAdmin.passwordHash) {
-      return NextResponse.json(
-        { error: "Unable to verify credentials" },
-        { status: 400 }
-      );
-    }
-
-    const passwordValid = await bcrypt.compare(password, currentAdmin.passwordHash);
-    if (!passwordValid) {
-      return NextResponse.json(
-        { error: "Invalid password" },
-        { status: 401 }
-      );
-    }
 
     const user = await User.findById(userId);
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (user.isSuperAdmin) {
+    if (user.isBlocked) {
       return NextResponse.json(
-        { error: "User is already a super admin" },
+        { error: "User is already blocked" },
         { status: 400 }
       );
     }
 
-    user.isSuperAdmin = true;
+    user.isBlocked = true;
+    user.blockedAt = new Date();
+    user.blockedReason = reason || undefined;
     await user.save();
 
     return NextResponse.json({
-      message: "Super admin status granted",
+      message: "User blocked",
       user: {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
-        isSuperAdmin: true,
+        isBlocked: true,
+        blockedAt: user.blockedAt,
+        blockedReason: user.blockedReason,
       },
     });
   } catch (error) {
-    console.error("Grant super admin error:", error);
+    console.error("Block user error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -80,22 +67,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/admin/users/[userId]/super-admin - Revoke super admin status
+// DELETE /api/admin/users/[userId]/block - Unblock a user
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { userId } = await params;
     const authResult = await requireSuperAdmin(request);
 
-    if (!authResult.authorized || !authResult.context) {
+    if (!authResult.authorized) {
       return authError(authResult);
-    }
-
-    // Prevent revoking own super admin status
-    if (authResult.context.user.id === userId) {
-      return NextResponse.json(
-        { error: "Cannot revoke your own super admin status" },
-        { status: 403 }
-      );
     }
 
     await connectDB();
@@ -105,27 +84,29 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (!user.isSuperAdmin) {
+    if (!user.isBlocked) {
       return NextResponse.json(
-        { error: "User is not a super admin" },
+        { error: "User is not blocked" },
         { status: 400 }
       );
     }
 
-    user.isSuperAdmin = false;
+    user.isBlocked = false;
+    user.blockedAt = undefined;
+    user.blockedReason = undefined;
     await user.save();
 
     return NextResponse.json({
-      message: "Super admin status revoked",
+      message: "User unblocked",
       user: {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
-        isSuperAdmin: false,
+        isBlocked: false,
       },
     });
   } catch (error) {
-    console.error("Revoke super admin error:", error);
+    console.error("Unblock user error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

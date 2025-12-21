@@ -43,6 +43,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user is blocked
+    if (user.isBlocked) {
+      return NextResponse.json(
+        { error: "Your account has been blocked. Please contact support." },
+        { status: 403 }
+      );
+    }
+
     // Update last login
     user.lastLoginAt = new Date();
     await user.save();

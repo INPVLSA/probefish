@@ -26,6 +26,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PromptEditor } from "@/components/prompt/PromptEditor";
+import { ModelConfigEditor, ModelConfig } from "@/components/prompt/ModelConfigEditor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +41,7 @@ interface PromptVersion {
   content: string;
   systemPrompt?: string;
   variables: string[];
+  modelConfig?: ModelConfig;
   createdBy: { name: string; email: string };
   createdAt: string;
   note?: string;
@@ -70,6 +72,11 @@ export default function PromptDetailPage({
   const [systemPrompt, setSystemPrompt] = useState("");
   const [variables, setVariables] = useState<string[]>([]);
   const [systemVariables, setSystemVariables] = useState<string[]>([]);
+  const [modelConfig, setModelConfig] = useState<ModelConfig>({
+    provider: "openai",
+    model: "gpt-4o-mini",
+    temperature: 0.7,
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -101,6 +108,17 @@ export default function PromptDetailPage({
           setContent(currentVer.content);
           setSystemPrompt(currentVer.systemPrompt || "");
           setVariables(currentVer.variables);
+          if (currentVer.modelConfig) {
+            setModelConfig({
+              provider: currentVer.modelConfig.provider || "openai",
+              model: currentVer.modelConfig.model || "gpt-4o-mini",
+              temperature: currentVer.modelConfig.temperature ?? 0.7,
+              maxTokens: currentVer.modelConfig.maxTokens,
+              topP: currentVer.modelConfig.topP,
+              frequencyPenalty: currentVer.modelConfig.frequencyPenalty,
+              presencePenalty: currentVer.modelConfig.presencePenalty,
+            });
+          }
         }
       } catch {
         setError("Failed to fetch prompt");
@@ -117,6 +135,17 @@ export default function PromptDetailPage({
     setContent(version.content);
     setSystemPrompt(version.systemPrompt || "");
     setVariables(version.variables);
+    if (version.modelConfig) {
+      setModelConfig({
+        provider: version.modelConfig.provider || "openai",
+        model: version.modelConfig.model || "gpt-4o-mini",
+        temperature: version.modelConfig.temperature ?? 0.7,
+        maxTokens: version.modelConfig.maxTokens,
+        topP: version.modelConfig.topP,
+        frequencyPenalty: version.modelConfig.frequencyPenalty,
+        presencePenalty: version.modelConfig.presencePenalty,
+      });
+    }
     setHasChanges(true);
   };
 
@@ -146,6 +175,7 @@ export default function PromptDetailPage({
           body: JSON.stringify({
             content,
             systemPrompt: systemPrompt.trim() || undefined,
+            modelConfig,
           }),
         }
       );
@@ -341,6 +371,14 @@ export default function PromptDetailPage({
         </div>
 
         <div className="space-y-6">
+          <ModelConfigEditor
+            config={modelConfig}
+            onChange={(config) => {
+              setModelConfig(config);
+              setHasChanges(true);
+            }}
+          />
+
           <Card>
             <CardHeader>
               <CardTitle>Details</CardTitle>

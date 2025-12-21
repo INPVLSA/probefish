@@ -34,13 +34,25 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Loader2,
   Search,
   Shield,
   ShieldOff,
   ChevronLeft,
   ChevronRight,
+  Ban,
+  CircleSlash,
 } from "lucide-react";
+import { DeleteIcon } from "@/components/ui/delete";
 import { format } from "date-fns";
 
 interface User {
@@ -48,6 +60,9 @@ interface User {
   name: string;
   email: string;
   isSuperAdmin: boolean;
+  isBlocked: boolean;
+  blockedAt?: string;
+  blockedReason?: string;
   organizationCount: number;
   createdAt: string;
   lastLoginAt?: string;
@@ -73,6 +88,10 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [grantDialogOpen, setGrantDialogOpen] = useState(false);
+  const [grantingUserId, setGrantingUserId] = useState<string | null>(null);
+  const [grantPassword, setGrantPassword] = useState("");
+  const [granting, setGranting] = useState(false);
 
   useEffect(() => {
     checkAccess();
@@ -145,25 +164,40 @@ export default function AdminUsersPage() {
     );
   };
 
-  const handleGrantSuperAdmin = async (userId: string) => {
+  const openGrantDialog = (userId: string) => {
+    setGrantingUserId(userId);
+    setGrantPassword("");
+    setGrantDialogOpen(true);
+  };
+
+  const handleGrantSuperAdmin = async () => {
+    if (!grantingUserId || !grantPassword) return;
+
+    setGranting(true);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/super-admin`, {
+      const res = await fetch(`/api/admin/users/${grantingUserId}/super-admin`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: grantPassword }),
       });
 
       if (res.ok) {
         setUsers(
           users.map((u) =>
-            u.id === userId ? { ...u, isSuperAdmin: true } : u
+            u.id === grantingUserId ? { ...u, isSuperAdmin: true } : u
           )
         );
         toast.success("Super admin granted");
+        setGrantDialogOpen(false);
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to grant super admin");
       }
     } catch {
       toast.error("Failed to grant super admin");
+    } finally {
+      setGranting(false);
+      setGrantPassword("");
     }
   };
 
@@ -186,6 +220,69 @@ export default function AdminUsersPage() {
       }
     } catch {
       toast.error("Failed to revoke super admin");
+    }
+  };
+
+  const handleBlockUser = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        setUsers(
+          users.map((u) =>
+            u.id === userId ? { ...u, isBlocked: true } : u
+          )
+        );
+        toast.success("User blocked");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to block user");
+      }
+    } catch {
+      toast.error("Failed to block user");
+    }
+  };
+
+  const handleUnblockUser = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/block`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setUsers(
+          users.map((u) =>
+            u.id === userId ? { ...u, isBlocked: false } : u
+          )
+        );
+        toast.success("User unblocked");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to unblock user");
+      }
+    } catch {
+      toast.error("Failed to unblock user");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setUsers(users.filter((u) => u.id !== userId));
+        toast.success("User deleted");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete user");
+      }
+    } catch {
+      toast.error("Failed to delete user");
     }
   };
 
@@ -272,14 +369,22 @@ export default function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {user.isSuperAdmin ? (
-                        <Badge variant="default" className="gap-1">
-                          <Shield className="h-3 w-3" />
-                          Super Admin
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">User</Badge>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {user.isSuperAdmin ? (
+                          <Badge variant="default" className="gap-1 w-fit">
+                            <Shield className="h-3 w-3" />
+                            Super Admin
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="w-fit">User</Badge>
+                        )}
+                        {user.isBlocked && (
+                          <Badge variant="destructive" className="gap-1 w-fit">
+                            <Ban className="h-3 w-3" />
+                            Blocked
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{user.organizationCount}</TableCell>
                     <TableCell className="text-muted-foreground">
@@ -292,7 +397,8 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       {!isCurrentUser && (
-                        <>
+                        <div className="flex gap-1">
+                          {/* Super Admin Toggle */}
                           {user.isSuperAdmin ? (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -300,6 +406,7 @@ export default function AdminUsersPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="text-destructive"
+                                  title="Revoke super admin"
                                 >
                                   <ShieldOff className="h-4 w-4" />
                                 </Button>
@@ -327,35 +434,113 @@ export default function AdminUsersPage() {
                               </AlertDialogContent>
                             </AlertDialog>
                           ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openGrantDialog(user.id)}
+                              title="Grant super admin"
+                            >
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          {/* Block/Unblock Toggle */}
+                          {user.isBlocked ? (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Shield className="h-4 w-4" />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-green-600"
+                                  title="Unblock user"
+                                >
+                                  <CircleSlash className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Grant Super Admin
-                                  </AlertDialogTitle>
+                                  <AlertDialogTitle>Unblock User</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to grant super admin
-                                    privileges to {user.name}? They will have full
-                                    access to manage all users and settings.
+                                    Are you sure you want to unblock {user.name}?
+                                    They will be able to log in again.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleUnblockUser(user.id)}>
+                                    Unblock
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-amber-600"
+                                  title="Block user"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Block User</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to block {user.name}?
+                                    They will not be able to log in until unblocked.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => handleGrantSuperAdmin(user.id)}
+                                    onClick={() => handleBlockUser(user.id)}
+                                    className="bg-amber-600 hover:bg-amber-700"
                                   >
-                                    Grant
+                                    Block
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
                           )}
-                        </>
+
+                          {/* Delete User */}
+                          {!user.isSuperAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive"
+                                  title="Delete user"
+                                >
+                                  <DeleteIcon size={16} />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete {user.name}?
+                                    This action cannot be undone. The user will be
+                                    removed from all organizations.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -406,6 +591,61 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Grant Super Admin Dialog with Password */}
+      <Dialog open={grantDialogOpen} onOpenChange={setGrantDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grant Super Admin</DialogTitle>
+            <DialogDescription>
+              {grantingUserId && (
+                <>
+                  You are about to grant super admin privileges to{" "}
+                  <strong>{users.find(u => u.id === grantingUserId)?.name}</strong>.
+                  They will have full access to manage all users and settings.
+                  <br /><br />
+                  Enter your password to confirm this action.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">Your Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={grantPassword}
+                onChange={(e) => setGrantPassword(e.target.value)}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setGrantDialogOpen(false)}
+              disabled={granting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGrantSuperAdmin}
+              disabled={granting || !grantPassword}
+            >
+              {granting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Granting...
+                </>
+              ) : (
+                "Grant Super Admin"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

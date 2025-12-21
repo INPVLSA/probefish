@@ -8,9 +8,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { Plus, Folder, Key, Clock } from "lucide-react";
+import { Plus, Folder, Key, Clock, FlaskConical, FileText, Play } from "lucide-react";
 import connectDB from "@/lib/db/mongodb";
-import { User, Prompt, TestSuite, Endpoint } from "@/lib/db/models";
+import { User, Prompt, TestSuite, Endpoint, Project } from "@/lib/db/models";
 import { verifyToken } from "@/lib/auth/session";
 
 async function getDashboardStats() {
@@ -35,13 +35,23 @@ async function getDashboardStats() {
 
   const orgIds = user.organizationIds;
 
-  // Get counts
-  const [promptCount, testSuiteCount, endpointCount, testSuites] = await Promise.all([
+  // Get counts and recent items
+  const [promptCount, testSuiteCount, endpointCount, testSuites, recentProjects, recentTestSuites] = await Promise.all([
     Prompt.countDocuments({ organizationId: { $in: orgIds } }),
     TestSuite.countDocuments({ organizationId: { $in: orgIds } }),
     Endpoint.countDocuments({ organizationId: { $in: orgIds } }),
     TestSuite.find({ organizationId: { $in: orgIds } })
       .select("runHistory")
+      .lean(),
+    Project.find({ organizationId: { $in: orgIds }, isFolder: false })
+      .sort({ updatedAt: -1 })
+      .limit(3)
+      .select("_id name")
+      .lean(),
+    TestSuite.find({ organizationId: { $in: orgIds } })
+      .sort({ updatedAt: -1 })
+      .limit(3)
+      .select("_id name projectId testCases")
       .lean(),
   ]);
 
@@ -67,16 +77,16 @@ async function getDashboardStats() {
   // Get recent activity (last 5 test runs)
   const recentActivity = await TestSuite.aggregate([
     { $match: { organizationId: { $in: orgIds } } },
-    { $unwind: "$runs" },
-    { $sort: { "runs.runAt": -1 } },
+    { $unwind: "$runHistory" },
+    { $sort: { "runHistory.runAt": -1 } },
     { $limit: 5 },
     {
       $project: {
         name: 1,
-        runAt: "$runs.runAt",
-        status: "$runs.status",
-        passed: "$runs.summary.passed",
-        total: "$runs.summary.total",
+        runAt: "$runHistory.runAt",
+        status: "$runHistory.status",
+        passed: "$runHistory.summary.passed",
+        total: "$runHistory.summary.total",
       },
     },
   ]);
@@ -88,6 +98,13 @@ async function getDashboardStats() {
     totalRuns,
     avgPassRate,
     recentActivity,
+    recentProjects: recentProjects.map((p) => ({ _id: p._id.toString(), name: p.name })),
+    recentTestSuites: recentTestSuites.map((s) => ({
+      _id: s._id.toString(),
+      name: s.name,
+      projectId: s.projectId.toString(),
+      testCaseCount: s.testCases?.length || 0,
+    })),
   };
 }
 
@@ -136,22 +153,60 @@ export default async function DashboardPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <Button asChild className="justify-start">
-              <Link href="/projects/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Create New Project
-              </Link>
-            </Button>
-            <Button variant="secondary" asChild className="justify-start">
+            {stats?.recentTestSuites && stats.recentTestSuites.length > 0 ? (
+              <>
+                {stats.recentTestSuites.slice(0, 2).map((suite) => (
+                  <Button key={suite._id} variant="secondary" asChild className="justify-start">
+                    <Link href={`/projects/${suite.projectId}/test-suites/${suite._id}`}>
+                      <Play className="mr-2 h-4 w-4" />
+                      Run: {suite.name} ({suite.testCaseCount} tests)
+                    </Link>
+                  </Button>
+                ))}
+                {stats.recentProjects && stats.recentProjects.length > 0 && (
+                  <Button variant="outline" asChild className="justify-start">
+                    <Link href={`/projects/${stats.recentProjects[0]._id}/test-suites/new`}>
+                      <FlaskConical className="mr-2 h-4 w-4" />
+                      New Test Suite in {stats.recentProjects[0].name}
+                    </Link>
+                  </Button>
+                )}
+              </>
+            ) : stats?.recentProjects && stats.recentProjects.length > 0 ? (
+              <>
+                <Button asChild className="justify-start">
+                  <Link href={`/projects/${stats.recentProjects[0]._id}/prompts/new`}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Create Prompt in {stats.recentProjects[0].name}
+                  </Link>
+                </Button>
+                <Button variant="secondary" asChild className="justify-start">
+                  <Link href={`/projects/${stats.recentProjects[0]._id}/test-suites/new`}>
+                    <FlaskConical className="mr-2 h-4 w-4" />
+                    Create Test Suite
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild className="justify-start">
+                  <Link href="/projects/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create New Project
+                  </Link>
+                </Button>
+                <Button variant="secondary" asChild className="justify-start">
+                  <Link href="/settings/organization/api-keys">
+                    <Key className="mr-2 h-4 w-4" />
+                    Configure API Keys
+                  </Link>
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" asChild className="justify-start text-muted-foreground">
               <Link href="/projects">
                 <Folder className="mr-2 h-4 w-4" />
-                Browse Projects
-              </Link>
-            </Button>
-            <Button variant="secondary" asChild className="justify-start">
-              <Link href="/settings/organization/api-keys">
-                <Key className="mr-2 h-4 w-4" />
-                Configure API Keys
+                All Projects
               </Link>
             </Button>
           </CardContent>
@@ -192,18 +247,21 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Getting Started</CardTitle>
-          <CardDescription>Follow these steps to start testing your prompts</CardDescription>
+          <CardDescription>Set up your environment to start testing LLM prompts and API endpoints</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-semibold">1</span>
               </div>
               <div>
-                <h3 className="font-medium">Create a Project</h3>
+                <h3 className="font-medium">Configure API Keys</h3>
                 <p className="text-muted-foreground text-sm">
-                  Organize your prompts into projects for better management.
+                  Add your OpenAI, Anthropic, or Gemini API keys in{" "}
+                  <Link href="/settings/organization/api-keys" className="text-primary hover:underline">
+                    Settings
+                  </Link>.
                 </p>
               </div>
             </div>
@@ -212,9 +270,9 @@ export default async function DashboardPage() {
                 <span className="text-primary font-semibold">2</span>
               </div>
               <div>
-                <h3 className="font-medium">Add Your Prompts</h3>
+                <h3 className="font-medium">Create a Project</h3>
                 <p className="text-muted-foreground text-sm">
-                  Create prompts with variables and configure model settings.
+                  Projects contain prompts, endpoints, and test suites. Create one to get started.
                 </p>
               </div>
             </div>
@@ -223,9 +281,20 @@ export default async function DashboardPage() {
                 <span className="text-primary font-semibold">3</span>
               </div>
               <div>
-                <h3 className="font-medium">Run Tests</h3>
+                <h3 className="font-medium">Add Prompts or Endpoints</h3>
                 <p className="text-muted-foreground text-sm">
-                  Create test suites with validation rules and LLM judge criteria.
+                  Create prompts with variables like {"{{name}}"}, or configure HTTP API endpoints to test.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-semibold">4</span>
+              </div>
+              <div>
+                <h3 className="font-medium">Create Test Suites</h3>
+                <p className="text-muted-foreground text-sm">
+                  Define test cases, validation rules, and LLM judge criteria to evaluate outputs.
                 </p>
               </div>
             </div>

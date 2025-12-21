@@ -20,6 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -238,18 +243,32 @@ export default function ProjectSettingsPage({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="public">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Organization
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="private">
-                    <div className="flex items-center gap-2">
-                      <EyeOff className="h-4 w-4" />
-                      Private
-                    </div>
-                  </SelectItem>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SelectItem value="public">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Organization
+                        </div>
+                      </SelectItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      All organization members can access this project based on their org role
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SelectItem value="private">
+                        <div className="flex items-center gap-2">
+                          <EyeOff className="h-4 w-4" />
+                          Private
+                        </div>
+                      </SelectItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Only users explicitly added as project members can access this project
+                    </TooltipContent>
+                  </Tooltip>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">

@@ -94,6 +94,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    if (organization.llmCredentials?.gemini?.apiKey) {
+      try {
+        credentials.geminiApiKey = decrypt(organization.llmCredentials.gemini.apiKey);
+      } catch (e) {
+        console.error("Failed to decrypt Gemini key:", e);
+      }
+    }
+
     // Allow override from request body if provided
     const body = await request.json().catch(() => ({}));
     if (body.openaiApiKey) {
@@ -102,6 +110,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (body.anthropicApiKey) {
       credentials.anthropicApiKey = body.anthropicApiKey;
     }
+    if (body.geminiApiKey) {
+      credentials.geminiApiKey = body.geminiApiKey;
+    }
+
+    // Model override for multi-model comparison
+    const modelOverride = body.modelOverride as { provider: string; model: string } | undefined;
 
     // For prompt testing, verify we have required credentials
     if (testSuite.targetType === "prompt") {
@@ -118,7 +132,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         (v) => v.version === (testSuite.targetVersion || prompt.currentVersion)
       );
 
-      const provider = version?.modelConfig.provider || "openai";
+      // Use modelOverride provider if provided, otherwise use version's provider
+      const provider = modelOverride?.provider || version?.modelConfig.provider || "openai";
       if (provider === "openai" && !credentials.openaiApiKey) {
         return NextResponse.json(
           { error: "OpenAI API key is required. Configure it in Settings > API Keys." },
@@ -128,6 +143,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (provider === "anthropic" && !credentials.anthropicApiKey) {
         return NextResponse.json(
           { error: "Anthropic API key is required. Configure it in Settings > API Keys." },
+          { status: 400 }
+        );
+      }
+      if (provider === "gemini" && !credentials.geminiApiKey) {
+        return NextResponse.json(
+          { error: "Gemini API key is required. Configure it in Settings > API Keys." },
           { status: 400 }
         );
       }
@@ -171,6 +192,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       runAt: new Date(),
       runBy: new mongoose.Types.ObjectId(auth.context.user.id),
       status: "running",
+      modelOverride: modelOverride ? {
+        provider: modelOverride.provider,
+        model: modelOverride.model,
+      } : undefined,
       results: [],
       summary: {
         total: testSuite.testCases.length,
@@ -194,6 +219,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         validationRules: testSuite.validationRules,
         judgeConfig: testSuite.llmJudgeConfig,
         credentials,
+        modelOverride: modelOverride ? {
+          provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+          model: modelOverride.model,
+        } : undefined,
       });
 
       const testResult = toTestResult(result);

@@ -26,11 +26,14 @@ import {
   ValidationRule,
   JudgeConfigEditor,
   LLMJudgeConfig,
-  TestRunner,
+  TestExecutionPanel,
   TestRunResult,
+  MultiModelRunResult,
   TestResults,
   TestRunsGrid,
+  MultiModelResults,
 } from "@/components/testing";
+import { ModelSelection } from "@/components/testing/ModelCardSelector";
 import { TestRunComparison } from "@/components/testing/TestRunComparison";
 import { ExportDialog } from "@/components/export/ExportDialog";
 
@@ -44,6 +47,7 @@ interface TestSuite {
   testCases: TestCase[];
   validationRules: ValidationRule[];
   llmJudgeConfig: LLMJudgeConfig;
+  comparisonModels?: ModelSelection[];
   lastRun?: TestRun;
   runHistory?: TestRun[];
 }
@@ -109,10 +113,12 @@ export default function TestSuiteDetailPage({
   const [deleting, setDeleting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [error, setError] = useState("");
-  const [storedApiKeys, setStoredApiKeys] = useState<{ openai: boolean; anthropic: boolean }>({
+  const [storedApiKeys, setStoredApiKeys] = useState<{ openai: boolean; anthropic: boolean; gemini: boolean }>({
     openai: false,
     anthropic: false,
+    gemini: false,
   });
+  const [multiModelResults, setMultiModelResults] = useState<MultiModelRunResult | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   const fetchTestSuite = useCallback(async () => {
@@ -183,6 +189,7 @@ export default function TestSuiteDetailPage({
             setStoredApiKeys({
               openai: keys.openai?.configured === true,
               anthropic: keys.anthropic?.configured === true,
+              gemini: keys.gemini?.configured === true,
             });
           }
         } catch {
@@ -271,25 +278,42 @@ export default function TestSuiteDetailPage({
     }
   };
 
-  const handleRunComplete = (result: TestRunResult) => {
-    if (result.success && result.testRun) {
-      const newRun = result.testRun as TestRun;
-      setLastRun(newRun);
-      setRunHistory((prev) => [newRun, ...prev]);
-      toast.success("Tests completed!");
+  // Unified handler for both single and multi-model results
+  const handleRunComplete = (result: TestRunResult | MultiModelRunResult) => {
+    // Check if it's a multi-model result
+    if ("results" in result && Array.isArray(result.results)) {
+      // Multi-model result
+      const multiResult = result as MultiModelRunResult;
+      setMultiModelResults(multiResult);
+
+      // Update run history with all successful runs
+      const successfulRuns = multiResult.results
+        .filter((r) => r.testRun)
+        .map((r) => r.testRun as TestRun);
+      if (successfulRuns.length > 0) {
+        setLastRun(successfulRuns[0]);
+        setRunHistory((prev) => [...successfulRuns, ...prev]);
+      }
+
+      const successCount = successfulRuns.length;
+      const failCount = multiResult.results.length - successCount;
+      if (failCount === 0) {
+        toast.success(`Tests completed on ${successCount} model${successCount !== 1 ? "s" : ""}!`);
+      } else {
+        toast.warning(`Tests completed on ${successCount} model${successCount !== 1 ? "s" : ""}, ${failCount} failed`);
+      }
+    } else {
+      // Single model result
+      const singleResult = result as TestRunResult;
+      if (singleResult.success && singleResult.testRun) {
+        const newRun = singleResult.testRun as TestRun;
+        setLastRun(newRun);
+        setRunHistory((prev) => [newRun, ...prev]);
+        setMultiModelResults(null); // Clear multi-model results
+        toast.success("Tests completed!");
+      }
     }
   };
-
-  // Determine if we need API keys (only if not already stored)
-  const requiresOpenAI =
-    testSuite?.targetType === "prompt" ||
-    (llmJudgeConfig.enabled && llmJudgeConfig.provider !== "anthropic");
-  const requiresAnthropic =
-    llmJudgeConfig.enabled && llmJudgeConfig.provider === "anthropic";
-
-  // Only prompt for keys if they're required AND not already stored
-  const needsOpenAI = requiresOpenAI && !storedApiKeys.openai;
-  const needsAnthropic = requiresAnthropic && !storedApiKeys.anthropic;
 
   if (loading) {
     return (
@@ -500,16 +524,22 @@ export default function TestSuiteDetailPage({
         </div>
 
         <div className="space-y-6">
-          <TestRunner
+          <TestExecutionPanel
             projectId={projectId}
             suiteId={suiteId}
             testCaseCount={testCases.length}
-            needsOpenAI={needsOpenAI}
-            needsAnthropic={needsAnthropic}
+            targetType={testSuite?.targetType || "prompt"}
+            availableProviders={storedApiKeys}
+            savedComparisonModels={testSuite?.comparisonModels}
             onRunComplete={handleRunComplete}
           />
 
-          <TestResults testRun={lastRun} />
+          {/* Adaptive results: multi-model grid for 2+ models, simple results for 1 */}
+          {multiModelResults && multiModelResults.results.length > 1 ? (
+            <MultiModelResults results={multiModelResults} />
+          ) : (
+            <TestResults testRun={lastRun} />
+          )}
         </div>
       </div>
     </div>

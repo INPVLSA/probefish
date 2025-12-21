@@ -152,24 +152,40 @@ export function TestCaseEditor({
                   {variables.length > 0 ? (
                     <div className="space-y-3">
                       <Label>Variables</Label>
-                      {variables.map((varName) => (
-                        <div key={varName} className="space-y-1">
-                          <Label
-                            htmlFor={`var-${varName}`}
-                            className="text-sm text-muted-foreground"
-                          >
-                            {`{{${varName}}}`}
-                          </Label>
-                          <Input
-                            id={`var-${varName}`}
-                            value={editingCase.inputs[varName] || ""}
-                            onChange={(e) =>
-                              updateEditingInput(varName, e.target.value)
-                            }
-                            placeholder={`Value for ${varName}`}
-                          />
-                        </div>
-                      ))}
+                      {variables.map((varName) => {
+                        const value = editingCase.inputs[varName] || "";
+                        const useTextarea = value.length > 80 || value.includes("\n");
+                        return (
+                          <div key={varName} className="space-y-1">
+                            <Label
+                              htmlFor={`var-${varName}`}
+                              className="text-sm text-muted-foreground"
+                            >
+                              {`{{${varName}}}`}
+                            </Label>
+                            {useTextarea ? (
+                              <Textarea
+                                id={`var-${varName}`}
+                                value={value}
+                                onChange={(e) =>
+                                  updateEditingInput(varName, e.target.value)
+                                }
+                                placeholder={`Value for ${varName}`}
+                                rows={3}
+                              />
+                            ) : (
+                              <Input
+                                id={`var-${varName}`}
+                                value={value}
+                                onChange={(e) =>
+                                  updateEditingInput(varName, e.target.value)
+                                }
+                                placeholder={`Value for ${varName}`}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -236,7 +252,8 @@ export function TestCaseEditor({
             {testCases.map((testCase, index) => (
               <div
                 key={testCase._id || index}
-                className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group"
+                className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group cursor-pointer hover:bg-muted transition-colors"
+                onClick={() => handleEditCase(testCase, index)}
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground/50" />
                 <div className="flex-1 min-w-0">
@@ -258,7 +275,7 @@ export function TestCaseEditor({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleEditCase(testCase, index)}
+                    onClick={(e) => { e.stopPropagation(); handleEditCase(testCase, index); }}
                     title="Edit"
                   >
                     <Pencil className="h-4 w-4" />
@@ -267,7 +284,7 @@ export function TestCaseEditor({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleDuplicateCase(testCase)}
+                    onClick={(e) => { e.stopPropagation(); handleDuplicateCase(testCase); }}
                     title="Duplicate"
                   >
                     <Copy className="h-4 w-4" />
@@ -276,7 +293,7 @@ export function TestCaseEditor({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-destructive"
-                    onClick={() => handleDeleteCase(index)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteCase(index); }}
                     title="Delete"
                   >
                     <DeleteIcon size={16} />

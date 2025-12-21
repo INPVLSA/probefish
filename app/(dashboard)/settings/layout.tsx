@@ -5,7 +5,7 @@ import connectDB from "@/lib/db/mongodb";
 import { User, Organization } from "@/lib/db/models";
 import { verifyToken } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
-import { Building2, Users, Key, Mail, Shield, KeyRound } from "lucide-react";
+import { Building2, Users, Key, Mail, Shield, KeyRound, ChevronRight, Home } from "lucide-react";
 
 async function getUserAndOrg() {
   const cookieStore = await cookies();
@@ -102,6 +102,15 @@ export default async function SettingsLayout({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center text-sm text-muted-foreground">
+        <Link href="/" className="flex items-center hover:text-foreground transition-colors">
+          <Home className="h-4 w-4" />
+        </Link>
+        <ChevronRight className="h-4 w-4 mx-2" />
+        <span className="text-foreground font-medium">Settings</span>
+      </nav>
+
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">

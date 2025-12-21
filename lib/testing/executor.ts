@@ -91,12 +91,19 @@ export function getValueByPath(obj: unknown, path: string): unknown {
   return current;
 }
 
+// Model override for multi-model comparison
+export interface ModelOverride {
+  provider: LLMProvider;
+  model: string;
+}
+
 // Execute a prompt with LLM
 export async function executePrompt(
   prompt: IPrompt,
   version: IPromptVersion,
   inputs: Record<string, string>,
-  credentials: LLMProviderCredentials
+  credentials: LLMProviderCredentials,
+  modelOverride?: ModelOverride
 ): Promise<{ output: string; responseTime: number }> {
   const startTime = Date.now();
 
@@ -106,8 +113,9 @@ export async function executePrompt(
     ? replaceVariables(version.systemPrompt, inputs)
     : undefined;
 
-  const provider = (version.modelConfig.provider || "openai") as LLMProvider;
-  const model = version.modelConfig.model || "gpt-4o-mini";
+  // Use override if provided, otherwise use version config
+  const provider = (modelOverride?.provider || version.modelConfig.provider || "openai") as LLMProvider;
+  const model = modelOverride?.model || version.modelConfig.model || "gpt-4o-mini";
 
   const response = await llmService.simpleComplete(
     {
@@ -498,6 +506,7 @@ export async function executeTestCase(params: {
   validationRules: IValidationRule[];
   judgeConfig: ILLMJudgeConfig;
   credentials: LLMProviderCredentials;
+  modelOverride?: ModelOverride;
 }): Promise<TestCaseExecutionResult> {
   const {
     testCase,
@@ -507,6 +516,7 @@ export async function executeTestCase(params: {
     validationRules,
     judgeConfig,
     credentials,
+    modelOverride,
   } = params;
 
   const result: TestCaseExecutionResult = {
@@ -535,7 +545,8 @@ export async function executeTestCase(params: {
         prompt,
         version,
         testCase.inputs,
-        credentials
+        credentials,
+        modelOverride
       );
       result.output = execution.output;
       result.responseTime = execution.responseTime;

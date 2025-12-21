@@ -239,6 +239,7 @@ export default function TokensPage() {
               <CardTitle>Personal Access Tokens</CardTitle>
               <CardDescription>
                 Generate tokens to access the API from CI/CD pipelines or external tools.
+                Use as Bearer token: <code className="text-xs bg-muted px-1 py-0.5 rounded">Authorization: Bearer pf_...</code>
               </CardDescription>
             </div>
             <Dialog open={createOpen} onOpenChange={handleDialogClose}>
@@ -465,35 +466,6 @@ export default function TokensPage() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage</CardTitle>
-          <CardDescription>How to use your access token</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-medium mb-2">HTTP Header</h4>
-            <code className="block bg-muted p-3 rounded-lg text-sm">
-              Authorization: Bearer pf_your_token_here
-            </code>
-          </div>
-          <div>
-            <h4 className="font-medium mb-2">Example: Export Test Results (cURL)</h4>
-            <code className="block bg-muted p-3 rounded-lg text-sm whitespace-pre-wrap">
-{`curl -H "Authorization: Bearer pf_your_token_here" \\
-  "https://your-instance/api/projects/{projectId}/export?format=junit"`}
-            </code>
-          </div>
-          <div>
-            <h4 className="font-medium mb-2">Example: Run Tests (cURL)</h4>
-            <code className="block bg-muted p-3 rounded-lg text-sm whitespace-pre-wrap">
-{`curl -X POST -H "Authorization: Bearer pf_your_token_here" \\
-  "https://your-instance/api/projects/{projectId}/test-suites/{suiteId}/run"`}
-            </code>
-          </div>
         </CardContent>
       </Card>
     </div>

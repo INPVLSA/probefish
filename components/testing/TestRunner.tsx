@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,16 +19,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Key, Play } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Loader2, Key, Play, Layers, ChevronDown } from "lucide-react";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
+import { MultiModelSelector, ModelSelection } from "./MultiModelSelector";
 
 interface TestRunnerProps {
   projectId: string;
   suiteId: string;
   testCaseCount: number;
+  targetType?: "prompt" | "endpoint";
   needsOpenAI?: boolean;
   needsAnthropic?: boolean;
+  availableProviders?: {
+    openai: boolean;
+    anthropic: boolean;
+    gemini: boolean;
+  };
+  savedComparisonModels?: ModelSelection[];
   onRunComplete?: (result: TestRunResult) => void;
+  onMultiModelRunComplete?: (results: MultiModelRunResult) => void;
 }
 
 export interface TestRunResult {
@@ -36,6 +50,10 @@ export interface TestRunResult {
   testRun?: {
     _id: string;
     status: string;
+    modelOverride?: {
+      provider: string;
+      model: string;
+    };
     results: Array<{
       testCaseId: string;
       testCaseName: string;
@@ -59,20 +77,71 @@ export interface TestRunResult {
   error?: string;
 }
 
+export interface MultiModelRunResult {
+  success: boolean;
+  results: Array<{
+    model: ModelSelection;
+    testRun?: TestRunResult["testRun"];
+    error?: string;
+  }>;
+}
+
 export function TestRunner({
   projectId,
   suiteId,
   testCaseCount,
+  targetType = "prompt",
   needsOpenAI = false,
   needsAnthropic = false,
+  availableProviders = { openai: true, anthropic: true, gemini: true },
+  savedComparisonModels,
   onRunComplete,
+  onMultiModelRunComplete,
 }: TestRunnerProps) {
   const [running, setRunning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openaiKey, setOpenaiKey] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
   const [error, setError] = useState("");
+  const [multiModelOpen, setMultiModelOpen] = useState(false);
+  const [selectedModels, setSelectedModels] = useState<ModelSelection[]>(
+    savedComparisonModels || []
+  );
+  const [multiModelProgress, setMultiModelProgress] = useState<{
+    current: number;
+    total: number;
+    currentModel?: string;
+  } | null>(null);
   const airplaneRef = useRef<AirplaneIconHandle>(null);
+
+  // Initialize from saved models
+  useEffect(() => {
+    if (savedComparisonModels && savedComparisonModels.length > 0) {
+      setSelectedModels(savedComparisonModels);
+      setMultiModelOpen(true);
+    }
+  }, [savedComparisonModels]);
+
+  // Save models when selection changes
+  const saveComparisonModels = useCallback(
+    async (models: ModelSelection[]) => {
+      try {
+        await fetch(`/api/projects/${projectId}/test-suites/${suiteId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ comparisonModels: models }),
+        });
+      } catch (err) {
+        console.error("Failed to save comparison models:", err);
+      }
+    },
+    [projectId, suiteId]
+  );
+
+  const handleModelSelectionChange = (models: ModelSelection[]) => {
+    setSelectedModels(models);
+    saveComparisonModels(models);
+  };
 
   const handleRunClick = () => {
     if (needsOpenAI || needsAnthropic) {
@@ -82,7 +151,7 @@ export function TestRunner({
     }
   };
 
-  const runTests = async () => {
+  const runTests = async (modelOverride?: ModelSelection) => {
     setRunning(true);
     setError("");
     setDialogOpen(false);
@@ -98,6 +167,9 @@ export function TestRunner({
           body: JSON.stringify({
             openaiApiKey: openaiKey || undefined,
             anthropicApiKey: anthropicKey || undefined,
+            modelOverride: modelOverride
+              ? { provider: modelOverride.provider, model: modelOverride.model }
+              : undefined,
           }),
         }
       );
@@ -107,16 +179,74 @@ export function TestRunner({
       if (!response.ok) {
         setError(data.error || "Failed to run tests");
         onRunComplete?.({ success: false, error: data.error });
+        return { success: false, error: data.error };
       } else {
         onRunComplete?.({ success: true, testRun: data.testRun });
+        return { success: true, testRun: data.testRun };
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
       setError(errorMessage);
       onRunComplete?.({ success: false, error: errorMessage });
+      return { success: false, error: errorMessage };
     } finally {
-      setRunning(false);
+      if (!multiModelProgress) {
+        setRunning(false);
+      }
     }
+  };
+
+  const runMultiModelTests = async () => {
+    if (selectedModels.length === 0) return;
+
+    setRunning(true);
+    setError("");
+    setMultiModelProgress({ current: 0, total: selectedModels.length });
+
+    const results: MultiModelRunResult["results"] = [];
+
+    for (let i = 0; i < selectedModels.length; i++) {
+      const model = selectedModels[i];
+      setMultiModelProgress({
+        current: i + 1,
+        total: selectedModels.length,
+        currentModel: model.model,
+      });
+
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/test-suites/${suiteId}/run`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              openaiApiKey: openaiKey || undefined,
+              anthropicApiKey: anthropicKey || undefined,
+              modelOverride: { provider: model.provider, model: model.model },
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          results.push({ model, error: data.error || "Failed to run tests" });
+        } else {
+          results.push({ model, testRun: data.testRun });
+        }
+      } catch (err) {
+        results.push({
+          model,
+          error: err instanceof Error ? err.message : "Failed to run tests",
+        });
+      }
+    }
+
+    setMultiModelProgress(null);
+    setRunning(false);
+    onMultiModelRunComplete?.({ success: true, results });
   };
 
   return (
@@ -131,12 +261,29 @@ export function TestRunner({
             Execute all {testCaseCount} test case{testCaseCount !== 1 ? "s" : ""}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {error && (
-            <div className="mb-3 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
               {error}
             </div>
           )}
+
+          {multiModelProgress && (
+            <div className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  Running model {multiModelProgress.current}/{multiModelProgress.total}
+                </span>
+              </div>
+              {multiModelProgress.currentModel && (
+                <p className="text-xs text-muted-foreground mt-1 font-mono">
+                  {multiModelProgress.currentModel}
+                </p>
+              )}
+            </div>
+          )}
+
           <Button
             onClick={handleRunClick}
             disabled={running || testCaseCount === 0}
@@ -144,7 +291,7 @@ export function TestRunner({
             onMouseEnter={() => airplaneRef.current?.startAnimation()}
             onMouseLeave={() => airplaneRef.current?.stopAnimation()}
           >
-            {running ? (
+            {running && !multiModelProgress ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Running Tests...
@@ -156,10 +303,60 @@ export function TestRunner({
               </>
             )}
           </Button>
+
           {testCaseCount === 0 && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
+            <p className="text-xs text-muted-foreground text-center">
               Add test cases to run tests
             </p>
+          )}
+
+          {/* Multi-model comparison for prompts */}
+          {targetType === "prompt" && testCaseCount > 0 && (
+            <Collapsible open={multiModelOpen} onOpenChange={setMultiModelOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between">
+                  <span className="flex items-center gap-2">
+                    <Layers className="h-4 w-4" />
+                    Compare Models
+                    {selectedModels.length > 0 && (
+                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                        {selectedModels.length}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      multiModelOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3 space-y-3">
+                <MultiModelSelector
+                  selectedModels={selectedModels}
+                  onChange={handleModelSelectionChange}
+                  availableProviders={availableProviders}
+                />
+                <Button
+                  onClick={runMultiModelTests}
+                  disabled={running || selectedModels.length === 0}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  {running && multiModelProgress ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Running {multiModelProgress.current}/{multiModelProgress.total}...
+                    </>
+                  ) : (
+                    <>
+                      <Layers className="mr-2 h-4 w-4" />
+                      Run on {selectedModels.length} Model{selectedModels.length !== 1 ? "s" : ""}
+                    </>
+                  )}
+                </Button>
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </CardContent>
       </Card>
@@ -207,7 +404,7 @@ export function TestRunner({
               Cancel
             </Button>
             <Button
-              onClick={runTests}
+              onClick={() => runTests()}
               disabled={
                 (needsOpenAI && !openaiKey) || (needsAnthropic && !anthropicKey)
               }

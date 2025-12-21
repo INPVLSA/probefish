@@ -603,15 +603,32 @@ export default function ProjectDetailPage({
                       <div className="flex items-center gap-3 flex-1">
                         <FlaskConical className="h-5 w-5 text-purple-500" />
                         <div>
-                          <CardTitle className="text-base group-hover:text-primary transition-colors">
-                            {suite.name}
-                          </CardTitle>
-                          <CardDescription className="mt-0.5 flex items-center gap-2">
-                            {suite.targetType === "prompt" ? (
-                              <FileText className="h-3 w-3" />
-                            ) : (
-                              <Globe className="h-3 w-3" />
-                            )}
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base group-hover:text-primary transition-colors">
+                              {suite.name}
+                            </CardTitle>
+                            <Badge
+                              variant="secondary"
+                              className={
+                                suite.targetType === "prompt"
+                                  ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
+                                  : "bg-green-500/15 text-green-600 dark:text-green-400 hover:bg-green-500/20"
+                              }
+                            >
+                              {suite.targetType === "prompt" ? (
+                                <>
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  Prompt
+                                </>
+                              ) : (
+                                <>
+                                  <Globe className="h-3 w-3 mr-1" />
+                                  API
+                                </>
+                              )}
+                            </Badge>
+                          </div>
+                          <CardDescription className="mt-0.5">
                             {suite.testCases.length} test case
                             {suite.testCases.length !== 1 ? "s" : ""}
                           </CardDescription>

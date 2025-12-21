@@ -331,7 +331,7 @@ export function TestRunComparison({
                 comparison.summary.regressed > 0 && "border-red-500/50"
               )}
             >
-              <CardContent className="pt-4">
+              <CardContent className="pt-0">
                 <div className="flex items-center gap-2">
                   <ArrowDown className="h-4 w-4 text-red-500" />
                   <span className="text-2xl font-bold text-red-500">
@@ -347,7 +347,7 @@ export function TestRunComparison({
                 comparison.summary.improved > 0 && "border-green-500/50"
               )}
             >
-              <CardContent className="pt-4">
+              <CardContent className="pt-0">
                 <div className="flex items-center gap-2">
                   <ArrowUp className="h-4 w-4 text-green-500" />
                   <span className="text-2xl font-bold text-green-500">
@@ -359,7 +359,7 @@ export function TestRunComparison({
             </Card>
 
             <Card>
-              <CardContent className="pt-4">
+              <CardContent className="pt-0">
                 <div className="flex items-center gap-2">
                   <Minus className="h-4 w-4 text-muted-foreground" />
                   <span className="text-2xl font-bold">
@@ -371,7 +371,7 @@ export function TestRunComparison({
             </Card>
 
             <Card>
-              <CardContent className="pt-4">
+              <CardContent className="pt-0">
                 <div className="flex items-center gap-2">
                   <Plus className="h-4 w-4 text-blue-500" />
                   <span className="text-2xl font-bold text-blue-500">
@@ -383,7 +383,7 @@ export function TestRunComparison({
             </Card>
 
             <Card>
-              <CardContent className="pt-4">
+              <CardContent className="pt-0">
                 <div className="text-2xl font-bold">
                   <span
                     className={cn(
