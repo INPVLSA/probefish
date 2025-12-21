@@ -31,7 +31,6 @@ export default function Sidebar() {
   const pathname = usePathname();
   const fishRef = useRef<FishSymbolIconHandle>(null);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectsOpen, setProjectsOpen] = useState(true);
 
   useEffect(() => {
     // Animate fish on page load
@@ -104,7 +103,7 @@ export default function Sidebar() {
 
           {/* Projects Section */}
           <li>
-            <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen}>
+            <Collapsible defaultOpen>
               <CollapsibleTrigger asChild>
                 <Button
                   variant={pathname.startsWith("/projects") ? "secondary" : "ghost"}
@@ -117,12 +116,7 @@ export default function Sidebar() {
                     <Folder className="mr-2 h-4 w-4" />
                     Projects
                   </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 transition-transform",
-                      projectsOpen && "rotate-180"
-                    )}
-                  />
+                  <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pl-4 mt-1">

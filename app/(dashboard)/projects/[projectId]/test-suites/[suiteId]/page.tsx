@@ -397,6 +397,11 @@ export default function TestSuiteDetailPage({
         </div>
       )}
 
+      {/* Multi-model results shown full-width at top when available */}
+      {multiModelResults && multiModelResults.results.length > 1 && (
+        <MultiModelResults results={multiModelResults} />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Tabs defaultValue={defaultTab}>
@@ -534,10 +539,8 @@ export default function TestSuiteDetailPage({
             onRunComplete={handleRunComplete}
           />
 
-          {/* Adaptive results: multi-model grid for 2+ models, simple results for 1 */}
-          {multiModelResults && multiModelResults.results.length > 1 ? (
-            <MultiModelResults results={multiModelResults} />
-          ) : (
+          {/* Single model results shown in sidebar */}
+          {(!multiModelResults || multiModelResults.results.length <= 1) && (
             <TestResults testRun={lastRun} />
           )}
         </div>

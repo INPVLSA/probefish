@@ -147,6 +147,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             validationRules: body.llmJudgeConfig.validationRules || [],
           };
           testSuite.markModified("llmJudgeConfig");
+        } else if (key === "comparisonModels") {
+          // Handle comparisonModels specially to ensure nested array is saved
+          testSuite.comparisonModels = (body.comparisonModels || []).map(
+            (m: { provider: string; model: string; isPrimary?: boolean }) => ({
+              provider: m.provider,
+              model: m.model,
+              isPrimary: m.isPrimary ?? false,
+            })
+          );
+          testSuite.markModified("comparisonModels");
         } else {
           (testSuite as unknown as Record<string, unknown>)[key] = body[key];
         }

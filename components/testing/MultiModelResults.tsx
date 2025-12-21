@@ -156,10 +156,9 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
                 const isExpanded = expandedRows.has(testCaseName);
 
                 return (
-                  <Collapsible key={testCaseName} asChild open={isExpanded} onOpenChange={() => toggleRow(testCaseName)}>
-                    <>
-                      <CollapsibleTrigger asChild>
-                        <TableRow className="cursor-pointer hover:bg-muted/50">
+                  <Collapsible key={testCaseName} open={isExpanded} onOpenChange={() => toggleRow(testCaseName)}>
+                    <CollapsibleTrigger asChild>
+                      <TableRow className="cursor-pointer hover:bg-muted/50">
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <ChevronDown
@@ -198,10 +197,10 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
                               </TableCell>
                             );
                           })}
-                        </TableRow>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent asChild>
-                        <TableRow className="bg-muted/30">
+                      </TableRow>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent asChild>
+                      <TableRow className="bg-muted/30">
                           <TableCell colSpan={results.results.length + 1} className="p-0">
                             <div className="grid gap-2 p-3" style={{ gridTemplateColumns: `repeat(${results.results.length}, 1fr)` }}>
                               {results.results.map((_, modelIdx) => {
@@ -246,10 +245,9 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
                                 );
                               })}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      </CollapsibleContent>
-                    </>
+                        </TableCell>
+                      </TableRow>
+                    </CollapsibleContent>
                   </Collapsible>
                 );
               })}
