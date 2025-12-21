@@ -5,7 +5,7 @@ import connectDB from "@/lib/db/mongodb";
 import { User, Organization } from "@/lib/db/models";
 import { verifyToken } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
-import { Building2, Users, Key, Mail, Shield } from "lucide-react";
+import { Building2, Users, Key, Mail, Shield, KeyRound } from "lucide-react";
 
 async function getUserAndOrg() {
   const cookieStore = await cookies();
@@ -75,9 +75,15 @@ const settingsNav = [
   },
   {
     href: "/settings/organization/api-keys",
-    label: "API Keys",
+    label: "LLM API Keys",
     icon: Key,
     requiredRole: ["owner", "admin"],
+  },
+  {
+    href: "/settings/tokens",
+    label: "Access Tokens",
+    icon: KeyRound,
+    requiredRole: null, // Available to all users
   },
 ];
 

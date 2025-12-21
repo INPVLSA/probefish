@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, getSessionFromRequest, SessionPayload } from "./session";
+import { authenticateToken } from "./tokenAuth";
 import { connectDB } from "@/lib/db/mongodb";
 import User, { IUser } from "@/lib/db/models/user";
 import Organization, {
@@ -15,9 +16,12 @@ import {
   ProjectAccessResult,
 } from "./projectPermissions";
 import { ProjectRole } from "@/lib/db/models/project";
+import { IAccessToken, TokenScope } from "@/lib/db/models/accessToken";
 
 export interface AuthorizationContext {
-  session: SessionPayload;
+  session?: SessionPayload;
+  authType: "session" | "token";
+  token?: IAccessToken;
   user: {
     id: string;
     email: string;
@@ -48,11 +52,70 @@ export interface AuthorizationResult {
 }
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated (via session or token)
+ * @param request - The request object (required for token auth)
+ * @param requiredScopes - Token scopes required for this operation (only checked for token auth)
  */
 export async function requireAuth(
-  request?: NextRequest
+  request?: NextRequest,
+  requiredScopes?: TokenScope[]
 ): Promise<AuthorizationResult> {
+  // First, try token auth if Authorization header is present
+  if (request) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const tokenResult = await authenticateToken(request);
+
+      if (!tokenResult.success || !tokenResult.token) {
+        return {
+          authorized: false,
+          error: { message: tokenResult.error || "Invalid token", status: 401 },
+        };
+      }
+
+      // Check required scopes for token auth
+      if (requiredScopes && requiredScopes.length > 0) {
+        const missingScopes = requiredScopes.filter(
+          (scope) => !tokenResult.token!.scopes.includes(scope)
+        );
+        if (missingScopes.length > 0) {
+          return {
+            authorized: false,
+            error: {
+              message: `Missing required scopes: ${missingScopes.join(", ")}`,
+              status: 403,
+            },
+          };
+        }
+      }
+
+      await connectDB();
+      const user = await User.findById(tokenResult.userId);
+
+      if (!user) {
+        return {
+          authorized: false,
+          error: { message: "User not found", status: 401 },
+        };
+      }
+
+      return {
+        authorized: true,
+        context: {
+          authType: "token",
+          token: tokenResult.token,
+          user: {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            isSuperAdmin: user.isSuperAdmin || false,
+          },
+        },
+      };
+    }
+  }
+
+  // Fall back to session auth
   const session = request
     ? await getSessionFromRequest(request)
     : await getSession();
@@ -77,6 +140,7 @@ export async function requireAuth(
   return {
     authorized: true,
     context: {
+      authType: "session",
       session,
       user: {
         id: user._id.toString(),
@@ -227,13 +291,18 @@ export async function isOrgMember(
 
 /**
  * Check if user has permission on a project
+ * @param projectId - The project ID
+ * @param permission - The required project permission
+ * @param request - The request object
+ * @param requiredScopes - Token scopes required (only checked for token auth)
  */
 export async function requireProjectPermission(
   projectId: string,
   permission: ProjectPermission,
-  request?: NextRequest
+  request?: NextRequest,
+  requiredScopes?: TokenScope[]
 ): Promise<AuthorizationResult> {
-  const authResult = await requireAuth(request);
+  const authResult = await requireAuth(request, requiredScopes);
 
   if (!authResult.authorized || !authResult.context) {
     return authResult;

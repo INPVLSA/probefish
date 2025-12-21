@@ -11,13 +11,15 @@ interface RouteParams {
 }
 
 // GET /api/projects/[projectId]/export - Export project data
+// Supports: Session auth OR Token auth with "exports:read" scope
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { projectId } = await params;
 
   const auth = await requireProjectPermission(
     projectId,
     PROJECT_PERMISSIONS.VIEW,
-    request
+    request,
+    ["exports:read"] // Required scope for token auth
   );
 
   if (!auth.authorized || !auth.context) {

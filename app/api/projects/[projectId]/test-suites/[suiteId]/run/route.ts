@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongodb";
-import { getSession } from "@/lib/auth/session";
+import {
+  requireProjectPermission,
+  authError,
+} from "@/lib/auth/authorization";
+import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import Project from "@/lib/db/models/project";
 import Organization from "@/lib/db/models/organization";
 import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
 import Prompt from "@/lib/db/models/prompt";
 import Endpoint from "@/lib/db/models/endpoint";
-import User from "@/lib/db/models/user";
 import { executeTestCase, toTestResult } from "@/lib/testing";
 import { LLMProviderCredentials } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
@@ -18,23 +21,23 @@ interface RouteParams {
 }
 
 // POST /api/projects/[projectId]/test-suites/[suiteId]/run - Execute test suite
+// Supports: Session auth OR Token auth with "test-runs:execute" scope
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const { projectId, suiteId } = await params;
+
+  const auth = await requireProjectPermission(
+    projectId,
+    PROJECT_PERMISSIONS.VIEW,
+    request,
+    ["test-runs:execute"] // Required scope for token auth
+  );
+
+  if (!auth.authorized || !auth.context) {
+    return authError(auth);
+  }
+
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { projectId, suiteId } = await params;
     await connectDB();
-
-    const user = await User.findById(session.userId);
-    if (!user || user.organizationIds.length === 0) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 404 }
-      );
-    }
 
     const project = await Project.findById(projectId);
     if (!project) {
@@ -42,14 +45,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { error: "Project not found" },
         { status: 404 }
       );
-    }
-
-    if (
-      !user.organizationIds.some(
-        (id) => id.toString() === project.organizationId.toString()
-      )
-    ) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     const testSuite = await TestSuite.findOne({
@@ -174,7 +169,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const testRun: ITestRun = {
       _id: new mongoose.Types.ObjectId(),
       runAt: new Date(),
-      runBy: new mongoose.Types.ObjectId(session.userId),
+      runBy: new mongoose.Types.ObjectId(auth.context.user.id),
       status: "running",
       results: [],
       summary: {

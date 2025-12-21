@@ -49,6 +49,8 @@ This project is developed and maintained with support from [GoMage](https://www.
 - Response content extraction via JSON path
 - Built-in endpoint testing
 
+See [Endpoint Testing Guide](_docs/endpoint-testing.md) for detailed instructions.
+
 ### Test Suites
 
 - Create test suites targeting prompts or endpoints
@@ -145,6 +147,15 @@ Features:
 - API key management for LLM providers (encrypted storage)
 - Key rotation capability
 - Member and invitation management
+
+### API Access & CI/CD Integration
+
+- Personal Access Tokens for programmatic API access
+- Scoped permissions for fine-grained access control
+- Export test results in JUnit XML, JSON, or CSV formats
+- Run tests via API for CI/CD pipeline integration
+
+See [API Authentication Guide](_docs/api-authentication.md) for detailed documentation on CI/CD integration with GitLab CI, GitHub Actions, and Jenkins.
 
 ## Getting Started
 
