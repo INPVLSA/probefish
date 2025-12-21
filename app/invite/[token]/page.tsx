@@ -13,7 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Fish, Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Clock } from "lucide-react";
+import { FishSymbolIcon } from "@/components/ui/fish-symbol";
 
 interface InvitationData {
   email: string;
@@ -203,8 +204,8 @@ export default function AcceptInvitationPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-muted/50 via-background to-muted/50">
       <div className="w-full max-w-md p-6">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4 shadow-lg">
-            <Fish className="w-8 h-8 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4 shadow-lg text-primary-foreground">
+            <FishSymbolIcon size={32} />
           </div>
           <h1 className="text-2xl font-bold">Probefish</h1>
         </div>

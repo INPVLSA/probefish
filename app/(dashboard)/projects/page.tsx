@@ -137,56 +137,64 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <Card key={project._id} className="group hover:border-primary/50 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <Link href={`/projects/${project._id}`} className="flex-1">
-                    <div className="flex items-center gap-2">
+            <Link key={project._id} href={`/projects/${project._id}`} className="block">
+              <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2 flex-1">
                       {project.isFolder ? (
                         <Folder className="h-5 w-5 text-yellow-500" />
                       ) : (
                         <FileText className="h-5 w-5 text-blue-500" />
                       )}
-                      <CardTitle className="text-lg hover:text-primary transition-colors">
+                      <CardTitle className="text-lg group-hover:text-primary transition-colors">
                         {project.name}
                       </CardTitle>
                     </div>
-                  </Link>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/projects/${project._id}/settings`}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(project._id)}
-                        className="text-destructive"
-                      >
-                        <DeleteIcon size={16} className="mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                {project.description && (
-                  <CardDescription className="mt-1.5 line-clamp-2">
-                    {project.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-xs text-muted-foreground">
-                  Updated {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
-                </div>
-              </CardContent>
-            </Card>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/projects/${project._id}/settings`}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDelete(project._id);
+                          }}
+                          className="text-destructive"
+                        >
+                          <DeleteIcon size={16} className="mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {project.description && (
+                    <CardDescription className="mt-1.5 line-clamp-2">
+                      {project.description}
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-xs text-muted-foreground">
+                    Updated {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

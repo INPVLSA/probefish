@@ -374,20 +374,18 @@ export default function ProjectDetailPage({
             </Card>
           ) : (
             prompts.map((prompt) => (
-              <Card
+              <Link
                 key={prompt._id}
-                className="group hover:border-primary/50 transition-colors"
+                href={`/projects/${projectId}/prompts/${prompt._id}`}
+                className="block"
               >
-                <CardHeader className="py-0">
-                  <div className="flex items-start justify-between">
-                    <Link
-                      href={`/projects/${projectId}/prompts/${prompt._id}`}
-                      className="flex-1"
-                    >
-                      <div className="flex items-center gap-3">
+                <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
+                  <CardHeader className="py-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3 flex-1">
                         <FileText className="h-5 w-5 text-blue-500" />
                         <div>
-                          <CardTitle className="text-base hover:text-primary transition-colors">
+                          <CardTitle className="text-base group-hover:text-primary transition-colors">
                             {prompt.name}
                           </CardTitle>
                           {prompt.description && (
@@ -397,57 +395,61 @@ export default function ProjectDetailPage({
                           )}
                         </div>
                       </div>
-                    </Link>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mr-2">
-                        <span className="flex items-center gap-1">
-                          <GitBranch className="h-3 w-3" />
-                          v{prompt.currentVersion}
-                        </span>
-                        {prompt.tags.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mr-2">
                           <span className="flex items-center gap-1">
-                            <Tag className="h-3 w-3" />
-                            {prompt.tags.length}
+                            <GitBranch className="h-3 w-3" />
+                            v{prompt.currentVersion}
                           </span>
-                        )}
-                        <span>
-                          {formatDistanceToNow(new Date(prompt.updatedAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/projects/${projectId}/prompts/${prompt._id}`}
+                          {prompt.tags.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              {prompt.tags.length}
+                            </span>
+                          )}
+                          <span>
+                            {formatDistanceToNow(new Date(prompt.updatedAt), {
+                              addSuffix: true,
+                            })}
+                          </span>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.preventDefault()}
                             >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeletePrompt(prompt._id)}
-                            className="text-destructive"
-                          >
-                            <DeleteIcon size={16} className="mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/projects/${projectId}/prompts/${prompt._id}`}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDeletePrompt(prompt._id);
+                              }}
+                              className="text-destructive"
+                            >
+                              <DeleteIcon size={16} className="mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                  </CardHeader>
+                </Card>
+              </Link>
             ))
           )}
         </TabsContent>
@@ -472,20 +474,18 @@ export default function ProjectDetailPage({
             </Card>
           ) : (
             endpoints.map((endpoint) => (
-              <Card
+              <Link
                 key={endpoint._id}
-                className="group hover:border-primary/50 transition-colors"
+                href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                className="block"
               >
-                <CardHeader className="py-0">
-                  <div className="flex items-start justify-between">
-                    <Link
-                      href={`/projects/${projectId}/endpoints/${endpoint._id}`}
-                      className="flex-1"
-                    >
-                      <div className="flex items-center gap-3">
+                <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
+                  <CardHeader className="py-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3 flex-1">
                         <Globe className="h-5 w-5 text-green-500" />
                         <div>
-                          <CardTitle className="text-base hover:text-primary transition-colors">
+                          <CardTitle className="text-base group-hover:text-primary transition-colors">
                             {endpoint.name}
                           </CardTitle>
                           <CardDescription className="mt-0.5 line-clamp-1 font-mono text-xs">
@@ -496,63 +496,67 @@ export default function ProjectDetailPage({
                           </CardDescription>
                         </div>
                       </div>
-                    </Link>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mr-2">
-                        {endpoint.lastTestStatus && (
-                          <span className="flex items-center gap-1">
-                            {endpoint.lastTestStatus === "success" ? (
-                              <CheckCircle2 className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <XCircle className="h-3 w-3 text-red-500" />
-                            )}
-                            {endpoint.lastTestStatus}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mr-2">
+                          {endpoint.lastTestStatus && (
+                            <span className="flex items-center gap-1">
+                              {endpoint.lastTestStatus === "success" ? (
+                                <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <XCircle className="h-3 w-3 text-red-500" />
+                              )}
+                              {endpoint.lastTestStatus}
+                            </span>
+                          )}
+                          {endpoint.variables.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              {endpoint.variables.length} vars
+                            </span>
+                          )}
+                          <span>
+                            {formatDistanceToNow(new Date(endpoint.updatedAt), {
+                              addSuffix: true,
+                            })}
                           </span>
-                        )}
-                        {endpoint.variables.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Tag className="h-3 w-3" />
-                            {endpoint.variables.length} vars
-                          </span>
-                        )}
-                        <span>
-                          {formatDistanceToNow(new Date(endpoint.updatedAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.preventDefault()}
                             >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteEndpoint(endpoint._id)}
-                            className="text-destructive"
-                          >
-                            <DeleteIcon size={16} className="mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDeleteEndpoint(endpoint._id);
+                              }}
+                              className="text-destructive"
+                            >
+                              <DeleteIcon size={16} className="mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                  </CardHeader>
+                </Card>
+              </Link>
             ))
           )}
         </TabsContent>
@@ -577,20 +581,18 @@ export default function ProjectDetailPage({
             </Card>
           ) : (
             testSuites.map((suite) => (
-              <Card
+              <Link
                 key={suite._id}
-                className="group hover:border-primary/50 transition-colors"
+                href={`/projects/${projectId}/test-suites/${suite._id}`}
+                className="block"
               >
-                <CardHeader className="py-0">
-                  <div className="flex items-start justify-between">
-                    <Link
-                      href={`/projects/${projectId}/test-suites/${suite._id}`}
-                      className="flex-1"
-                    >
-                      <div className="flex items-center gap-3">
+                <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
+                  <CardHeader className="py-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3 flex-1">
                         <FlaskConical className="h-5 w-5 text-purple-500" />
                         <div>
-                          <CardTitle className="text-base hover:text-primary transition-colors">
+                          <CardTitle className="text-base group-hover:text-primary transition-colors">
                             {suite.name}
                           </CardTitle>
                           <CardDescription className="mt-0.5 flex items-center gap-2">
@@ -604,57 +606,61 @@ export default function ProjectDetailPage({
                           </CardDescription>
                         </div>
                       </div>
-                    </Link>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mr-2">
-                        {suite.lastRun && (
-                          <span className="flex items-center gap-1">
-                            {suite.lastRun.summary.failed === 0 ? (
-                              <CheckCircle2 className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <XCircle className="h-3 w-3 text-red-500" />
-                            )}
-                            {suite.lastRun.summary.passed}/{suite.lastRun.summary.total}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mr-2">
+                          {suite.lastRun && (
+                            <span className="flex items-center gap-1">
+                              {suite.lastRun.summary.failed === 0 ? (
+                                <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <XCircle className="h-3 w-3 text-red-500" />
+                              )}
+                              {suite.lastRun.summary.passed}/{suite.lastRun.summary.total}
+                            </span>
+                          )}
+                          <span>
+                            {formatDistanceToNow(new Date(suite.updatedAt), {
+                              addSuffix: true,
+                            })}
                           </span>
-                        )}
-                        <span>
-                          {formatDistanceToNow(new Date(suite.updatedAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/projects/${projectId}/test-suites/${suite._id}`}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.preventDefault()}
                             >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteTestSuite(suite._id)}
-                            className="text-destructive"
-                          >
-                            <DeleteIcon size={16} className="mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/projects/${projectId}/test-suites/${suite._id}`}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDeleteTestSuite(suite._id);
+                              }}
+                              className="text-destructive"
+                            >
+                              <DeleteIcon size={16} className="mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                  </CardHeader>
+                </Card>
+              </Link>
             ))
           )}
         </TabsContent>
