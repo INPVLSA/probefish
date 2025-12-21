@@ -166,9 +166,17 @@ export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-600 hover:bg-green-600">Completed</Badge>;
+        return (
+          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+            Completed
+          </Badge>
+        );
       case "failed":
-        return <Badge variant="destructive">Failed</Badge>;
+        return (
+          <Badge className="bg-red-500/10 text-red-600 border-red-500/20">
+            Failed
+          </Badge>
+        );
       case "running":
         return <Badge variant="secondary">Running</Badge>;
       default:
@@ -179,14 +187,14 @@ export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
   const getPassRateBadge = (summary: TestRun["summary"]) => {
     const rate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;
     const badgeClass = rate === 100
-      ? "bg-green-600 hover:bg-green-600"
+      ? "bg-green-500/10 text-green-600 border-green-500/20"
       : rate >= 70
-      ? "bg-green-500 hover:bg-green-500"
+      ? "bg-green-500/10 text-green-600 border-green-500/20"
       : rate >= 50
-      ? "bg-yellow-500 hover:bg-yellow-500"
-      : "";
+      ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+      : "bg-red-500/10 text-red-600 border-red-500/20";
     return (
-      <Badge variant={rate < 50 ? "destructive" : "default"} className={badgeClass}>
+      <Badge className={badgeClass}>
         {summary.passed}/{summary.total} ({rate.toFixed(0)}%)
       </Badge>
     );
