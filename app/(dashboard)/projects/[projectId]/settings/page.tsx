@@ -29,7 +29,7 @@ import {
   Loader2,
   Settings,
   Users,
-  Eye,
+  Building2,
   EyeOff,
   FolderTree,
   Shield,
@@ -233,8 +233,8 @@ export default function ProjectSettingsPage({
                 <SelectContent>
                   <SelectItem value="public">
                     <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4" />
-                      Public
+                      <Building2 className="h-4 w-4" />
+                      Organization
                     </div>
                   </SelectItem>
                   <SelectItem value="private">

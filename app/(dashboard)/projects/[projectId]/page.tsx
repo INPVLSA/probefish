@@ -25,7 +25,7 @@ import {
   XCircle,
   FlaskConical,
   Settings,
-  Eye,
+  Building2,
   EyeOff,
   Shield,
   Activity,
@@ -266,8 +266,8 @@ export default function ProjectDetailPage({
                 </>
               ) : (
                 <>
-                  <Eye className="h-3 w-3" />
-                  Public
+                  <Building2 className="h-3 w-3" />
+                  Organization
                 </>
               )}
             </Badge>
