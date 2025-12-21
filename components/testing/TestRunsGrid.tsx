@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,6 +37,9 @@ import {
   Search,
   AlertCircle,
   ArrowUpDown,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 
 interface TestResult {
@@ -57,6 +61,7 @@ interface TestRun {
   _id: string;
   runAt: string;
   status: "running" | "completed" | "failed";
+  note?: string;
   results: TestResult[];
   summary: {
     total: number;
@@ -69,20 +74,61 @@ interface TestRun {
 
 interface TestRunsGridProps {
   runs: TestRun[];
+  projectId: string;
+  suiteId: string;
   onSelectRun?: (run: TestRun) => void;
+  onRunUpdated?: () => void;
 }
 
 type SortField = "runAt" | "passRate" | "avgScore" | "avgResponseTime" | "total";
 type SortDirection = "asc" | "desc";
 type StatusFilter = "all" | "completed" | "failed" | "running";
 
-export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
+export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdated }: TestRunsGridProps) {
   const [sortField, setSortField] = useState<SortField>("runAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  const saveNote = async (runId: string) => {
+    setSavingNote(true);
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/test-suites/${suiteId}/runs/${runId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note: editingNoteValue }),
+        }
+      );
+
+      if (response.ok) {
+        setEditingNoteId(null);
+        onRunUpdated?.();
+      }
+    } catch (err) {
+      console.error("Failed to save note:", err);
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const startEditingNote = (run: TestRun, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNoteId(run._id);
+    setEditingNoteValue(run.note || "");
+  };
+
+  const cancelEditingNote = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNoteId(null);
+    setEditingNoteValue("");
+  };
 
   const toggleResultExpand = (resultKey: string) => {
     setExpandedResults((prev) => {
@@ -335,14 +381,76 @@ export function TestRunsGrid({ runs, onSelectRun }: TestRunsGridProps) {
                               isExpanded ? "rotate-180" : ""
                             }`}
                           />
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {format(new Date(run.runAt), "MMM d, yyyy")}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(run.runAt), "h:mm a")}
-                            </span>
-                          </div>
+                          {editingNoteId === run._id ? (
+                            <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                value={editingNoteValue}
+                                onChange={(e) => setEditingNoteValue(e.target.value)}
+                                placeholder="Add a note..."
+                                className="h-8 text-sm"
+                                maxLength={500}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    saveNote(run._id);
+                                  } else if (e.key === "Escape") {
+                                    setEditingNoteId(null);
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  saveNote(run._id);
+                                }}
+                                disabled={savingNote}
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={cancelEditingNote}
+                                disabled={savingNote}
+                              >
+                                <X className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group flex-1">
+                              <div className="flex flex-col flex-1">
+                                {run.note ? (
+                                  <>
+                                    <span className="font-medium">{run.note}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(run.runAt), "MMM d, yyyy 'at' h:mm a")}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-medium">
+                                      {format(new Date(run.runAt), "MMM d, yyyy")}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(run.runAt), "h:mm a")}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => startEditingNote(run, e)}
+                              >
+                                <Pencil className="h-3 w-3 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(run.status)}</TableCell>

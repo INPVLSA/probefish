@@ -78,6 +78,7 @@ export interface ITestRun {
   runAt: Date;
   runBy: mongoose.Types.ObjectId;
   status: "running" | "completed" | "failed";
+  note?: string; // Custom note/title for the run
   modelOverride?: {
     provider: string;
     model: string;
@@ -288,6 +289,11 @@ const testRunSchema = new Schema<ITestRun>(
       type: String,
       enum: ["running", "completed", "failed"],
       default: "running",
+    },
+    note: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Note cannot exceed 500 characters"],
     },
     modelOverride: {
       provider: String,

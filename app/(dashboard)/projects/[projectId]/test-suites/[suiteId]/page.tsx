@@ -532,7 +532,10 @@ export default function TestSuiteDetailPage({
               )}
               <TestRunsGrid
                 runs={runHistory}
+                projectId={projectId}
+                suiteId={suiteId}
                 onSelectRun={(run) => setLastRun(run)}
+                onRunUpdated={fetchTestSuite}
               />
             </TabsContent>
 

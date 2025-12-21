@@ -9,9 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Play, PlayCircle } from "lucide-react";
+import { Loader2, Play, PlayCircle, StickyNote } from "lucide-react";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
 import { ModelCardSelector, ModelSelection } from "./ModelCardSelector";
+import { Input } from "@/components/ui/input";
 
 export interface TestRunResult {
   success: boolean;
@@ -82,6 +83,7 @@ export function TestExecutionPanel({
   );
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
+  const [runNote, setRunNote] = useState("");
   const [progress, setProgress] = useState<{
     current: number;
     total: number;
@@ -145,6 +147,7 @@ export function TestExecutionPanel({
               provider: model.provider,
               model: model.model,
             },
+            note: runNote || undefined,
           }),
         }
       );
@@ -205,6 +208,7 @@ export function TestExecutionPanel({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               modelOverride: { provider: model.provider, model: model.model },
+              note: runNote || undefined,
             }),
           }
         );
@@ -265,7 +269,7 @@ export function TestExecutionPanel({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ note: runNote || undefined }),
           }
         );
 
@@ -305,6 +309,18 @@ export function TestExecutionPanel({
               {error}
             </div>
           )}
+
+          <div className="relative">
+            <StickyNote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={runNote}
+              onChange={(e) => setRunNote(e.target.value)}
+              placeholder="Add a note for this run (optional)"
+              className="pl-9"
+              disabled={running}
+              maxLength={500}
+            />
+          </div>
 
           <Button
             onClick={runEndpointTests}
@@ -362,6 +378,18 @@ export function TestExecutionPanel({
           availableProviders={availableProviders}
           disabled={running}
         />
+
+        <div className="relative">
+          <StickyNote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={runNote}
+            onChange={(e) => setRunNote(e.target.value)}
+            placeholder="Add a note for this run (optional)"
+            className="pl-9"
+            disabled={running}
+            maxLength={500}
+          />
+        </div>
 
         {progress && (
           <div className="space-y-2">

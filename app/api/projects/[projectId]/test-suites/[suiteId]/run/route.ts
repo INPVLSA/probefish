@@ -117,6 +117,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Model override for multi-model comparison
     const modelOverride = body.modelOverride as { provider: string; model: string } | undefined;
 
+    // Optional note/title for the run
+    const runNote = typeof body.note === "string" ? body.note.trim().slice(0, 500) : undefined;
+
     // For prompt testing, verify we have required credentials
     if (testSuite.targetType === "prompt") {
       // Get the prompt to check which provider is needed
@@ -192,6 +195,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       runAt: new Date(),
       runBy: new mongoose.Types.ObjectId(auth.context.user.id),
       status: "running",
+      note: runNote,
       modelOverride: modelOverride ? {
         provider: modelOverride.provider,
         model: modelOverride.model,

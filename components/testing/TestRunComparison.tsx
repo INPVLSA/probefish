@@ -51,6 +51,7 @@ interface TestRun {
   _id: string;
   runAt: string;
   status: string;
+  note?: string;
   summary: {
     total: number;
     passed: number;
@@ -282,8 +283,12 @@ export function TestRunComparison({
                       value={run._id}
                       disabled={run._id === compareRunId}
                     >
-                      {formatDate(run.runAt)} - {run.summary.passed}/
-                      {run.summary.total} passed
+                      {run.note ? (
+                        <span>{run.note} ({formatDate(run.runAt)})</span>
+                      ) : (
+                        <span>{formatDate(run.runAt)}</span>
+                      )}{" "}
+                      - {run.summary.passed}/{run.summary.total} passed
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -305,8 +310,12 @@ export function TestRunComparison({
                       value={run._id}
                       disabled={run._id === baselineRunId}
                     >
-                      {formatDate(run.runAt)} - {run.summary.passed}/
-                      {run.summary.total} passed
+                      {run.note ? (
+                        <span>{run.note} ({formatDate(run.runAt)})</span>
+                      ) : (
+                        <span>{formatDate(run.runAt)}</span>
+                      )}{" "}
+                      - {run.summary.passed}/{run.summary.total} passed
                     </SelectItem>
                   ))}
                 </SelectContent>
