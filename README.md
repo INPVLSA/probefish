@@ -1,10 +1,10 @@
-<h1 align="center"><img src="public/ico.png" alt="Probefish" width="32" height="32" /> Probefish</h1>
+![probefish.png](_docs/probefish.png)
 
 A web-based LLM prompt and endpoint testing platform. Organize, version, test, and validate Large Language Model prompts and HTTP endpoints through comprehensive test suites with static validation rules and LLM-based judge evaluation.
 
 ## Acknowledgments
 
-This project is developed and maintained with support from [GoMage](https://www.gomage.com/).
+This project is developed and maintained with support from [![GoMage](https://www.gomage.com/wp-content/uploads/2024/11/logo_white.svg)](https://www.gomage.com/)
 
 ## Tech Stack
 
