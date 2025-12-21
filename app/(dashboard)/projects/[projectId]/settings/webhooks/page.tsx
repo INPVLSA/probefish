@@ -49,6 +49,7 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
+  Database,
 } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
 import {
@@ -304,6 +305,12 @@ export default function WebhooksSettingsPage({
         <Button variant="secondary" className="gap-2">
           <Webhook className="h-4 w-4" />
           Webhooks
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/data`}>
+            <Database className="h-4 w-4" />
+            Data
+          </Link>
         </Button>
       </div>
 

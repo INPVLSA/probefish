@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FileText, Globe } from "lucide-react";
+import { ArrowLeft, Save, FileText, Globe, Download } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
 import { toast } from "sonner";
 import {
@@ -32,6 +32,7 @@ import {
   TestRunsGrid,
 } from "@/components/testing";
 import { TestRunComparison } from "@/components/testing/TestRunComparison";
+import { ExportDialog } from "@/components/export/ExportDialog";
 
 interface TestSuite {
   _id: string;
@@ -112,6 +113,7 @@ export default function TestSuiteDetailPage({
     openai: false,
     anthropic: false,
   });
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   const fetchTestSuite = useCallback(async () => {
     try {
@@ -336,6 +338,14 @@ export default function TestSuiteDetailPage({
           </div>
         </div>
         <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setExportDialogOpen(true)}
+          title="Export test suite"
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button
           variant="destructive"
           size="icon"
           onClick={handleDelete}
@@ -348,6 +358,14 @@ export default function TestSuiteDetailPage({
           {saving ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
         </Button>
       </div>
+
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        projectId={projectId}
+        suiteId={suiteId}
+        title="Export Test Suite"
+      />
 
       {error && (
         <div className="bg-destructive/10 text-destructive border border-destructive/20 px-4 py-3 rounded-lg text-sm">
@@ -362,7 +380,7 @@ export default function TestSuiteDetailPage({
               <TabsTrigger value="test-cases">
                 Test Cases
                 {testCases.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
+                  <Badge variant="secondary">
                     {testCases.length}
                   </Badge>
                 )}
@@ -370,7 +388,7 @@ export default function TestSuiteDetailPage({
               <TabsTrigger value="validation">
                 Validation
                 {validationRules.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
+                  <Badge variant="secondary">
                     {validationRules.length}
                   </Badge>
                 )}
@@ -379,7 +397,6 @@ export default function TestSuiteDetailPage({
                 LLM Judge
                 <Badge
                   variant={llmJudgeConfig.enabled ? "default" : "destructive"}
-                  className="ml-2"
                 >
                   {llmJudgeConfig.enabled ? "On" : "Off"}
                 </Badge>
@@ -388,7 +405,7 @@ export default function TestSuiteDetailPage({
               <TabsTrigger value="history">
                 History
                 {runHistory.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
+                  <Badge variant="secondary">
                     {runHistory.length}
                   </Badge>
                 )}

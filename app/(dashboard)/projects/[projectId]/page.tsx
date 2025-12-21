@@ -302,7 +302,7 @@ export default function ProjectDetailPage({
               <FileText className="h-4 w-4" />
               Prompts
               {prompts.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
+                <Badge variant="secondary">
                   {prompts.length}
                 </Badge>
               )}
@@ -311,7 +311,7 @@ export default function ProjectDetailPage({
               <Globe className="h-4 w-4" />
               Endpoints
               {endpoints.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
+                <Badge variant="secondary">
                   {endpoints.length}
                 </Badge>
               )}
@@ -320,7 +320,7 @@ export default function ProjectDetailPage({
               <FlaskConical className="h-4 w-4" />
               Test Suites
               {testSuites.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
+                <Badge variant="secondary">
                   {testSuites.length}
                 </Badge>
               )}
@@ -378,7 +378,7 @@ export default function ProjectDetailPage({
                 key={prompt._id}
                 className="group hover:border-primary/50 transition-colors"
               >
-                <CardHeader className="py-4">
+                <CardHeader className="py-0">
                   <div className="flex items-start justify-between">
                     <Link
                       href={`/projects/${projectId}/prompts/${prompt._id}`}
@@ -476,7 +476,7 @@ export default function ProjectDetailPage({
                 key={endpoint._id}
                 className="group hover:border-primary/50 transition-colors"
               >
-                <CardHeader className="py-4">
+                <CardHeader className="py-0">
                   <div className="flex items-start justify-between">
                     <Link
                       href={`/projects/${projectId}/endpoints/${endpoint._id}`}
@@ -581,7 +581,7 @@ export default function ProjectDetailPage({
                 key={suite._id}
                 className="group hover:border-primary/50 transition-colors"
               >
-                <CardHeader className="py-4">
+                <CardHeader className="py-0">
                   <div className="flex items-start justify-between">
                     <Link
                       href={`/projects/${projectId}/test-suites/${suite._id}`}

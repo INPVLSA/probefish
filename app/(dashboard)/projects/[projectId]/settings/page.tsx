@@ -34,6 +34,7 @@ import {
   FolderTree,
   Shield,
   Webhook,
+  Database,
 } from "lucide-react";
 
 interface ProjectSettings {
@@ -164,6 +165,12 @@ export default function ProjectSettingsPage({
           <Link href={`/projects/${projectId}/settings/webhooks`}>
             <Webhook className="h-4 w-4" />
             Webhooks
+          </Link>
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/data`}>
+            <Database className="h-4 w-4" />
+            Data
           </Link>
         </Button>
       </div>
