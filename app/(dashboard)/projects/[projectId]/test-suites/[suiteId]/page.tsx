@@ -513,21 +513,23 @@ export default function TestSuiteDetailPage({
             </TabsContent>
 
             <TabsContent value="history" className="mt-4 space-y-6">
-              <ComparisonSessionsViewer
-                projectId={projectId}
-                suiteId={suiteId}
-                onSelectSession={(session) => {
-                  // Convert session to MultiModelRunResult format and display
-                  const results = session.runs.map((run) => ({
-                    model: {
-                      provider: run.modelOverride?.provider as "openai" | "anthropic" | "gemini",
-                      model: run.modelOverride?.model || "",
-                    },
-                    testRun: run,
-                  }));
-                  setMultiModelResults({ success: true, results });
-                }}
-              />
+              {testSuite?.targetType === "prompt" && (
+                <ComparisonSessionsViewer
+                  projectId={projectId}
+                  suiteId={suiteId}
+                  onSelectSession={(session) => {
+                    // Convert session to MultiModelRunResult format and display
+                    const results = session.runs.map((run) => ({
+                      model: {
+                        provider: run.modelOverride?.provider as "openai" | "anthropic" | "gemini",
+                        model: run.modelOverride?.model || "",
+                      },
+                      testRun: run,
+                    }));
+                    setMultiModelResults({ success: true, results });
+                  }}
+                />
+              )}
               <TestRunsGrid
                 runs={runHistory}
                 onSelectRun={(run) => setLastRun(run)}

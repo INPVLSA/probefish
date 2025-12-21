@@ -266,7 +266,7 @@ export function ProjectRunComparison({ projectId }: ProjectRunComparisonProps) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row items-end gap-4">
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 w-full space-y-1">
               <Label className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Baseline Date
@@ -275,12 +275,13 @@ export function ProjectRunComparison({ projectId }: ProjectRunComparisonProps) {
                 type="date"
                 value={baselineDate}
                 onChange={(e) => setBaselineDate(e.target.value)}
+                className="w-full"
               />
             </div>
 
             <ChevronRight className="h-5 w-5 text-muted-foreground hidden sm:block mb-2" />
 
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 w-full space-y-1">
               <Label className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Compare Date
@@ -289,6 +290,7 @@ export function ProjectRunComparison({ projectId }: ProjectRunComparisonProps) {
                 type="date"
                 value={compareDate}
                 onChange={(e) => setCompareDate(e.target.value)}
+                className="w-full"
               />
             </div>
 

@@ -126,7 +126,7 @@ export function TestCaseEditor({
                 Add Test Case
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingIndex === null ? "Add Test Case" : "Edit Test Case"}
@@ -172,6 +172,7 @@ export function TestCaseEditor({
                                 }
                                 placeholder={`Value for ${varName}`}
                                 rows={3}
+                                className="max-h-40 resize-y"
                               />
                             ) : (
                               <Input

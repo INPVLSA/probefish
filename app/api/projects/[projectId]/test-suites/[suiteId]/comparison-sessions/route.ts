@@ -6,7 +6,7 @@ import {
   authError,
 } from "@/lib/auth/authorization";
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
-import TestSuite from "@/lib/db/models/testSuite";
+import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       runAt: new Date(),
       runBy: new mongoose.Types.ObjectId(auth.context.user.id),
       models: models.map((m: { provider: string; model: string; isPrimary?: boolean }) => ({
-        provider: m.provider,
+        provider: m.provider as "openai" | "anthropic" | "gemini",
         model: m.model,
         isPrimary: m.isPrimary || false,
       })),
@@ -129,9 +129,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         _id: run._id ? new mongoose.Types.ObjectId(run._id) : new mongoose.Types.ObjectId(),
         runAt: run.runAt ? new Date(run.runAt) : new Date(),
         runBy: new mongoose.Types.ObjectId(auth.context!.user.id),
-        status: run.status,
+        status: run.status as "running" | "completed" | "failed",
         modelOverride: run.modelOverride,
-        results: run.results,
+        results: run.results as ITestRun["results"],
         summary: run.summary,
       })),
     };

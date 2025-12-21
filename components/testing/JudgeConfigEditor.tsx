@@ -284,45 +284,45 @@ export function JudgeConfigEditor({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Minimum Score Threshold */}
-          <div className="space-y-2">
-            <Label>Minimum Score Threshold</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                step={5}
-                value={config.minScore !== undefined ? Math.round(config.minScore * 100) : ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "") {
-                    onChange({ ...config, minScore: undefined });
-                  } else {
-                    const percent = Math.min(100, Math.max(0, parseInt(value) || 0));
-                    onChange({ ...config, minScore: percent / 100 });
-                  }
-                }}
-                placeholder="Not set"
-                className="w-24 min-w-[80px]"
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-              {config.minScore !== undefined && config.minScore > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onChange({ ...config, minScore: undefined })}
-                  className="text-muted-foreground"
-                >
-                  Clear
-                </Button>
-              )}
+            {/* Minimum Score Threshold - in left column */}
+            <div className="space-y-2">
+              <Label>Min Score Threshold</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={config.minScore !== undefined ? Math.round(config.minScore * 100) : ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "") {
+                      onChange({ ...config, minScore: undefined });
+                    } else {
+                      const percent = Math.min(100, Math.max(0, parseInt(value) || 0));
+                      onChange({ ...config, minScore: percent / 100 });
+                    }
+                  }}
+                  placeholder="70"
+                  className="flex-1"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+                {config.minScore !== undefined && config.minScore > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onChange({ ...config, minScore: undefined })}
+                    className="text-muted-foreground h-9 px-2"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Fails if score is below threshold
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Test fails if the judge score is below this threshold. Leave empty to disable.
-            </p>
           </div>
 
           {/* Evaluation Criteria Section */}

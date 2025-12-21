@@ -253,8 +253,39 @@ export function TestExecutionPanel({
   const canRunPrimary = primaryModel && testCaseCount > 0 && !running;
   const canRunAll = selectedModels.length > 1 && testCaseCount > 0 && !running;
 
-  // Only show for prompts (endpoints don't have multi-model comparison)
-  if (targetType !== "prompt") {
+  // Endpoint testing - simpler UI without model selection
+  if (targetType === "endpoint") {
+    const runEndpointTests = async () => {
+      setRunning(true);
+      setError("");
+
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/test-suites/${suiteId}/run`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || "Failed to run tests");
+          onRunComplete({ success: false, error: data.error });
+        } else {
+          onRunComplete({ success: true, testRun: data.testRun });
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
+        setError(errorMessage);
+        onRunComplete({ success: false, error: errorMessage });
+      } finally {
+        setRunning(false);
+      }
+    };
+
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -263,13 +294,43 @@ export function TestExecutionPanel({
             Run Tests
           </CardTitle>
           <CardDescription>
-            Execute all {testCaseCount} test case{testCaseCount !== 1 ? "s" : ""}
+            {testCaseCount > 0
+              ? `Execute ${testCaseCount} test case${testCaseCount !== 1 ? "s" : ""} against your endpoint`
+              : "Add test cases to run tests"}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button disabled className="w-full">
-            Endpoint testing uses configured URL
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <Button
+            onClick={runEndpointTests}
+            disabled={running || testCaseCount === 0}
+            className="w-full"
+            onMouseEnter={() => airplaneRef.current?.startAnimation()}
+            onMouseLeave={() => airplaneRef.current?.stopAnimation()}
+          >
+            {running ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+                Run Tests
+              </>
+            )}
           </Button>
+
+          {testCaseCount === 0 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Add test cases first to run tests
+            </p>
+          )}
         </CardContent>
       </Card>
     );

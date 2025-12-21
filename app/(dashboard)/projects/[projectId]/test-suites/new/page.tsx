@@ -251,7 +251,7 @@ export default function NewTestSuitePage({
                 </div>
               ) : (
                 <Select value={targetId} onValueChange={setTargetId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue
                       placeholder={`Select a ${
                         targetType === "prompt" ? "prompt" : "endpoint"
@@ -276,7 +276,7 @@ export default function NewTestSuitePage({
                   value={String(targetVersion || selectedPrompt.currentVersion)}
                   onValueChange={(v) => setTargetVersion(parseInt(v, 10))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
