@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Home, Folder, Settings, ChevronDown, FileText } from "lucide-react";
+import { Home, Folder, Settings, ChevronDown, FileText, Github } from "lucide-react";
 import { FishSymbolIcon, FishSymbolIconHandle } from "@/components/ui/fish-symbol";
 import { cn } from "@/lib/utils";
 
@@ -185,8 +185,16 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">Probefish v0.7.0</p>
+        <Link
+          href="https://github.com/INPVLSA/probefish"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Github className="h-4 w-4" />
+        </Link>
       </div>
     </aside>
   );
