@@ -29,6 +29,7 @@ import {
   EyeOff,
   Shield,
   Activity,
+  Webhook,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -283,7 +284,17 @@ export default function ProjectDetailPage({
               {userRole === "full" ? "Full Access" : userRole}
             </Badge>
           )}
-          <Button variant="outline" size="icon" asChild>
+          <Button variant="outline" size="icon" asChild title="Webhooks">
+            <Link href={`/projects/${projectId}/settings/webhooks`}>
+              <Webhook className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="outline" size="icon" asChild title="CI/CD">
+            <Link href={`/projects/${projectId}/settings/cicd`}>
+              <GitBranch className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="outline" size="icon" asChild title="Settings">
             <Link href={`/projects/${projectId}/settings`}>
               <Settings className="h-4 w-4" />
             </Link>

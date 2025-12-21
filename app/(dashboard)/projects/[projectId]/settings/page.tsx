@@ -35,6 +35,7 @@ import {
   Shield,
   Webhook,
   Database,
+  GitBranch,
 } from "lucide-react";
 
 interface ProjectSettings {
@@ -171,6 +172,12 @@ export default function ProjectSettingsPage({
           <Link href={`/projects/${projectId}/settings/data`}>
             <Database className="h-4 w-4" />
             Data
+          </Link>
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/cicd`}>
+            <GitBranch className="h-4 w-4" />
+            CI/CD
           </Link>
         </Button>
       </div>

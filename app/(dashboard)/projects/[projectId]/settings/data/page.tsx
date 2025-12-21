@@ -25,6 +25,7 @@ import {
   FileJson,
   FileCode,
   FileSpreadsheet,
+  GitBranch,
 } from "lucide-react";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { ImportDialog } from "@/components/import/ImportDialog";
@@ -135,6 +136,12 @@ export default function ProjectDataPage({
         <Button variant="secondary" className="gap-2">
           <Database className="h-4 w-4" />
           Data
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/cicd`}>
+            <GitBranch className="h-4 w-4" />
+            CI/CD
+          </Link>
         </Button>
       </div>
 

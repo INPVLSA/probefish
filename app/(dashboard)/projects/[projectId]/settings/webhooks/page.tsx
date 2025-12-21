@@ -50,6 +50,7 @@ import {
   Clock,
   AlertTriangle,
   Database,
+  GitBranch,
 } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
 import {
@@ -310,6 +311,12 @@ export default function WebhooksSettingsPage({
           <Link href={`/projects/${projectId}/settings/data`}>
             <Database className="h-4 w-4" />
             Data
+          </Link>
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/cicd`}>
+            <GitBranch className="h-4 w-4" />
+            CI/CD
           </Link>
         </Button>
       </div>

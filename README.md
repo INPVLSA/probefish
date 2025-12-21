@@ -154,6 +154,7 @@ Features:
 - Scoped permissions for fine-grained access control
 - Export test results in JUnit XML, JSON, or CSV formats
 - Run tests via API for CI/CD pipeline integration
+- Built-in CI/CD configuration generator (Project Settings → CI/CD)
 
 See [API Authentication Guide](_docs/api-authentication.md) for detailed documentation on CI/CD integration with GitLab CI, GitHub Actions, and Jenkins.
 
