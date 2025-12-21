@@ -101,7 +101,7 @@ export default function Sidebar() {
       </div>
 
       <div className="p-4">
-        <p className="text-xs text-muted-foreground">Probefish v0.1.0</p>
+        <p className="text-xs text-muted-foreground">Probefish v0.5.0</p>
       </div>
     </aside>
   );
