@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -19,11 +20,51 @@ import {
   XCircle,
   Clock,
   ChevronDown,
+  ChevronRight,
   Brain,
   AlertCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { WindIcon, WindIconHandle } from "@/components/ui/wind";
+
+const INPUT_COLLAPSE_THRESHOLD = 150; // Characters before collapsing
+
+function CollapsibleText({ value, threshold = INPUT_COLLAPSE_THRESHOLD }: { value: string; threshold?: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!value || value.length <= threshold) {
+    return <span className="font-mono whitespace-pre-wrap break-words">{value || "(empty)"}</span>;
+  }
+
+  return (
+    <span className="font-mono">
+      <span className="whitespace-pre-wrap break-words">
+        {isExpanded ? value : `${value.slice(0, threshold)}...`}
+      </span>
+      <Button
+        variant="link"
+        size="sm"
+        className="h-auto p-0 ml-1 text-xs text-primary"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded(!isExpanded);
+        }}
+      >
+        {isExpanded ? (
+          <>
+            <ChevronDown className="h-3 w-3 mr-0.5" />
+            Show less
+          </>
+        ) : (
+          <>
+            <ChevronRight className="h-3 w-3 mr-0.5" />
+            Show more ({value.length} chars)
+          </>
+        )}
+      </Button>
+    </span>
+  );
+}
 
 interface TestResult {
   testCaseId: string;
@@ -198,11 +239,11 @@ function TestResultItem({ result }: { result: TestResult }) {
             <div className="text-xs font-medium text-muted-foreground mb-1">
               Input
             </div>
-            <div className="bg-muted rounded p-2 text-sm">
+            <div className="bg-muted rounded p-2 text-sm space-y-1">
               {Object.entries(result.inputs).map(([key, value]) => (
                 <div key={key}>
                   <span className="text-muted-foreground">{key}:</span>{" "}
-                  <span className="font-mono">{value || "(empty)"}</span>
+                  <CollapsibleText value={value} />
                 </div>
               ))}
             </div>
