@@ -160,7 +160,7 @@ export default function ProjectsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/projects/${project._id}/edit`}>
+                        <Link href={`/projects/${project._id}/settings`}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </Link>

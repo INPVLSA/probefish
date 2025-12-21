@@ -11,6 +11,7 @@ import User from "@/lib/db/models/user";
 import { executeTestCase, toTestResult } from "@/lib/testing";
 import { LLMProviderCredentials } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
+import { dispatchWebhooks } from "@/lib/webhooks/dispatcher";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -240,6 +241,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     await testSuite.save();
+
+    // Get previous run for regression detection
+    const previousRun = testSuite.runHistory[1]; // Index 1 because current run is at 0
+
+    // Dispatch webhooks (async, don't block response)
+    dispatchWebhooks(
+      projectId,
+      { id: projectId, name: project.name },
+      {
+        id: testRun._id.toString(),
+        suiteId: suiteId,
+        suiteName: testSuite.name,
+        status: testRun.status,
+        summary: testRun.summary,
+        previousRun: previousRun
+          ? {
+              passed: previousRun.summary.passed,
+              failed: previousRun.summary.failed,
+            }
+          : undefined,
+      }
+    ).catch((error) => {
+      console.error("Error dispatching webhooks:", error);
+    });
 
     return NextResponse.json({
       success: true,

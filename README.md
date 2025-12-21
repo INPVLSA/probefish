@@ -123,6 +123,23 @@ The judge provides reasoning for each validation decision.
 - **Test Run Comparison**: Compare two test runs to identify regressions, improvements, and unchanged results
 - **Project-Level Comparison**: Compare all suites across two dates to see overall quality trends
 
+### Webhooks
+
+Receive notifications when test events occur:
+
+| Event | Description |
+|-------|-------------|
+| **test.run.completed** | Triggered when any test run completes |
+| **test.run.failed** | Triggered when a test run has failures |
+| **test.regression.detected** | Triggered when test results regress from previous run |
+
+Features:
+- **HMAC Signature Verification**: Secure webhook payloads with SHA-256 signatures
+- **Automatic Retries**: Configurable retry count with exponential backoff
+- **Filters**: Trigger only on specific suites, failures, or regressions
+- **Delivery History**: Track webhook delivery success/failure
+- **Test Delivery**: Send test payloads to verify webhook configuration
+
 ### Organization Settings
 
 - API key management for LLM providers (encrypted storage)

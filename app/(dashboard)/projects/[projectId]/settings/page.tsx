@@ -33,6 +33,7 @@ import {
   EyeOff,
   FolderTree,
   Shield,
+  Webhook,
 } from "lucide-react";
 
 interface ProjectSettings {
@@ -157,6 +158,12 @@ export default function ProjectSettingsPage({
           <Link href={`/projects/${projectId}/settings/members`}>
             <Users className="h-4 w-4" />
             Members
+          </Link>
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/webhooks`}>
+            <Webhook className="h-4 w-4" />
+            Webhooks
           </Link>
         </Button>
       </div>

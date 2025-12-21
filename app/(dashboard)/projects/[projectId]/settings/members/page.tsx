@@ -59,6 +59,7 @@ import {
   Eye,
   Edit,
   Shield,
+  Webhook,
 } from "lucide-react";
 import { format } from "date-fns";
 import { DeleteIcon } from "@/components/ui/delete";
@@ -264,6 +265,12 @@ export default function ProjectMembersPage({
         <Button variant="secondary" className="gap-2">
           <Users className="h-4 w-4" />
           Members
+        </Button>
+        <Button variant="ghost" className="gap-2" asChild>
+          <Link href={`/projects/${projectId}/settings/webhooks`}>
+            <Webhook className="h-4 w-4" />
+            Webhooks
+          </Link>
         </Button>
       </div>
 
