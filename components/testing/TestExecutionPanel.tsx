@@ -226,6 +226,27 @@ export function TestExecutionPanel({
 
     setProgress(null);
     setRunning(false);
+
+    // Save comparison session if we have successful runs
+    const successfulRuns = results.filter((r) => r.testRun);
+    if (successfulRuns.length > 1) {
+      try {
+        await fetch(
+          `/api/projects/${projectId}/test-suites/${suiteId}/comparison-sessions`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              models: selectedModels,
+              runs: successfulRuns.map((r) => r.testRun),
+            }),
+          }
+        );
+      } catch (err) {
+        console.error("Failed to save comparison session:", err);
+      }
+    }
+
     onRunComplete({ success: true, results });
   };
 

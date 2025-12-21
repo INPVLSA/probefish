@@ -13,5 +13,6 @@ export { TestResults } from "./TestResults";
 export { TestRunsGrid } from "./TestRunsGrid";
 export { ProjectTestsDashboard } from "./ProjectTestsDashboard";
 export { MultiModelResults } from "./MultiModelResults";
+export { ComparisonSessionsViewer } from "./ComparisonSessionsViewer";
 // Legacy export for backward compatibility
 export { MultiModelSelector } from "./MultiModelSelector";

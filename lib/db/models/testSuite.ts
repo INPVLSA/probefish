@@ -92,6 +92,15 @@ export interface ITestRun {
   };
 }
 
+// Comparison Session - groups multiple model runs together
+export interface IComparisonSession {
+  _id: mongoose.Types.ObjectId;
+  runAt: Date;
+  runBy: mongoose.Types.ObjectId;
+  models: IModelSelection[];
+  runs: ITestRun[];
+}
+
 // Test Suite - the main document
 export interface ITestSuite extends Document {
   _id: mongoose.Types.ObjectId;
@@ -111,6 +120,7 @@ export interface ITestSuite extends Document {
 
   lastRun?: ITestRun;
   runHistory: ITestRun[];
+  comparisonSessions: IComparisonSession[];
 
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -356,6 +366,40 @@ const testSuiteSchema = new Schema<ITestSuite>(
     lastRun: testRunSchema,
     runHistory: {
       type: [testRunSchema],
+      default: [],
+    },
+    comparisonSessions: {
+      type: [
+        {
+          runAt: {
+            type: Date,
+            default: Date.now,
+          },
+          runBy: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          models: [
+            {
+              provider: {
+                type: String,
+                enum: ["openai", "anthropic", "gemini"],
+                required: true,
+              },
+              model: {
+                type: String,
+                required: true,
+              },
+              isPrimary: {
+                type: Boolean,
+                default: false,
+              },
+            },
+          ],
+          runs: [testRunSchema],
+        },
+      ],
       default: [],
     },
     createdBy: {
