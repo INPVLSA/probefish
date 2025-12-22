@@ -1,4 +1,4 @@
-### v0.7.2 
+# v0.8.0 (Blobfish)
 
 - Grok (xAI) provider support - Grok 3, Grok 2 and variants
 
