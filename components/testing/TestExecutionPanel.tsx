@@ -9,7 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Play, PlayCircle, StickyNote } from "lucide-react";
+import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { RefreshCWIcon, RefreshCCWIconWIcon } from "@/components/ui/refresh-cw";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
 import { ModelCardSelector, ModelSelection } from "./ModelCardSelector";
 import { Input } from "@/components/ui/input";
@@ -84,11 +86,13 @@ export function TestExecutionPanel({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [runNote, setRunNote] = useState("");
+  const [iterations, setIterations] = useState(1);
   const [progress, setProgress] = useState<{
     current: number;
     total: number;
     currentModel?: string;
   } | null>(null);
+  const refreshIconRef = useRef<RefreshCCWIconWIcon>(null);
   const airplaneRef = useRef<AirplaneIconHandle>(null);
 
   // Sync with saved models when they change
@@ -148,6 +152,7 @@ export function TestExecutionPanel({
               model: model.model,
             },
             note: runNote || undefined,
+            iterations,
           }),
         }
       );
@@ -209,6 +214,7 @@ export function TestExecutionPanel({
             body: JSON.stringify({
               modelOverride: { provider: model.provider, model: model.model },
               note: runNote || undefined,
+              iterations,
             }),
           }
         );
@@ -269,7 +275,10 @@ export function TestExecutionPanel({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ note: runNote || undefined }),
+            body: JSON.stringify({
+              note: runNote || undefined,
+              iterations,
+            }),
           }
         );
 
@@ -322,25 +331,67 @@ export function TestExecutionPanel({
             />
           </div>
 
-          <Button
-            onClick={runEndpointTests}
-            disabled={running || testCaseCount === 0}
-            className="w-full"
-            onMouseEnter={() => airplaneRef.current?.startAnimation()}
-            onMouseLeave={() => airplaneRef.current?.stopAnimation()}
-          >
-            {running ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running...
-              </>
-            ) : (
-              <>
-                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
-                Run Tests
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="iterations-endpoint" className="text-xs text-muted-foreground whitespace-nowrap">
+                Runs:
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIterations(Math.max(1, iterations - 1))}
+                disabled={running || iterations <= 1}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <Input
+                id="iterations-endpoint"
+                type="number"
+                min={1}
+                max={100}
+                value={iterations}
+                onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="h-8 w-12 text-center px-1"
+                disabled={running}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIterations(Math.min(100, iterations + 1))}
+                disabled={running || iterations >= 100}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+            <Button
+              onClick={runEndpointTests}
+              disabled={running || testCaseCount === 0}
+              className="flex-1"
+              onMouseEnter={() => iterations === 1 ? airplaneRef.current?.startAnimation() : refreshIconRef.current?.startAnimation()}
+              onMouseLeave={() => iterations === 1 ? airplaneRef.current?.stopAnimation() : refreshIconRef.current?.stopAnimation()}
+            >
+              {running ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Running...
+                </>
+              ) : iterations === 1 ? (
+                <>
+                  <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+                  Run Tests
+                </>
+              ) : (
+                <>
+                  <RefreshCWIcon ref={refreshIconRef} size={16} className="mr-2" />
+                  Run {iterations}x
+                </>
+              )}
+            </Button>
+          </div>
 
           {testCaseCount === 0 && (
             <p className="text-xs text-muted-foreground text-center">
@@ -408,23 +459,68 @@ export function TestExecutionPanel({
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-1">
+            <Label htmlFor="iterations-prompt" className="text-xs text-muted-foreground whitespace-nowrap">
+              Runs:
+            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIterations(Math.max(1, iterations - 1))}
+              disabled={running || iterations <= 1}
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <Input
+              id="iterations-prompt"
+              type="number"
+              min={1}
+              max={100}
+              value={iterations}
+              onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+              className="h-8 w-12 text-center px-1"
+              disabled={running}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIterations(Math.min(100, iterations + 1))}
+              disabled={running || iterations >= 100}
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
           <Button
             onClick={() => primaryModel && runSingleModel(primaryModel)}
             disabled={!canRunPrimary}
             className="flex-1"
-            onMouseEnter={() => airplaneRef.current?.startAnimation()}
-            onMouseLeave={() => airplaneRef.current?.stopAnimation()}
+            onMouseEnter={() => iterations === 1 ? airplaneRef.current?.startAnimation() : refreshIconRef.current?.startAnimation()}
+            onMouseLeave={() => iterations === 1 ? airplaneRef.current?.stopAnimation() : refreshIconRef.current?.stopAnimation()}
           >
             {running && !progress ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Running...
               </>
-            ) : (
+            ) : !primaryModel ? (
               <>
                 <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
-                {primaryModel ? "Run Primary" : "Select Model"}
+                Select Model
+              </>
+            ) : iterations === 1 ? (
+              <>
+                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+                Run Primary
+              </>
+            ) : (
+              <>
+                <RefreshCWIcon ref={refreshIconRef} size={16} className="mr-2" />
+                Run {iterations}x
               </>
             )}
           </Button>

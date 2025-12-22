@@ -70,6 +70,7 @@ export interface ITestResult {
 
   responseTime: number;
   error?: string;
+  iteration?: number; // Iteration number when running multiple iterations
 }
 
 // Test Run - a complete execution of all test cases
@@ -79,6 +80,7 @@ export interface ITestRun {
   runBy: mongoose.Types.ObjectId;
   status: "running" | "completed" | "failed";
   note?: string; // Custom note/title for the run
+  iterations?: number; // Number of iterations run (only set if > 1)
   modelOverride?: {
     provider: string;
     model: string;
@@ -270,6 +272,7 @@ const testResultSchema = new Schema<ITestResult>(
       required: true,
     },
     error: String,
+    iteration: Number,
   },
   { _id: false }
 );
@@ -295,6 +298,7 @@ const testRunSchema = new Schema<ITestRun>(
       trim: true,
       maxlength: [500, "Note cannot exceed 500 characters"],
     },
+    iterations: Number,
     modelOverride: {
       provider: String,
       model: String,
