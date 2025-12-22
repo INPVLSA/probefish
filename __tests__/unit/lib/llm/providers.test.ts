@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { openaiProvider } from '@/lib/llm/providers/openai';
 import { anthropicProvider } from '@/lib/llm/providers/anthropic';
 import { geminiProvider } from '@/lib/llm/providers/gemini';
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, DEFAULT_MODELS } from '@/lib/llm/types';
+import { grokProvider } from '@/lib/llm/providers/grok';
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEFAULT_MODELS } from '@/lib/llm/types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -448,6 +449,212 @@ describe('Gemini Provider', () => {
   });
 });
 
+describe('Grok Provider', () => {
+  describe('name', () => {
+    it('should have correct provider name', () => {
+      expect(grokProvider.name).toBe('grok');
+    });
+  });
+
+  describe('listModels', () => {
+    it('should return all Grok models', () => {
+      const models = grokProvider.listModels();
+      expect(models).toEqual([...GROK_MODELS]);
+    });
+  });
+
+  describe('complete', () => {
+    it('should send correct request format to xAI API', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hello!' } }],
+          model: 'grok-3-mini-fast',
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        }),
+      });
+
+      await grokProvider.complete(
+        {
+          model: 'grok-3-mini-fast',
+          messages: [
+            { role: 'system', content: 'You are helpful.' },
+            { role: 'user', content: 'Hi' },
+          ],
+          temperature: 0.5,
+          maxTokens: 100,
+        },
+        'xai-test-key'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.x.ai/v1/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer xai-test-key',
+          },
+        })
+      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.model).toBe('grok-3-mini-fast');
+      expect(body.messages).toEqual([
+        { role: 'system', content: 'You are helpful.' },
+        { role: 'user', content: 'Hi' },
+      ]);
+      expect(body.temperature).toBe(0.5);
+      expect(body.max_tokens).toBe(100);
+    });
+
+    it('should parse successful response correctly', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: { content: 'Test response' },
+              finish_reason: 'stop',
+            },
+          ],
+          model: 'grok-3-mini-fast',
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        }),
+      });
+
+      const result = await grokProvider.complete(
+        {
+          model: 'grok-3-mini-fast',
+          messages: [{ role: 'user', content: 'Hi' }],
+        },
+        'xai-test-key'
+      );
+
+      expect(result.content).toBe('Test response');
+      expect(result.model).toBe('grok-3-mini-fast');
+      expect(result.usage).toEqual({
+        promptTokens: 10,
+        completionTokens: 5,
+        totalTokens: 15,
+      });
+      expect(result.finishReason).toBe('stop');
+    });
+
+    it('should use default temperature when not provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hi' } }],
+          model: 'grok-3-mini-fast',
+        }),
+      });
+
+      await grokProvider.complete(
+        {
+          model: 'grok-3-mini-fast',
+          messages: [{ role: 'user', content: 'Hi' }],
+        },
+        'xai-test-key'
+      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.temperature).toBe(0.7);
+    });
+
+    it('should throw error on API failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({
+          error: { message: 'Invalid API key' },
+        }),
+      });
+
+      await expect(
+        grokProvider.complete(
+          {
+            model: 'grok-3-mini-fast',
+            messages: [{ role: 'user', content: 'Hi' }],
+          },
+          'invalid-key'
+        )
+      ).rejects.toThrow('Invalid API key');
+    });
+
+    it('should throw generic error when API error has no message', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      await expect(
+        grokProvider.complete(
+          {
+            model: 'grok-3-mini-fast',
+            messages: [{ role: 'user', content: 'Hi' }],
+          },
+          'xai-test-key'
+        )
+      ).rejects.toThrow('Grok API error: 500');
+    });
+
+    it('should throw error when no choices returned', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [],
+        }),
+      });
+
+      await expect(
+        grokProvider.complete(
+          {
+            model: 'grok-3-mini-fast',
+            messages: [{ role: 'user', content: 'Hi' }],
+          },
+          'xai-test-key'
+        )
+      ).rejects.toThrow('No response from Grok');
+    });
+
+    it('should handle response without usage data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: { content: 'Test response' },
+              finish_reason: 'stop',
+            },
+          ],
+          model: 'grok-3-mini-fast',
+        }),
+      });
+
+      const result = await grokProvider.complete(
+        {
+          model: 'grok-3-mini-fast',
+          messages: [{ role: 'user', content: 'Hi' }],
+        },
+        'xai-test-key'
+      );
+
+      expect(result.content).toBe('Test response');
+      expect(result.usage).toBeUndefined();
+    });
+  });
+});
+
 describe('Provider role mapping', () => {
   it('OpenAI should pass through roles unchanged', async () => {
     mockFetch.mockResolvedValueOnce({
@@ -530,5 +737,32 @@ describe('Provider role mapping', () => {
     expect(body.contents).toHaveLength(2);
     expect(body.contents[0].role).toBe('user');
     expect(body.contents[1].role).toBe('model'); // assistant -> model
+  });
+
+  it('Grok should pass through roles unchanged (OpenAI-compatible)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'Hi' } }],
+        model: 'grok-3-mini-fast',
+      }),
+    });
+
+    await grokProvider.complete(
+      {
+        model: 'grok-3-mini-fast',
+        messages: [
+          { role: 'system', content: 'System' },
+          { role: 'user', content: 'User' },
+          { role: 'assistant', content: 'Assistant' },
+        ],
+      },
+      'xai-test'
+    );
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.messages[0].role).toBe('system');
+    expect(body.messages[1].role).toBe('user');
+    expect(body.messages[2].role).toBe('assistant');
   });
 });
