@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Check, X, Hash, Type, Code, Timer, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Check, X, Hash, Type, Code, Timer, ShieldCheck, AlertTriangle, Braces, FileJson } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface ValidationRule {
@@ -39,7 +39,9 @@ export interface ValidationRule {
     | "maxLength"
     | "regex"
     | "jsonSchema"
-    | "maxResponseTime";
+    | "maxResponseTime"
+    | "isJson"
+    | "containsJson";
   value: string | number;
   message?: string;
   severity?: "fail" | "warning";
@@ -58,6 +60,8 @@ const RULE_TYPES = [
   { value: "maxResponseTime", label: "Max Response Time", icon: Timer, valueType: "number" },
   { value: "regex", label: "Regex Pattern", icon: Type, valueType: "string" },
   { value: "jsonSchema", label: "JSON Schema", icon: Code, valueType: "json" },
+  { value: "isJson", label: "Is JSON", icon: Braces, valueType: "none" },
+  { value: "containsJson", label: "Contains JSON", icon: FileJson, valueType: "none" },
 ] as const;
 
 export function ValidationRulesEditor({
@@ -134,6 +138,10 @@ export function ValidationRulesEditor({
         return `Must match: ${rule.value}`;
       case "jsonSchema":
         return "Must match JSON schema";
+      case "isJson":
+        return "Output must be valid JSON";
+      case "containsJson":
+        return "Output must contain valid JSON";
       default:
         return "";
     }
@@ -198,62 +206,72 @@ export function ValidationRulesEditor({
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>
-                      {editingRule.type === "minLength" ||
-                      editingRule.type === "maxLength"
-                        ? "Length"
-                        : editingRule.type === "maxResponseTime"
-                        ? "Time (ms)"
-                        : editingRule.type === "jsonSchema"
-                        ? "JSON Schema"
-                        : "Value"}
-                    </Label>
-                    {editingRule.type === "jsonSchema" ? (
-                      <Textarea
-                        value={editingRule.value as string}
-                        onChange={(e) =>
-                          setEditingRule({
-                            ...editingRule,
-                            value: e.target.value,
-                          })
-                        }
-                        placeholder='{"type": "object", "required": ["field"]}'
-                        rows={5}
-                        className="font-mono text-sm"
-                      />
-                    ) : editingRule.type === "minLength" ||
-                      editingRule.type === "maxLength" ||
-                      editingRule.type === "maxResponseTime" ? (
-                      <Input
-                        type="number"
-                        min={0}
-                        value={editingRule.value}
-                        onChange={(e) =>
-                          setEditingRule({
-                            ...editingRule,
-                            value: e.target.value,
-                          })
-                        }
-                        placeholder={editingRule.type === "maxResponseTime" ? "e.g., 5000" : "Enter number"}
-                      />
-                    ) : (
-                      <Input
-                        value={editingRule.value as string}
-                        onChange={(e) =>
-                          setEditingRule({
-                            ...editingRule,
-                            value: e.target.value,
-                          })
-                        }
-                        placeholder={
-                          editingRule.type === "regex"
-                            ? "^[a-z]+$"
-                            : "Text to check"
-                        }
-                      />
-                    )}
-                  </div>
+                  {editingRule.type !== "isJson" && editingRule.type !== "containsJson" && (
+                    <div className="space-y-2">
+                      <Label>
+                        {editingRule.type === "minLength" ||
+                        editingRule.type === "maxLength"
+                          ? "Length"
+                          : editingRule.type === "maxResponseTime"
+                          ? "Time (ms)"
+                          : editingRule.type === "jsonSchema"
+                          ? "JSON Schema"
+                          : "Value"}
+                      </Label>
+                      {editingRule.type === "jsonSchema" ? (
+                        <Textarea
+                          value={editingRule.value as string}
+                          onChange={(e) =>
+                            setEditingRule({
+                              ...editingRule,
+                              value: e.target.value,
+                            })
+                          }
+                          placeholder='{"type": "object", "required": ["field"]}'
+                          rows={5}
+                          className="font-mono text-sm"
+                        />
+                      ) : editingRule.type === "minLength" ||
+                        editingRule.type === "maxLength" ||
+                        editingRule.type === "maxResponseTime" ? (
+                        <Input
+                          type="number"
+                          min={0}
+                          value={editingRule.value}
+                          onChange={(e) =>
+                            setEditingRule({
+                              ...editingRule,
+                              value: e.target.value,
+                            })
+                          }
+                          placeholder={editingRule.type === "maxResponseTime" ? "e.g., 5000" : "Enter number"}
+                        />
+                      ) : (
+                        <Input
+                          value={editingRule.value as string}
+                          onChange={(e) =>
+                            setEditingRule({
+                              ...editingRule,
+                              value: e.target.value,
+                            })
+                          }
+                          placeholder={
+                            editingRule.type === "regex"
+                              ? "^[a-z]+$"
+                              : "Text to check"
+                          }
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {(editingRule.type === "isJson" || editingRule.type === "containsJson") && (
+                    <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                      {editingRule.type === "isJson"
+                        ? "Validates that the entire output is valid JSON. Supports outputs wrapped in ```json ``` code blocks."
+                        : "Validates that the output contains valid JSON somewhere in the response."}
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label>Severity</Label>

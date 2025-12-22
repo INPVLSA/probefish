@@ -11,7 +11,7 @@ export interface ITestCase {
 
 // Validation Rule - static checks on output
 export interface IValidationRule {
-  type: "contains" | "excludes" | "minLength" | "maxLength" | "regex" | "jsonSchema" | "maxResponseTime";
+  type: "contains" | "excludes" | "minLength" | "maxLength" | "regex" | "jsonSchema" | "maxResponseTime" | "isJson" | "containsJson";
   value: string | number;
   message?: string;
   severity?: "fail" | "warning";
@@ -152,7 +152,7 @@ const validationRuleSchema = new Schema<IValidationRule>(
   {
     type: {
       type: String,
-      enum: ["contains", "excludes", "minLength", "maxLength", "regex", "jsonSchema", "maxResponseTime"],
+      enum: ["contains", "excludes", "minLength", "maxLength", "regex", "jsonSchema", "maxResponseTime", "isJson", "containsJson"],
       required: true,
     },
     value: {
