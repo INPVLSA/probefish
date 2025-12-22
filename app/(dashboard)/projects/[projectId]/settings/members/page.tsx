@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +65,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { DeleteIcon } from "@/components/ui/delete";
+import { UsersIcon, UsersIconHandle } from "@/components/ui/users";
 
 interface ProjectMember {
   userId: string;
@@ -100,11 +101,22 @@ export default function ProjectMembersPage({
   const [newMemberRole, setNewMemberRole] = useState<"viewer" | "editor" | "admin">("viewer");
   const [addingMember, setAddingMember] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const emptyUsersIconRef = useRef<UsersIconHandle>(null);
 
   useEffect(() => {
     fetchMembers();
     fetchSettings();
   }, [projectId]);
+
+  // Animate empty state icon when no members
+  useEffect(() => {
+    if (!loading && members.length === 0) {
+      const timer = setTimeout(() => {
+        emptyUsersIconRef.current?.startAnimation();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, members.length]);
 
   const fetchMembers = async () => {
     try {
@@ -381,7 +393,7 @@ export default function ProjectMembersPage({
         <CardContent>
           {members.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <UsersIcon ref={emptyUsersIconRef} size={48} className="inline-block mb-4 opacity-50" animateOnLoad />
               <p>No project-specific members</p>
               <p className="text-sm mt-1">
                 Access is based on organization roles and project visibility
