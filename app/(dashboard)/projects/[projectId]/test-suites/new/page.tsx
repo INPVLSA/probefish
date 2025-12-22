@@ -273,13 +273,16 @@ export default function NewTestSuitePage({
               <div className="space-y-2">
                 <Label>Version</Label>
                 <Select
-                  value={String(targetVersion || selectedPrompt.currentVersion)}
-                  onValueChange={(v) => setTargetVersion(parseInt(v, 10))}
+                  value={targetVersion === undefined ? "latest" : String(targetVersion)}
+                  onValueChange={(v) => setTargetVersion(v === "latest" ? undefined : parseInt(v, 10))}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="latest">
+                      Latest (always use current)
+                    </SelectItem>
                     {selectedPrompt.versions.map((v) => (
                       <SelectItem key={v.version} value={String(v.version)}>
                         Version {v.version}
@@ -288,6 +291,11 @@ export default function NewTestSuitePage({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {targetVersion === undefined
+                    ? "Tests will always run against the current version of the prompt"
+                    : `Tests will run against version ${targetVersion}`}
+                </p>
               </div>
             )}
           </CardContent>

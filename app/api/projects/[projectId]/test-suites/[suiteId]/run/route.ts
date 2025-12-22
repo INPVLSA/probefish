@@ -120,6 +120,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Optional note/title for the run
     const runNote = typeof body.note === "string" ? body.note.trim().slice(0, 500) : undefined;
 
+    // Number of iterations to run (default: 1, max: 100)
+    const iterations = Math.min(Math.max(1, parseInt(body.iterations) || 1), 100);
+
     // For prompt testing, verify we have required credentials
     if (testSuite.targetType === "prompt") {
       // Get the prompt to check which provider is needed
@@ -190,66 +193,74 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Create test run
+    const totalTestCount = testSuite.testCases.length * iterations;
     const testRun: ITestRun = {
       _id: new mongoose.Types.ObjectId(),
       runAt: new Date(),
       runBy: new mongoose.Types.ObjectId(auth.context.user.id),
       status: "running",
       note: runNote,
+      iterations: iterations > 1 ? iterations : undefined,
       modelOverride: modelOverride ? {
         provider: modelOverride.provider,
         model: modelOverride.model,
       } : undefined,
       results: [],
       summary: {
-        total: testSuite.testCases.length,
+        total: totalTestCount,
         passed: 0,
         failed: 0,
         avgResponseTime: 0,
       },
     };
 
-    // Execute all test cases
+    // Execute all test cases for each iteration
     let totalResponseTime = 0;
     let totalJudgeScore = 0;
     let judgeScoreCount = 0;
 
-    for (const testCase of testSuite.testCases) {
-      const result = await executeTestCase({
-        testCase,
-        targetType: testSuite.targetType,
-        target,
-        targetVersion: testSuite.targetVersion,
-        validationRules: testSuite.validationRules,
-        judgeConfig: testSuite.llmJudgeConfig,
-        credentials,
-        modelOverride: modelOverride ? {
-          provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
-          model: modelOverride.model,
-        } : undefined,
-      });
+    for (let iteration = 1; iteration <= iterations; iteration++) {
+      for (const testCase of testSuite.testCases) {
+        const result = await executeTestCase({
+          testCase,
+          targetType: testSuite.targetType,
+          target,
+          targetVersion: testSuite.targetVersion,
+          validationRules: testSuite.validationRules,
+          judgeConfig: testSuite.llmJudgeConfig,
+          credentials,
+          modelOverride: modelOverride ? {
+            provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+            model: modelOverride.model,
+          } : undefined,
+        });
 
-      const testResult = toTestResult(result);
-      testRun.results.push(testResult);
+        const testResult = toTestResult(result);
+        // Add iteration number to result if running multiple iterations
+        if (iterations > 1) {
+          testResult.iteration = iteration;
+        }
+        testRun.results.push(testResult);
 
-      // Update stats
-      if (result.validationPassed && !result.error) {
-        testRun.summary.passed++;
-      } else {
-        testRun.summary.failed++;
-      }
+        // Update stats
+        if (result.validationPassed && !result.error) {
+          testRun.summary.passed++;
+        } else {
+          testRun.summary.failed++;
+        }
 
-      totalResponseTime += result.responseTime;
+        totalResponseTime += result.responseTime;
 
-      if (typeof result.judgeScore === "number") {
-        totalJudgeScore += result.judgeScore;
-        judgeScoreCount++;
+        if (typeof result.judgeScore === "number") {
+          totalJudgeScore += result.judgeScore;
+          judgeScoreCount++;
+        }
       }
     }
 
     // Calculate averages
     testRun.summary.avgResponseTime = Math.round(
-      totalResponseTime / testSuite.testCases.length
+      totalResponseTime / totalTestCount
     );
 
     if (judgeScoreCount > 0) {

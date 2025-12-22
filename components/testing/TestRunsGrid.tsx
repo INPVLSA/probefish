@@ -533,10 +533,10 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
                                 <TableBody>
                                   {run.results.map((result, index) => {
                                     const passed = result.validationPassed && !result.error;
-                                    const resultKey = `${run._id}-${result.testCaseId || index}`;
+                                    const resultKey = `${run._id}-${result.testCaseId}-${result.iteration || 0}-${index}`;
                                     const isResultExpanded = expandedResults.has(resultKey);
                                     return (
-                                      <Fragment key={result.testCaseId || index}>
+                                      <Fragment key={`${result.testCaseId}-${result.iteration || 0}-${index}`}>
                                         <TableRow
                                           className="cursor-pointer hover:bg-muted/50"
                                           onClick={() => toggleResultExpand(resultKey)}

@@ -24,7 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Loader2, Key, Play, Layers, ChevronDown } from "lucide-react";
+import { Loader2, Key, Play, Layers, ChevronDown, Repeat } from "lucide-react";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
 import { MultiModelSelector, ModelSelection } from "./MultiModelSelector";
 
@@ -112,6 +112,11 @@ export function TestRunner({
     total: number;
     currentModel?: string;
   } | null>(null);
+  const [iterations, setIterations] = useState(1);
+  const [iterationsProgress, setIterationsProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
   const airplaneRef = useRef<AirplaneIconHandle>(null);
 
   // Initialize from saved models
@@ -151,10 +156,15 @@ export function TestRunner({
     }
   };
 
-  const runTests = async (modelOverride?: ModelSelection) => {
+  const runTests = async (modelOverride?: ModelSelection, iterationCount?: number) => {
     setRunning(true);
     setError("");
     setDialogOpen(false);
+
+    const effectiveIterations = iterationCount ?? iterations;
+    if (effectiveIterations > 1) {
+      setIterationsProgress({ current: 0, total: effectiveIterations * testCaseCount });
+    }
 
     try {
       const response = await fetch(
@@ -167,6 +177,7 @@ export function TestRunner({
           body: JSON.stringify({
             openaiApiKey: openaiKey || undefined,
             anthropicApiKey: anthropicKey || undefined,
+            iterations: effectiveIterations,
             modelOverride: modelOverride
               ? { provider: modelOverride.provider, model: modelOverride.model }
               : undefined,
@@ -192,6 +203,7 @@ export function TestRunner({
     } finally {
       if (!multiModelProgress) {
         setRunning(false);
+        setIterationsProgress(null);
       }
     }
   };
@@ -284,25 +296,54 @@ export function TestRunner({
             </div>
           )}
 
-          <Button
-            onClick={handleRunClick}
-            disabled={running || testCaseCount === 0}
-            className="w-full"
-            onMouseEnter={() => airplaneRef.current?.startAnimation()}
-            onMouseLeave={() => airplaneRef.current?.stopAnimation()}
-          >
-            {running && !multiModelProgress ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running Tests...
-              </>
-            ) : (
-              <>
-                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
-                Run All Tests
-              </>
-            )}
-          </Button>
+          {iterationsProgress && (
+            <div className="text-sm bg-muted/50 px-3 py-2 rounded-md">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>
+                  Running {iterations}x iterations...
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-1">
+              <Label htmlFor="iterations" className="text-xs text-muted-foreground whitespace-nowrap">
+                <Repeat className="h-3 w-3 inline mr-1" />
+                Runs:
+              </Label>
+              <Input
+                id="iterations"
+                type="number"
+                min={1}
+                max={100}
+                value={iterations}
+                onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="h-8 w-16 text-center"
+                disabled={running}
+              />
+            </div>
+            <Button
+              onClick={handleRunClick}
+              disabled={running || testCaseCount === 0}
+              className="flex-1"
+              onMouseEnter={() => airplaneRef.current?.startAnimation()}
+              onMouseLeave={() => airplaneRef.current?.stopAnimation()}
+            >
+              {running && !multiModelProgress ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+                  Run {iterations}x
+                </>
+              )}
+            </Button>
+          </div>
 
           {testCaseCount === 0 && (
             <p className="text-xs text-muted-foreground text-center">

@@ -191,7 +191,13 @@ Create a `.env.local` file:
 ```env
 MONGODB_URI=mongodb://localhost:27017/probefish
 JWT_SECRET=your-jwt-secret
-ENCRYPTION_KEY=your-32-byte-encryption-key
+ENCRYPTION_KEY=your-64-hex-character-key
+```
+
+The `ENCRYPTION_KEY` must be a 64 hex character (32 bytes) value. Generate one with:
+
+```bash
+openssl rand -hex 32
 ```
 
 ### Development

@@ -622,8 +622,18 @@ export async function executeTestCase(params: {
       }
     }
   } catch (error) {
-    result.error =
-      error instanceof Error ? error.message : "Unknown error occurred";
+    let errorMessage = "Unknown error occurred";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      // Include cause for network errors (e.g., "fetch failed" -> "fetch failed (ENOTFOUND)")
+      if (error.cause) {
+        const causeMessage = error.cause instanceof Error
+          ? error.cause.message
+          : String(error.cause);
+        errorMessage += ` (${causeMessage})`;
+      }
+    }
+    result.error = errorMessage;
     result.validationPassed = false;
     result.validationErrors = [result.error];
   }

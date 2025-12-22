@@ -340,21 +340,21 @@ export default function ProjectDetailPage({
 
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link href={`/projects/${projectId}/test-suites/new`}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Test Suite
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
               <Link href={`/projects/${projectId}/endpoints/new`}>
-                <Plus className="mr-2 h-4 w-4" />
+                <Globe className="h-4 w-4" />
                 New Endpoint
               </Link>
             </Button>
-            <Button asChild>
+            <Button variant="outline" asChild>
               <Link href={`/projects/${projectId}/prompts/new`}>
-                <Plus className="mr-2 h-4 w-4" />
+                <FileText className="h-4 w-4" />
                 New Prompt
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/projects/${projectId}/test-suites/new`}>
+                <FlaskConical className="h-4 w-4" />
+                New Test Suite
               </Link>
             </Button>
           </div>

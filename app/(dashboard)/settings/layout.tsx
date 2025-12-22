@@ -4,8 +4,8 @@ import Link from "next/link";
 import connectDB from "@/lib/db/mongodb";
 import { User, Organization } from "@/lib/db/models";
 import { verifyToken } from "@/lib/auth/session";
-import { cn } from "@/lib/utils";
-import { Building2, Users, Key, Mail, Shield, KeyRound, ChevronRight, Home } from "lucide-react";
+import { ChevronRight, Home } from "lucide-react";
+import { SettingsNav } from "@/components/layout/SettingsNav";
 
 async function getUserAndOrg() {
   const cookieStore = await cookies();
@@ -58,31 +58,31 @@ const settingsNav = [
   {
     href: "/settings/organization",
     label: "General",
-    icon: Building2,
+    icon: "Building2" as const,
     requiredRole: ["owner", "admin"],
   },
   {
     href: "/settings/organization/members",
     label: "Members",
-    icon: Users,
+    icon: "Users" as const,
     requiredRole: ["owner", "admin"],
   },
   {
     href: "/settings/organization/invitations",
     label: "Invitations",
-    icon: Mail,
+    icon: "Mail" as const,
     requiredRole: ["owner", "admin"],
   },
   {
     href: "/settings/organization/api-keys",
     label: "LLM API Keys",
-    icon: Key,
+    icon: "Key" as const,
     requiredRole: ["owner", "admin"],
   },
   {
     href: "/settings/tokens",
     label: "Access Tokens",
-    icon: KeyRound,
+    icon: "KeyRound" as const,
     requiredRole: null, // Available to all users
   },
 ];
@@ -119,51 +119,20 @@ export default async function SettingsLayout({
       </div>
 
       <div className="flex gap-6">
-        <nav className="w-48 flex-shrink-0">
-          <ul className="space-y-1">
-            {settingsNav
-              .filter(
-                (item) =>
-                  !item.requiredRole ||
-                  item.requiredRole.includes(data.role) ||
-                  data.user.isSuperAdmin
-              )
-              .map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            {data.user.isSuperAdmin && (
-              <>
-                <li className="pt-4 pb-2">
-                  <span className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Super Admin
-                  </span>
-                </li>
-                <li>
-                  <Link
-                    href="/admin/users"
-                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
-                  >
-                    <Shield className="h-4 w-4" />
-                    All Users
-                  </Link>
-                </li>
-              </>
-            )}
-          </ul>
-        </nav>
+        <SettingsNav
+          items={settingsNav
+            .filter(
+              (item) =>
+                !item.requiredRole ||
+                item.requiredRole.includes(data.role) ||
+                data.user.isSuperAdmin
+            )
+            .map((item) => ({
+              href: item.href,
+              label: item.label,
+              icon: item.icon,
+            }))}
+        />
 
         <div className="flex-1 min-w-0">{children}</div>
       </div>

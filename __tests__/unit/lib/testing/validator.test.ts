@@ -325,4 +325,141 @@ describe('validate', () => {
       expect(result.errors).toHaveLength(0);
     });
   });
+
+  describe('isJson rule', () => {
+    it('should pass for valid JSON object', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      const result = validate('{"name": "test", "value": 123}', rules);
+      expect(result.passed).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should pass for valid JSON array', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      const result = validate('[1, 2, 3]', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should pass for JSON wrapped in ```json ``` code block', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      const result = validate('```json\n{"name": "test"}\n```', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should pass for JSON wrapped in ``` ``` code block without language', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      const result = validate('```\n{"name": "test"}\n```', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should fail for invalid JSON', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      const result = validate('not valid json', rules);
+      expect(result.passed).toBe(false);
+      expect(result.errors[0]).toContain('not valid JSON');
+    });
+
+    it('should fail for JSON with syntax error', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      const result = validate('{"name": "test",}', rules);
+      expect(result.passed).toBe(false);
+    });
+
+    it('should pass for primitive JSON values', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '' },
+      ];
+      expect(validate('"string"', rules).passed).toBe(true);
+      expect(validate('123', rules).passed).toBe(true);
+      expect(validate('true', rules).passed).toBe(true);
+      expect(validate('null', rules).passed).toBe(true);
+    });
+
+    it('should use custom message when provided', () => {
+      const rules: IValidationRule[] = [
+        { type: 'isJson', value: '', message: 'Response must be JSON format' },
+      ];
+      const result = validate('not json', rules);
+      expect(result.errors[0]).toBe('Response must be JSON format');
+    });
+  });
+
+  describe('containsJson rule', () => {
+    it('should pass when output contains JSON object', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('Here is the result: {"name": "test"}', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should pass when output contains JSON array', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('The items are: [1, 2, 3] as shown above', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should pass when JSON is in ```json ``` code block', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('Here is the output:\n```json\n{"result": true}\n```\nAs you can see...', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should pass for complex nested JSON in text', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('Response: {"user": {"name": "John", "age": 30}, "active": true}', rules);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should fail when no valid JSON is present', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('This is just plain text with no JSON', rules);
+      expect(result.passed).toBe(false);
+      expect(result.errors[0]).toContain('does not contain valid JSON');
+    });
+
+    it('should fail for text with JSON-like but invalid syntax', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('Result: {name: test}', rules);
+      expect(result.passed).toBe(false);
+    });
+
+    it('should use custom message when provided', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '', message: 'Expected JSON in response' },
+      ];
+      const result = validate('no json here', rules);
+      expect(result.errors[0]).toBe('Expected JSON in response');
+    });
+
+    it('should pass even with surrounding text', () => {
+      const rules: IValidationRule[] = [
+        { type: 'containsJson', value: '' },
+      ];
+      const result = validate('Sure! Here is your data:\n\n{"id": 1, "status": "ok"}\n\nLet me know if you need anything else.', rules);
+      expect(result.passed).toBe(true);
+    });
+  });
 });

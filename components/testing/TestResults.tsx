@@ -79,6 +79,7 @@ interface TestResult {
   judgeReasoning?: string;
   responseTime: number;
   error?: string;
+  iteration?: number;
 }
 
 interface TestRun {
@@ -188,7 +189,7 @@ export function TestResults({ testRun }: TestResultsProps) {
         {/* Individual Results */}
         <div className="space-y-2">
           {results.map((result, index) => (
-            <TestResultItem key={result.testCaseId || index} result={result} />
+            <TestResultItem key={`${result.testCaseId}-${result.iteration || 0}-${index}`} result={result} />
           ))}
         </div>
       </CardContent>

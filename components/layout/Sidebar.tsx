@@ -10,8 +10,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Home, Folder, Settings, ChevronDown, FileText, Github } from "lucide-react";
+import { ChevronDown, FileText, Github } from "lucide-react";
+import { UsersIcon, UsersIconHandle } from "@/components/ui/users";
 import { FishSymbolIcon, FishSymbolIconHandle } from "@/components/ui/fish-symbol";
+import { HomeIcon, HomeIconHandle } from "@/components/ui/home";
+import { FoldersIcon, FoldersIconHandle } from "@/components/ui/folders";
+import { SettingsIcon, SettingsIconHandle } from "@/components/ui/settings";
 import { cn } from "@/lib/utils";
 
 interface Project {
@@ -19,18 +23,15 @@ interface Project {
   name: string;
 }
 
-const navItems = [
-  { href: "/", label: "Dashboard", icon: Home },
-];
-
-const bottomNavItems = [
-  { href: "/settings", label: "Settings", icon: Settings },
-];
-
 export default function Sidebar() {
   const pathname = usePathname();
   const fishRef = useRef<FishSymbolIconHandle>(null);
+  const homeIconRef = useRef<HomeIconHandle>(null);
+  const foldersIconRef = useRef<FoldersIconHandle>(null);
+  const settingsIconRef = useRef<SettingsIconHandle>(null);
+  const usersIconRef = useRef<UsersIconHandle>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     // Animate fish on page load
@@ -54,6 +55,20 @@ export default function Sidebar() {
       }
     };
     fetchProjects();
+
+    // Fetch user info to check super admin status
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setIsSuperAdmin(data.user?.isSuperAdmin || false);
+        }
+      } catch {
+        // Ignore errors silently
+      }
+    };
+    fetchUser();
   }, []);
 
   const isActive = (href: string) => {
@@ -80,26 +95,24 @@ export default function Sidebar() {
 
       <nav className="flex-1 p-2 overflow-y-auto">
         <ul className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.href}>
-                <Button
-                  variant={isActive(item.href) ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    isActive(item.href) && "bg-sidebar-accent text-sidebar-accent-foreground"
-                  )}
-                  asChild
-                >
-                  <Link href={item.href}>
-                    <Icon className="mr-2 h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </Button>
-              </li>
-            );
-          })}
+          {/* Dashboard */}
+          <li>
+            <Button
+              variant={isActive("/") ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start px-3",
+                isActive("/") && "bg-sidebar-accent text-sidebar-accent-foreground"
+              )}
+              asChild
+              onMouseEnter={() => homeIconRef.current?.startAnimation()}
+              onMouseLeave={() => homeIconRef.current?.stopAnimation()}
+            >
+              <Link href="/">
+                <HomeIcon ref={homeIconRef} size={16} className="size-4" />
+                Dashboard
+              </Link>
+            </Button>
+          </li>
 
           {/* Projects Section */}
           <li>
@@ -108,12 +121,14 @@ export default function Sidebar() {
                 <Button
                   variant={pathname.startsWith("/projects") ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full justify-between",
+                    "w-full justify-between px-3",
                     pathname.startsWith("/projects") && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
+                  onMouseEnter={() => foldersIconRef.current?.startAnimation()}
+                  onMouseLeave={() => foldersIconRef.current?.stopAnimation()}
                 >
-                  <span className="flex items-center">
-                    <Folder className="mr-2 h-4 w-4" />
+                  <span className="flex items-center gap-2">
+                    <FoldersIcon ref={foldersIconRef} size={16} className="size-4" />
                     Projects
                   </span>
                   <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
@@ -162,26 +177,42 @@ export default function Sidebar() {
 
       <div className="p-2">
         <ul className="space-y-1">
-          {bottomNavItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.href}>
-                <Button
-                  variant={isActive(item.href) ? "secondary" : "ghost"}
-                  className={cn(
-                    "w-full justify-start",
-                    isActive(item.href) && "bg-sidebar-accent text-sidebar-accent-foreground"
-                  )}
-                  asChild
-                >
-                  <Link href={item.href}>
-                    <Icon className="mr-2 h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </Button>
-              </li>
-            );
-          })}
+          {isSuperAdmin && (
+            <li>
+              <Button
+                variant={isActive("/admin/users") ? "secondary" : "ghost"}
+                className={cn(
+                  "w-full justify-start px-3",
+                  isActive("/admin/users") && "bg-sidebar-accent text-sidebar-accent-foreground"
+                )}
+                asChild
+                onMouseEnter={() => usersIconRef.current?.startAnimation()}
+                onMouseLeave={() => usersIconRef.current?.stopAnimation()}
+              >
+                <Link href="/admin/users">
+                  <UsersIcon ref={usersIconRef} size={16} className="size-4" />
+                  All Users
+                </Link>
+              </Button>
+            </li>
+          )}
+          <li>
+            <Button
+              variant={isActive("/settings") ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start px-3",
+                isActive("/settings") && "bg-sidebar-accent text-sidebar-accent-foreground"
+              )}
+              asChild
+              onMouseEnter={() => settingsIconRef.current?.startAnimation()}
+              onMouseLeave={() => settingsIconRef.current?.stopAnimation()}
+            >
+              <Link href="/settings">
+                <SettingsIcon ref={settingsIconRef} size={16} className="size-4" />
+                Settings
+              </Link>
+            </Button>
+          </li>
         </ul>
       </div>
 

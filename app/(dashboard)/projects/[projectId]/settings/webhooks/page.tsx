@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +53,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
+import { WebhookIcon, WebhookIconHandle } from "@/components/ui/webhook";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +94,7 @@ export default function WebhooksSettingsPage({
   const [creating, setCreating] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [newWebhookSecret, setNewWebhookSecret] = useState<string | null>(null);
+  const emptyWebhookIconRef = useRef<WebhookIconHandle>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -120,6 +122,16 @@ export default function WebhooksSettingsPage({
   useEffect(() => {
     fetchWebhooks();
   }, [fetchWebhooks]);
+
+  // Animate empty state icon when no webhooks
+  useEffect(() => {
+    if (!loading && webhooks.length === 0) {
+      const timer = setTimeout(() => {
+        emptyWebhookIconRef.current?.startAnimation();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, webhooks.length]);
 
   const handleCreate = async () => {
     if (!name.trim() || !url.trim() || events.length === 0) {
@@ -473,7 +485,7 @@ export default function WebhooksSettingsPage({
         <CardContent>
           {webhooks.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <WebhookIcon ref={emptyWebhookIconRef} size={48} className="inline-block mb-4 opacity-50" animateOnLoad />
               <p>No webhooks configured</p>
               <p className="text-sm">
                 Add a webhook to receive notifications when tests complete

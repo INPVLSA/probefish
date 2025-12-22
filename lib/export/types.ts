@@ -108,7 +108,9 @@ export interface ValidationRuleExport {
     | "maxLength"
     | "regex"
     | "jsonSchema"
-    | "maxResponseTime";
+    | "maxResponseTime"
+    | "isJson"
+    | "containsJson";
   value: string | number;
   message?: string;
   severity: "fail" | "warning";

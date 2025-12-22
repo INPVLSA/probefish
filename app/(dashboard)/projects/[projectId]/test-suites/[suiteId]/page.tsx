@@ -16,7 +16,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FileText, Globe, Download } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Save, FileText, Globe, Download, Eye } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { DeleteIcon } from "@/components/ui/delete";
 import { toast } from "sonner";
 import {
@@ -79,10 +94,21 @@ interface TestRun {
   };
 }
 
+interface PromptVersion {
+  version: number;
+  variables: string[];
+  content: string;
+  systemPrompt?: string;
+}
+
 interface Target {
   _id: string;
   name: string;
   variables: string[];
+  content?: string;
+  systemPrompt?: string;
+  versions?: PromptVersion[];
+  currentVersion?: number;
 }
 
 export default function TestSuiteDetailPage({
@@ -99,6 +125,7 @@ export default function TestSuiteDetailPage({
   const [target, setTarget] = useState<Target | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [targetVersion, setTargetVersion] = useState<number | undefined>();
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [validationRules, setValidationRules] = useState<ValidationRule[]>([]);
   const [llmJudgeConfig, setLlmJudgeConfig] = useState<LLMJudgeConfig>({
@@ -138,6 +165,7 @@ export default function TestSuiteDetailPage({
       setTestSuite(suite);
       setName(suite.name);
       setDescription(suite.description || "");
+      setTargetVersion(suite.targetVersion);
       setTestCases(suite.testCases || []);
       setValidationRules(suite.validationRules || []);
       setLlmJudgeConfig(
@@ -160,14 +188,28 @@ export default function TestSuiteDetailPage({
             ? targetData.prompt
             : targetData.endpoint;
 
-        // Extract variables
+        // Extract variables and content
         let variables: string[] = [];
+        let content: string | undefined;
+        let systemPrompt: string | undefined;
+        let versions: PromptVersion[] | undefined;
+        let currentVersion: number | undefined;
+
         if (suite.targetType === "prompt") {
           const version = targetObj.versions?.find(
             (v: { version: number }) =>
               v.version === (suite.targetVersion || targetObj.currentVersion)
           );
           variables = version?.variables || [];
+          content = version?.content;
+          systemPrompt = version?.systemPrompt;
+          versions = targetObj.versions?.map((v: PromptVersion) => ({
+            version: v.version,
+            variables: v.variables,
+            content: v.content,
+            systemPrompt: v.systemPrompt,
+          }));
+          currentVersion = targetObj.currentVersion;
         } else {
           variables = targetObj.variables || [];
         }
@@ -176,6 +218,10 @@ export default function TestSuiteDetailPage({
           _id: targetObj._id,
           name: targetObj.name,
           variables,
+          content,
+          systemPrompt,
+          versions,
+          currentVersion,
         });
       }
 
@@ -226,6 +272,7 @@ export default function TestSuiteDetailPage({
           body: JSON.stringify({
             name: name.trim(),
             description: description.trim() || undefined,
+            targetVersion: targetVersion === undefined ? null : targetVersion,
             testCases,
             validationRules,
             llmJudgeConfig,
@@ -357,8 +404,60 @@ export default function TestSuiteDetailPage({
               <Globe className="h-4 w-4" />
             )}
             <span>Testing: {target?.name}</span>
-            {testSuite?.targetVersion && (
-              <Badge variant="outline">v{testSuite.targetVersion}</Badge>
+            {testSuite?.targetType === "prompt" && (
+              <Badge variant="outline">
+                {targetVersion ? `v${targetVersion}` : "Latest"}
+              </Badge>
+            )}
+            {testSuite?.targetType === "prompt" && target?.content && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Preview
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {target.name} - {targetVersion ? `Version ${targetVersion}` : "Latest Version"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {targetVersion
+                        ? "Prompt content being tested"
+                        : "Always uses the current version of the prompt"}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-y-auto space-y-4">
+                    {target.systemPrompt && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">System Prompt</Label>
+                        <pre className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto">
+                          {target.systemPrompt}
+                        </pre>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">User Prompt</Label>
+                      <pre className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto">
+                        {target.content}
+                      </pre>
+                    </div>
+                    {target.variables.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Variables</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {target.variables.map((v) => (
+                            <Badge key={v} variant="secondary">
+                              {`{{${v}}}`}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </div>
@@ -508,6 +607,38 @@ export default function TestSuiteDetailPage({
                       rows={3}
                     />
                   </div>
+                  {testSuite?.targetType === "prompt" && target?.versions && (
+                    <div className="space-y-2">
+                      <Label>Prompt Version</Label>
+                      <Select
+                        value={targetVersion === undefined ? "latest" : String(targetVersion)}
+                        onValueChange={(v) => {
+                          setTargetVersion(v === "latest" ? undefined : parseInt(v, 10));
+                          setHasChanges(true);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="latest">
+                            Latest (always use current)
+                          </SelectItem>
+                          {target.versions.map((v) => (
+                            <SelectItem key={v.version} value={String(v.version)}>
+                              Version {v.version}
+                              {v.version === target.currentVersion && " (current)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {targetVersion === undefined
+                          ? "Tests will always run against the current version of the prompt"
+                          : `Tests will run against version ${targetVersion}`}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

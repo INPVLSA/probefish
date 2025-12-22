@@ -70,6 +70,22 @@ export function validate(
             );
           }
           break;
+
+        case "isJson": {
+          const jsonResult = validateIsJson(output);
+          if (!jsonResult.valid) {
+            errors.push(rule.message || jsonResult.error || "Output is not valid JSON");
+          }
+          break;
+        }
+
+        case "containsJson": {
+          const containsResult = validateContainsJson(output);
+          if (!containsResult.valid) {
+            errors.push(rule.message || containsResult.error || "Output does not contain valid JSON");
+          }
+          break;
+        }
       }
     } catch (error) {
       errors.push(
@@ -254,4 +270,60 @@ function getJsonType(value: unknown): string {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
   return typeof value;
+}
+
+// Extract JSON from markdown code blocks or raw content
+function extractJsonContent(output: string): string {
+  // Try to extract from ```json ... ``` code block
+  const jsonBlockMatch = output.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonBlockMatch) {
+    return jsonBlockMatch[1].trim();
+  }
+  // Return trimmed output as-is
+  return output.trim();
+}
+
+// Validate that the entire output is valid JSON (allows ```json ``` wrapper)
+function validateIsJson(output: string): { valid: boolean; error?: string } {
+  const content = extractJsonContent(output);
+  try {
+    JSON.parse(content);
+    return { valid: true };
+  } catch {
+    return { valid: false, error: "Output is not valid JSON" };
+  }
+}
+
+// Validate that the output contains valid JSON somewhere
+function validateContainsJson(output: string): { valid: boolean; error?: string } {
+  // First try extracting from code blocks
+  const jsonBlockMatch = output.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonBlockMatch) {
+    try {
+      JSON.parse(jsonBlockMatch[1].trim());
+      return { valid: true };
+    } catch {
+      // Continue to try other patterns
+    }
+  }
+
+  // Try to find JSON object or array patterns
+  const jsonPatterns = [
+    /\{[\s\S]*\}/,  // Object pattern
+    /\[[\s\S]*\]/,  // Array pattern
+  ];
+
+  for (const pattern of jsonPatterns) {
+    const match = output.match(pattern);
+    if (match) {
+      try {
+        JSON.parse(match[0]);
+        return { valid: true };
+      } catch {
+        // Continue to next pattern
+      }
+    }
+  }
+
+  return { valid: false, error: "Output does not contain valid JSON" };
 }
