@@ -55,6 +55,7 @@ interface TestResult {
   judgeReasoning?: string;
   responseTime: number;
   error?: string;
+  iteration?: number;
 }
 
 interface TestRun {
