@@ -16,7 +16,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FileText, Globe, Download } from "lucide-react";
+import { ArrowLeft, Save, FileText, Globe, Download, Eye } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { DeleteIcon } from "@/components/ui/delete";
 import { toast } from "sonner";
 import {
@@ -83,6 +91,8 @@ interface Target {
   _id: string;
   name: string;
   variables: string[];
+  content?: string;
+  systemPrompt?: string;
 }
 
 export default function TestSuiteDetailPage({
@@ -160,14 +170,18 @@ export default function TestSuiteDetailPage({
             ? targetData.prompt
             : targetData.endpoint;
 
-        // Extract variables
+        // Extract variables and content
         let variables: string[] = [];
+        let content: string | undefined;
+        let systemPrompt: string | undefined;
         if (suite.targetType === "prompt") {
           const version = targetObj.versions?.find(
             (v: { version: number }) =>
               v.version === (suite.targetVersion || targetObj.currentVersion)
           );
           variables = version?.variables || [];
+          content = version?.content;
+          systemPrompt = version?.systemPrompt;
         } else {
           variables = targetObj.variables || [];
         }
@@ -176,6 +190,8 @@ export default function TestSuiteDetailPage({
           _id: targetObj._id,
           name: targetObj.name,
           variables,
+          content,
+          systemPrompt,
         });
       }
 
@@ -359,6 +375,52 @@ export default function TestSuiteDetailPage({
             <span>Testing: {target?.name}</span>
             {testSuite?.targetVersion && (
               <Badge variant="outline">v{testSuite.targetVersion}</Badge>
+            )}
+            {testSuite?.targetType === "prompt" && target?.content && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Preview
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>{target.name} - Version {testSuite.targetVersion}</DialogTitle>
+                    <DialogDescription>
+                      Prompt content being tested
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-y-auto space-y-4">
+                    {target.systemPrompt && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">System Prompt</Label>
+                        <pre className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto">
+                          {target.systemPrompt}
+                        </pre>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">User Prompt</Label>
+                      <pre className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap overflow-x-auto">
+                        {target.content}
+                      </pre>
+                    </div>
+                    {target.variables.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Variables</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {target.variables.map((v) => (
+                            <Badge key={v} variant="secondary">
+                              {`{{${v}}}`}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </div>
