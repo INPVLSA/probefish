@@ -13,8 +13,14 @@ RUN npm ci
 COPY . .
 
 # Set dummy env vars for build (not used at runtime)
+# At runtime, provide real values:
+#   MONGODB_URI - MongoDB connection string
+#   JWT_SECRET - Secret for JWT token signing
+#   ENCRYPTION_KEY - 64 hex characters (32 bytes) for API key encryption
+#                    Generate with: openssl rand -hex 32
 ENV MONGODB_URI="mongodb://localhost:27017/probefish"
 ENV JWT_SECRET="build-time-secret"
+ENV ENCRYPTION_KEY="0000000000000000000000000000000000000000000000000000000000000000"
 
 # Build the application
 RUN npm run build
