@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { openaiProvider } from '@/lib/llm/providers/openai';
 import { anthropicProvider } from '@/lib/llm/providers/anthropic';
 import { geminiProvider } from '@/lib/llm/providers/gemini';
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from '@/lib/llm/types';
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, DEFAULT_MODELS } from '@/lib/llm/types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -158,7 +158,7 @@ describe('Anthropic Provider', () => {
         ok: true,
         json: async () => ({
           content: [{ type: 'text', text: 'Hello!' }],
-          model: 'claude-haiku-4-5-20251015',
+          model: DEFAULT_MODELS.anthropic,
           usage: {
             input_tokens: 10,
             output_tokens: 5,
@@ -169,7 +169,7 @@ describe('Anthropic Provider', () => {
 
       await anthropicProvider.complete(
         {
-          model: 'claude-haiku-4-5-20251015',
+          model: DEFAULT_MODELS.anthropic,
           messages: [
             { role: 'system', content: 'You are helpful.' },
             { role: 'user', content: 'Hi' },
@@ -188,7 +188,7 @@ describe('Anthropic Provider', () => {
       // Messages should only contain non-system messages
       expect(body.messages).toEqual([{ role: 'user', content: 'Hi' }]);
 
-      expect(body.model).toBe('claude-haiku-4-5-20251015');
+      expect(body.model).toBe(DEFAULT_MODELS.anthropic);
       expect(body.temperature).toBe(0.7);
       expect(body.max_tokens).toBe(100);
     });
@@ -198,14 +198,14 @@ describe('Anthropic Provider', () => {
         ok: true,
         json: async () => ({
           content: [{ type: 'text', text: 'Hello!' }],
-          model: 'claude-haiku-4-5-20251015',
+          model: DEFAULT_MODELS.anthropic,
           usage: { input_tokens: 10, output_tokens: 5 },
         }),
       });
 
       await anthropicProvider.complete(
         {
-          model: 'claude-haiku-4-5-20251015',
+          model: DEFAULT_MODELS.anthropic,
           messages: [{ role: 'user', content: 'Hi' }],
         },
         'sk-ant-test-key'
@@ -228,7 +228,7 @@ describe('Anthropic Provider', () => {
         ok: true,
         json: async () => ({
           content: [{ type: 'text', text: 'Test response' }],
-          model: 'claude-haiku-4-5-20251015',
+          model: DEFAULT_MODELS.anthropic,
           usage: {
             input_tokens: 10,
             output_tokens: 5,
@@ -239,14 +239,14 @@ describe('Anthropic Provider', () => {
 
       const result = await anthropicProvider.complete(
         {
-          model: 'claude-haiku-4-5-20251015',
+          model: DEFAULT_MODELS.anthropic,
           messages: [{ role: 'user', content: 'Hi' }],
         },
         'sk-ant-test-key'
       );
 
       expect(result.content).toBe('Test response');
-      expect(result.model).toBe('claude-haiku-4-5-20251015');
+      expect(result.model).toBe(DEFAULT_MODELS.anthropic);
       expect(result.usage).toEqual({
         promptTokens: 10,
         completionTokens: 5,
@@ -481,14 +481,14 @@ describe('Provider role mapping', () => {
       ok: true,
       json: async () => ({
         content: [{ type: 'text', text: 'Hi' }],
-        model: 'claude-haiku-4-5-20251015',
+        model: DEFAULT_MODELS.anthropic,
         usage: { input_tokens: 1, output_tokens: 1 },
       }),
     });
 
     await anthropicProvider.complete(
       {
-        model: 'claude-haiku-4-5-20251015',
+        model: DEFAULT_MODELS.anthropic,
         messages: [
           { role: 'system', content: 'System' },
           { role: 'user', content: 'User' },

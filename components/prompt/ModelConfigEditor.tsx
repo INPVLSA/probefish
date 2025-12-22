@@ -25,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Cpu, ChevronDown, Settings2 } from "lucide-react";
 import { useState } from "react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
 
 export interface ModelConfig {
   provider?: "openai" | "anthropic" | "gemini" | "custom";
@@ -41,12 +41,6 @@ interface ModelConfigEditorProps {
   config: ModelConfig;
   onChange: (config: ModelConfig) => void;
 }
-
-const DEFAULT_MODELS: Record<string, string> = {
-  openai: "gpt-4o-mini",
-  anthropic: "claude-haiku-4-5-20251015",
-  gemini: "gemini-2.5-flash",
-};
 
 export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);

@@ -38,7 +38,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface JudgeCriterion {
@@ -121,18 +121,7 @@ export function JudgeConfigEditor({
   };
 
   const handleProviderChange = (provider: "openai" | "anthropic" | "gemini") => {
-    let model: string;
-    switch (provider) {
-      case "anthropic":
-        model = "claude-haiku-4-5-20251015";
-        break;
-      case "gemini":
-        model = "gemini-2.5-flash";
-        break;
-      default:
-        model = "gpt-4o-mini";
-    }
-    onChange({ ...config, provider, model });
+    onChange({ ...config, provider, model: DEFAULT_MODELS[provider] });
   };
 
   const handleModelChange = (model: string) => {

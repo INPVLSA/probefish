@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { replaceVariables, getValueByPath, ModelOverride } from '@/lib/testing/executor';
+import { DEFAULT_MODELS } from '@/lib/llm/types';
 
 describe('replaceVariables', () => {
   describe('basic variable substitution', () => {
@@ -451,29 +452,29 @@ describe('ModelOverride', () => {
   describe('model override logic', () => {
     it('should use override provider when provided', () => {
       const versionProvider = 'openai';
-      const versionModel = 'gpt-4o-mini';
+      const versionModel = DEFAULT_MODELS.openai;
       const override: ModelOverride = {
         provider: 'anthropic',
-        model: 'claude-haiku-4-5-20251015',
+        model: DEFAULT_MODELS.anthropic,
       };
 
       const effectiveProvider = override?.provider || versionProvider;
       const effectiveModel = override?.model || versionModel;
 
       expect(effectiveProvider).toBe('anthropic');
-      expect(effectiveModel).toBe('claude-haiku-4-5-20251015');
+      expect(effectiveModel).toBe(DEFAULT_MODELS.anthropic);
     });
 
     it('should use version config when no override', () => {
       const versionProvider = 'openai';
-      const versionModel = 'gpt-4o-mini';
+      const versionModel = DEFAULT_MODELS.openai;
       const override: ModelOverride | undefined = undefined;
 
       const effectiveProvider = override?.provider || versionProvider;
       const effectiveModel = override?.model || versionModel;
 
       expect(effectiveProvider).toBe('openai');
-      expect(effectiveModel).toBe('gpt-4o-mini');
+      expect(effectiveModel).toBe(DEFAULT_MODELS.openai);
     });
 
     it('should fall back to default when no version config and no override', () => {

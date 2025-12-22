@@ -56,7 +56,8 @@ export const OPENAI_MODELS = [
 export const ANTHROPIC_MODELS = [
   "claude-opus-4-5-20251101",
   "claude-sonnet-4-5-20250929",
-  "claude-haiku-4-5-20251015",
+  "claude-haiku-4-5-20251001",
+  "claude-opus-4-1-20250805",
   "claude-opus-4-20250514",
   "claude-sonnet-4-20250514",
 ] as const;
@@ -88,7 +89,8 @@ export const MODEL_LABELS: Record<string, string> = {
   // Anthropic
   "claude-opus-4-5-20251101": "Claude Opus 4.5 (claude-opus-4-5-20251101)",
   "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)",
-  "claude-haiku-4-5-20251015": "Claude Haiku 4.5 (claude-haiku-4-5-20251015)",
+  "claude-haiku-4-5-20251001": "Claude Haiku 4.5 (claude-haiku-4-5-20251001)",
+  "claude-opus-4-1-20250805": "Claude Opus 4.1 (claude-opus-4-1-20250805)",
   "claude-opus-4-20250514": "Claude Opus 4 (claude-opus-4-20250514)",
   "claude-sonnet-4-20250514": "Claude Sonnet 4 (claude-sonnet-4-20250514)",
   // Gemini
@@ -112,9 +114,10 @@ export const MODEL_TYPES: Record<string, ModelType> = {
   "gpt-5-mini": "fast",
   "gpt-4.1-mini": "fast",
   "gpt-4o-mini": "fast",
-  // Anthropic - Haiku is fast, Opus models could be extended thinking
-  "claude-haiku-4-5-20251015": "fast",
+  // Anthropic - Haiku is fast, Opus models are extended thinking
+  "claude-haiku-4-5-20251001": "fast",
   "claude-opus-4-5-20251101": "thinking",
+  "claude-opus-4-1-20250805": "thinking",
   "claude-opus-4-20250514": "thinking",
   // Gemini - flash/lite models are fast
   "gemini-3-flash-preview": "fast",
@@ -127,3 +130,10 @@ export const MODEL_TYPES: Record<string, ModelType> = {
 export function getModelType(model: string): ModelType {
   return MODEL_TYPES[model] || "standard";
 }
+
+// Default models for each provider (fast, cost-effective options)
+export const DEFAULT_MODELS: Record<LLMProvider, string> = {
+  openai: "gpt-4o-mini",
+  anthropic: "claude-haiku-4-5-20251001",
+  gemini: "gemini-2.5-flash",
+};

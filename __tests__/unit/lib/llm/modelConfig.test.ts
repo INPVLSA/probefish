@@ -8,6 +8,7 @@ import {
   getModelLabel,
   MODEL_TYPES,
   MODEL_LABELS,
+  DEFAULT_MODELS,
 } from '@/lib/llm/types';
 
 describe('Model Configuration', () => {
@@ -197,12 +198,6 @@ describe('Model Configuration', () => {
   });
 
   describe('Provider-specific defaults', () => {
-    const DEFAULT_MODELS: Record<string, string> = {
-      openai: 'gpt-4o-mini',
-      anthropic: 'claude-haiku-4-5-20251015',
-      gemini: 'gemini-2.5-flash',
-    };
-
     it('should have default models for each provider', () => {
       expect(DEFAULT_MODELS.openai).toBeDefined();
       expect(DEFAULT_MODELS.anthropic).toBeDefined();
@@ -221,7 +216,7 @@ describe('Model Configuration', () => {
 
     it('should use default model when not specified', () => {
       interface Config {
-        provider: string;
+        provider: LLMProvider;
         model?: string;
       }
 
@@ -230,28 +225,22 @@ describe('Model Configuration', () => {
       };
 
       const effectiveModel = config.model || DEFAULT_MODELS[config.provider];
-      expect(effectiveModel).toBe('gpt-4o-mini');
+      expect(effectiveModel).toBe(DEFAULT_MODELS.openai);
     });
   });
 
   describe('Model switching logic', () => {
     it('should change model when provider changes', () => {
-      const DEFAULT_MODELS: Record<string, string> = {
-        openai: 'gpt-4o-mini',
-        anthropic: 'claude-haiku-4-5-20251015',
-        gemini: 'gemini-2.5-flash',
-      };
-
-      let currentProvider = 'openai';
+      let currentProvider: LLMProvider = 'openai';
       let currentModel = DEFAULT_MODELS[currentProvider];
 
-      expect(currentModel).toBe('gpt-4o-mini');
+      expect(currentModel).toBe(DEFAULT_MODELS.openai);
 
       // Simulate provider change
       currentProvider = 'anthropic';
       currentModel = DEFAULT_MODELS[currentProvider];
 
-      expect(currentModel).toBe('claude-haiku-4-5-20251015');
+      expect(currentModel).toBe(DEFAULT_MODELS.anthropic);
     });
 
     it('should get models list for provider', () => {
@@ -401,7 +390,7 @@ describe('getModelType', () => {
     });
 
     it('should return fast for Anthropic Haiku models', () => {
-      expect(getModelType('claude-haiku-4-5-20251015')).toBe('fast');
+      expect(getModelType(DEFAULT_MODELS.anthropic)).toBe('fast');
     });
 
     it('should return fast for Gemini flash/lite models', () => {
@@ -466,9 +455,12 @@ describe('getModelLabel', () => {
   });
 
   it('should return human-readable label for known Anthropic models', () => {
-    expect(getModelLabel('claude-opus-4-5-20251101')).toBe('Claude Opus 4.5 (claude-opus-4-5-20251101)');
-    expect(getModelLabel('claude-sonnet-4-5-20250929')).toBe('Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)');
-    expect(getModelLabel('claude-haiku-4-5-20251015')).toBe('Claude Haiku 4.5 (claude-haiku-4-5-20251015)');
+    // Test that all Anthropic models have labels defined
+    for (const model of ANTHROPIC_MODELS) {
+      const label = getModelLabel(model);
+      expect(label).toContain(model);
+      expect(label).not.toBe(model); // Should have a human-readable prefix
+    }
   });
 
   it('should return human-readable label for known Gemini models', () => {
