@@ -373,8 +373,10 @@ export default function TestSuiteDetailPage({
               <Globe className="h-4 w-4" />
             )}
             <span>Testing: {target?.name}</span>
-            {testSuite?.targetVersion && (
-              <Badge variant="outline">v{testSuite.targetVersion}</Badge>
+            {testSuite?.targetType === "prompt" && (
+              <Badge variant="outline">
+                {testSuite.targetVersion ? `v${testSuite.targetVersion}` : "Latest"}
+              </Badge>
             )}
             {testSuite?.targetType === "prompt" && target?.content && (
               <Dialog>
@@ -386,9 +388,13 @@ export default function TestSuiteDetailPage({
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                   <DialogHeader>
-                    <DialogTitle>{target.name} - Version {testSuite.targetVersion}</DialogTitle>
+                    <DialogTitle>
+                      {target.name} - {testSuite.targetVersion ? `Version ${testSuite.targetVersion}` : "Latest Version"}
+                    </DialogTitle>
                     <DialogDescription>
-                      Prompt content being tested
+                      {testSuite.targetVersion
+                        ? "Prompt content being tested"
+                        : "Always uses the current version of the prompt"}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex-1 overflow-y-auto space-y-4">
