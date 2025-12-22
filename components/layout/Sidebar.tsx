@@ -11,6 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown, FileText, Github } from "lucide-react";
+import { UsersIcon, UsersIconHandle } from "@/components/ui/users";
 import { FishSymbolIcon, FishSymbolIconHandle } from "@/components/ui/fish-symbol";
 import { HomeIcon, HomeIconHandle } from "@/components/ui/home";
 import { FoldersIcon, FoldersIconHandle } from "@/components/ui/folders";
@@ -28,7 +29,9 @@ export default function Sidebar() {
   const homeIconRef = useRef<HomeIconHandle>(null);
   const foldersIconRef = useRef<FoldersIconHandle>(null);
   const settingsIconRef = useRef<SettingsIconHandle>(null);
+  const usersIconRef = useRef<UsersIconHandle>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     // Animate fish on page load
@@ -52,6 +55,20 @@ export default function Sidebar() {
       }
     };
     fetchProjects();
+
+    // Fetch user info to check super admin status
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setIsSuperAdmin(data.user?.isSuperAdmin || false);
+        }
+      } catch {
+        // Ignore errors silently
+      }
+    };
+    fetchUser();
   }, []);
 
   const isActive = (href: string) => {
@@ -160,6 +177,25 @@ export default function Sidebar() {
 
       <div className="p-2">
         <ul className="space-y-1">
+          {isSuperAdmin && (
+            <li>
+              <Button
+                variant={isActive("/admin/users") ? "secondary" : "ghost"}
+                className={cn(
+                  "w-full justify-start px-3",
+                  isActive("/admin/users") && "bg-sidebar-accent text-sidebar-accent-foreground"
+                )}
+                asChild
+                onMouseEnter={() => usersIconRef.current?.startAnimation()}
+                onMouseLeave={() => usersIconRef.current?.stopAnimation()}
+              >
+                <Link href="/admin/users">
+                  <UsersIcon ref={usersIconRef} size={16} className="size-4" />
+                  All Users
+                </Link>
+              </Button>
+            </li>
+          )}
           <li>
             <Button
               variant={isActive("/settings") ? "secondary" : "ghost"}

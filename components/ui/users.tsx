@@ -99,13 +99,13 @@ const UsersIcon = forwardRef<UsersIconHandle, UsersIconProps>(
           <motion.path
             d="M22 21v-2a4 4 0 0 0-3-3.87"
             variants={PATH_VARIANTS}
-            initial={animateOnLoad ? 'initial' : 'normal'}
+            initial={animateOnLoad ? 'initial' : false}
             animate={controls}
           />
           <motion.path
             d="M16 3.13a4 4 0 0 1 0 7.75"
             variants={PATH_VARIANTS}
-            initial={animateOnLoad ? 'initial' : 'normal'}
+            initial={animateOnLoad ? 'initial' : false}
             animate={controls}
           />
         </svg>
