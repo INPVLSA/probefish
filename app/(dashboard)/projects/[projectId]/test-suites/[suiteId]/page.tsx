@@ -16,6 +16,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, Save, FileText, Globe, Download, Eye } from "lucide-react";
 import {
   Dialog,
@@ -87,12 +94,21 @@ interface TestRun {
   };
 }
 
+interface PromptVersion {
+  version: number;
+  variables: string[];
+  content: string;
+  systemPrompt?: string;
+}
+
 interface Target {
   _id: string;
   name: string;
   variables: string[];
   content?: string;
   systemPrompt?: string;
+  versions?: PromptVersion[];
+  currentVersion?: number;
 }
 
 export default function TestSuiteDetailPage({
@@ -109,6 +125,7 @@ export default function TestSuiteDetailPage({
   const [target, setTarget] = useState<Target | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [targetVersion, setTargetVersion] = useState<number | undefined>();
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [validationRules, setValidationRules] = useState<ValidationRule[]>([]);
   const [llmJudgeConfig, setLlmJudgeConfig] = useState<LLMJudgeConfig>({
@@ -148,6 +165,7 @@ export default function TestSuiteDetailPage({
       setTestSuite(suite);
       setName(suite.name);
       setDescription(suite.description || "");
+      setTargetVersion(suite.targetVersion);
       setTestCases(suite.testCases || []);
       setValidationRules(suite.validationRules || []);
       setLlmJudgeConfig(
@@ -174,6 +192,9 @@ export default function TestSuiteDetailPage({
         let variables: string[] = [];
         let content: string | undefined;
         let systemPrompt: string | undefined;
+        let versions: PromptVersion[] | undefined;
+        let currentVersion: number | undefined;
+
         if (suite.targetType === "prompt") {
           const version = targetObj.versions?.find(
             (v: { version: number }) =>
@@ -182,6 +203,13 @@ export default function TestSuiteDetailPage({
           variables = version?.variables || [];
           content = version?.content;
           systemPrompt = version?.systemPrompt;
+          versions = targetObj.versions?.map((v: PromptVersion) => ({
+            version: v.version,
+            variables: v.variables,
+            content: v.content,
+            systemPrompt: v.systemPrompt,
+          }));
+          currentVersion = targetObj.currentVersion;
         } else {
           variables = targetObj.variables || [];
         }
@@ -192,6 +220,8 @@ export default function TestSuiteDetailPage({
           variables,
           content,
           systemPrompt,
+          versions,
+          currentVersion,
         });
       }
 
@@ -242,6 +272,7 @@ export default function TestSuiteDetailPage({
           body: JSON.stringify({
             name: name.trim(),
             description: description.trim() || undefined,
+            targetVersion: targetVersion === undefined ? null : targetVersion,
             testCases,
             validationRules,
             llmJudgeConfig,
@@ -375,7 +406,7 @@ export default function TestSuiteDetailPage({
             <span>Testing: {target?.name}</span>
             {testSuite?.targetType === "prompt" && (
               <Badge variant="outline">
-                {testSuite.targetVersion ? `v${testSuite.targetVersion}` : "Latest"}
+                {targetVersion ? `v${targetVersion}` : "Latest"}
               </Badge>
             )}
             {testSuite?.targetType === "prompt" && target?.content && (
@@ -389,10 +420,10 @@ export default function TestSuiteDetailPage({
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                   <DialogHeader>
                     <DialogTitle>
-                      {target.name} - {testSuite.targetVersion ? `Version ${testSuite.targetVersion}` : "Latest Version"}
+                      {target.name} - {targetVersion ? `Version ${targetVersion}` : "Latest Version"}
                     </DialogTitle>
                     <DialogDescription>
-                      {testSuite.targetVersion
+                      {targetVersion
                         ? "Prompt content being tested"
                         : "Always uses the current version of the prompt"}
                     </DialogDescription>
@@ -576,6 +607,38 @@ export default function TestSuiteDetailPage({
                       rows={3}
                     />
                   </div>
+                  {testSuite?.targetType === "prompt" && target?.versions && (
+                    <div className="space-y-2">
+                      <Label>Prompt Version</Label>
+                      <Select
+                        value={targetVersion === undefined ? "latest" : String(targetVersion)}
+                        onValueChange={(v) => {
+                          setTargetVersion(v === "latest" ? undefined : parseInt(v, 10));
+                          setHasChanges(true);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="latest">
+                            Latest (always use current)
+                          </SelectItem>
+                          {target.versions.map((v) => (
+                            <SelectItem key={v.version} value={String(v.version)}>
+                              Version {v.version}
+                              {v.version === target.currentVersion && " (current)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {targetVersion === undefined
+                          ? "Tests will always run against the current version of the prompt"
+                          : `Tests will run against version ${targetVersion}`}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
