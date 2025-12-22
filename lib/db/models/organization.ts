@@ -23,6 +23,7 @@ export interface IOrganization extends Document {
     openai?: ILLMCredential;
     anthropic?: ILLMCredential;
     gemini?: ILLMCredential;
+    grok?: ILLMCredential;
     custom?: Array<{ name: string; baseUrl: string } & ILLMCredential>;
   };
   settings: {
@@ -99,6 +100,7 @@ const organizationSchema = new Schema<IOrganization>(
       openai: llmCredentialSchema,
       anthropic: llmCredentialSchema,
       gemini: llmCredentialSchema,
+      grok: llmCredentialSchema,
       custom: [
         {
           name: String,

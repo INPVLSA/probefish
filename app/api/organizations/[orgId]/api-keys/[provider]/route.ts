@@ -8,8 +8,8 @@ interface RouteParams {
   params: Promise<{ orgId: string; provider: string }>;
 }
 
-type ProviderKey = "openai" | "anthropic" | "gemini";
-const VALID_PROVIDERS: ProviderKey[] = ["openai", "anthropic", "gemini"];
+type ProviderKey = "openai" | "anthropic" | "gemini" | "grok";
+const VALID_PROVIDERS: ProviderKey[] = ["openai", "anthropic", "gemini", "grok"];
 
 // DELETE /api/organizations/[orgId]/api-keys/[provider] - Delete API key
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
@@ -18,7 +18,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     if (!VALID_PROVIDERS.includes(provider as ProviderKey)) {
       return NextResponse.json(
-        { error: "Invalid provider. Must be openai, anthropic, or gemini" },
+        { error: "Invalid provider. Must be openai, anthropic, gemini, or grok" },
         { status: 400 }
       );
     }

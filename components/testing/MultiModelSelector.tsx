@@ -17,10 +17,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown, Layers } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS } from "@/lib/llm/types";
 
 export interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini";
+  provider: "openai" | "anthropic" | "gemini" | "grok";
   model: string;
 }
 
@@ -31,6 +31,7 @@ interface MultiModelSelectorProps {
     openai: boolean;
     anthropic: boolean;
     gemini: boolean;
+    grok: boolean;
   };
 }
 
@@ -47,17 +48,22 @@ const PROVIDER_INFO = {
     name: "Google Gemini",
     models: GEMINI_MODELS,
   },
+  grok: {
+    name: "Grok (xAI)",
+    models: GROK_MODELS,
+  },
 };
 
 export function MultiModelSelector({
   selectedModels,
   onChange,
-  availableProviders = { openai: true, anthropic: true, gemini: true },
+  availableProviders = { openai: true, anthropic: true, gemini: true, grok: true },
 }: MultiModelSelectorProps) {
   const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({
     openai: true,
     anthropic: false,
     gemini: false,
+    grok: false,
   });
 
   const isModelSelected = (provider: string, model: string) => {

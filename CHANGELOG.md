@@ -1,4 +1,8 @@
-Release v0.7.1
+### v0.7.2 
+
+- Grok (xAI) provider support - Grok 3, Grok 2 and variants
+
+### v0.7.1
 
 - Prompt preview in test suite
 - "Latest" prompt version option for test suites
@@ -9,6 +13,6 @@ Release v0.7.1
 - Run tests multiple times (N iterations) for consistency testing
 - UI improvements
 
-v0.7.0 (Mahi-mahi)
+# v0.7.0 (Mahi-mahi)
 
 - Open Source now.

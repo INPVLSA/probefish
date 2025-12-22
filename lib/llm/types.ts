@@ -1,6 +1,6 @@
 // LLM Provider Types
 
-export type LLMProvider = "openai" | "anthropic" | "gemini";
+export type LLMProvider = "openai" | "anthropic" | "gemini" | "grok";
 
 export interface LLMMessage {
   role: "system" | "user" | "assistant";
@@ -30,6 +30,7 @@ export interface LLMProviderCredentials {
   openaiApiKey?: string;
   anthropicApiKey?: string;
   geminiApiKey?: string;
+  grokApiKey?: string;
 }
 
 export interface LLMProviderInterface {
@@ -71,9 +72,19 @@ export const GEMINI_MODELS = [
   "gemini-2.0-flash-lite",
 ] as const;
 
+export const GROK_MODELS = [
+  "grok-3",
+  "grok-3-fast",
+  "grok-3-mini",
+  "grok-3-mini-fast",
+  "grok-2",
+  "grok-2-mini",
+] as const;
+
 export type OpenAIModel = (typeof OPENAI_MODELS)[number];
 export type AnthropicModel = (typeof ANTHROPIC_MODELS)[number];
 export type GeminiModel = (typeof GEMINI_MODELS)[number];
+export type GrokModel = (typeof GROK_MODELS)[number];
 
 // Human-readable labels for models
 export const MODEL_LABELS: Record<string, string> = {
@@ -100,6 +111,13 @@ export const MODEL_LABELS: Record<string, string> = {
   "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite (gemini-2.5-flash-lite)",
   "gemini-2.0-flash": "Gemini 2.0 Flash (gemini-2.0-flash)",
   "gemini-2.0-flash-lite": "Gemini 2.0 Flash Lite (gemini-2.0-flash-lite)",
+  // Grok (xAI)
+  "grok-3": "Grok 3 (grok-3)",
+  "grok-3-fast": "Grok 3 Fast (grok-3-fast)",
+  "grok-3-mini": "Grok 3 Mini (grok-3-mini)",
+  "grok-3-mini-fast": "Grok 3 Mini Fast (grok-3-mini-fast)",
+  "grok-2": "Grok 2 (grok-2)",
+  "grok-2-mini": "Grok 2 Mini (grok-2-mini)",
 };
 
 export function getModelLabel(model: string): string {
@@ -125,6 +143,11 @@ export const MODEL_TYPES: Record<string, ModelType> = {
   "gemini-2.5-flash-lite": "fast",
   "gemini-2.0-flash": "fast",
   "gemini-2.0-flash-lite": "fast",
+  // Grok - fast/mini models are fast
+  "grok-3-fast": "fast",
+  "grok-3-mini": "fast",
+  "grok-3-mini-fast": "fast",
+  "grok-2-mini": "fast",
 };
 
 export function getModelType(model: string): ModelType {
@@ -136,4 +159,5 @@ export const DEFAULT_MODELS: Record<LLMProvider, string> = {
   openai: "gpt-4o-mini",
   anthropic: "claude-haiku-4-5-20251001",
   gemini: "gemini-2.5-flash",
+  grok: "grok-3-mini-fast",
 };

@@ -25,10 +25,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Cpu, ChevronDown, Settings2 } from "lucide-react";
 import { useState } from "react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
 
 export interface ModelConfig {
-  provider?: "openai" | "anthropic" | "gemini" | "custom";
+  provider?: "openai" | "anthropic" | "gemini" | "grok" | "custom";
   model?: string;
   temperature?: number;
   maxTokens?: number;
@@ -51,9 +51,11 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
       ? ANTHROPIC_MODELS
       : provider === "gemini"
         ? GEMINI_MODELS
-        : OPENAI_MODELS;
+        : provider === "grok"
+          ? GROK_MODELS
+          : OPENAI_MODELS;
 
-  const handleProviderChange = (newProvider: "openai" | "anthropic" | "gemini") => {
+  const handleProviderChange = (newProvider: "openai" | "anthropic" | "gemini" | "grok") => {
     onChange({
       ...config,
       provider: newProvider,
@@ -110,7 +112,7 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
             <Select
               value={provider}
               onValueChange={(v) =>
-                handleProviderChange(v as "openai" | "anthropic" | "gemini")
+                handleProviderChange(v as "openai" | "anthropic" | "gemini" | "grok")
               }
             >
               <SelectTrigger className="w-full">
@@ -120,6 +122,7 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
                 <SelectItem value="openai">OpenAI</SelectItem>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="gemini">Google Gemini</SelectItem>
+                <SelectItem value="grok">Grok (xAI)</SelectItem>
               </SelectContent>
             </Select>
           </div>

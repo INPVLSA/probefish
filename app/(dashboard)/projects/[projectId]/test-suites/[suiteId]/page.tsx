@@ -141,10 +141,11 @@ export default function TestSuiteDetailPage({
   const [deleting, setDeleting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [error, setError] = useState("");
-  const [storedApiKeys, setStoredApiKeys] = useState<{ openai: boolean; anthropic: boolean; gemini: boolean }>({
+  const [storedApiKeys, setStoredApiKeys] = useState<{ openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean }>({
     openai: false,
     anthropic: false,
     gemini: false,
+    grok: false,
   });
   const [multiModelResults, setMultiModelResults] = useState<MultiModelRunResult | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -237,6 +238,7 @@ export default function TestSuiteDetailPage({
               openai: keys.openai?.configured === true,
               anthropic: keys.anthropic?.configured === true,
               gemini: keys.gemini?.configured === true,
+              grok: keys.grok?.configured === true,
             });
           }
         } catch {

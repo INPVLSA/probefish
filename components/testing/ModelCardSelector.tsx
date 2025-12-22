@@ -22,13 +22,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { X, Plus, ChevronDown, AlertCircle, Star, Zap, Brain } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
 import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
+import { GrokLogo } from "@/components/ui/grok-logo";
 
 export interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini";
+  provider: "openai" | "anthropic" | "gemini" | "grok";
   model: string;
   isPrimary?: boolean;
 }
@@ -36,7 +37,7 @@ export interface ModelSelection {
 interface ModelCardSelectorProps {
   selectedModels: ModelSelection[];
   onChange: (models: ModelSelection[]) => void;
-  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean };
+  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean };
   disabled?: boolean;
 }
 
@@ -84,6 +85,13 @@ const PROVIDER_CONFIG = {
     styles: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400",
     badgeStyles: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
+  grok: {
+    name: "Grok",
+    models: GROK_MODELS,
+    Icon: GrokLogo,
+    styles: "bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900/20 dark:border-slate-800 dark:text-slate-400",
+    badgeStyles: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
+  },
 };
 
 export function ModelCardSelector({
@@ -94,7 +102,7 @@ export function ModelCardSelector({
 }: ModelCardSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
-    new Set(["openai", "anthropic", "gemini"])
+    new Set(["openai", "anthropic", "gemini", "grok"])
   );
 
   const toggleProvider = (provider: string) => {
@@ -130,7 +138,7 @@ export function ModelCardSelector({
     onChange(newModels);
   };
 
-  const addModel = (provider: "openai" | "anthropic" | "gemini", model: string) => {
+  const addModel = (provider: "openai" | "anthropic" | "gemini" | "grok", model: string) => {
     // Check if already selected
     const exists = selectedModels.some(
       (m) => m.provider === provider && m.model === model
