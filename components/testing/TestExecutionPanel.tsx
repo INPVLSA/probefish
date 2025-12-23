@@ -9,12 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus } from "lucide-react";
+import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RefreshCWIcon, RefreshCCWIconWIcon } from "@/components/ui/refresh-cw";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
 import { ModelCardSelector, ModelSelection } from "./ModelCardSelector";
 import { Input } from "@/components/ui/input";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export interface TestRunResult {
   success: boolean;
@@ -459,93 +464,121 @@ export function TestExecutionPanel({
           </div>
         )}
 
-        <div className="flex gap-2 items-center">
-          <div className="flex items-center gap-1">
-            <Label htmlFor="iterations-prompt" className="text-xs text-muted-foreground whitespace-nowrap">
-              Runs:
-            </Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setIterations(Math.max(1, iterations - 1))}
-              disabled={running || iterations <= 1}
-            >
-              <Minus className="h-3 w-3" />
-            </Button>
-            <Input
-              id="iterations-prompt"
-              type="number"
-              min={1}
-              max={100}
-              value={iterations}
-              onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-              className="h-8 w-12 text-center px-1"
-              disabled={running}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setIterations(Math.min(100, iterations + 1))}
-              disabled={running || iterations >= 100}
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          </div>
-          <Button
-            onClick={() => primaryModel && runSingleModel(primaryModel)}
-            disabled={!canRunPrimary}
-            className="flex-1"
-            onMouseEnter={() => iterations === 1 ? airplaneRef.current?.startAnimation() : refreshIconRef.current?.startAnimation()}
-            onMouseLeave={() => iterations === 1 ? airplaneRef.current?.stopAnimation() : refreshIconRef.current?.stopAnimation()}
-          >
-            {running && !progress ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running...
-              </>
-            ) : !primaryModel ? (
-              <>
-                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
-                Select Model
-              </>
-            ) : iterations === 1 ? (
-              <>
-                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
-                Run Primary
-              </>
-            ) : (
-              <>
-                <RefreshCWIcon ref={refreshIconRef} size={16} className="mr-2" />
-                Run {iterations}x
-              </>
-            )}
-          </Button>
-
-          {selectedModels.length > 1 && (
-            <Button
-              onClick={runAllModels}
-              disabled={!canRunAll}
-              variant="outline"
-              className="flex-1"
-            >
-              {running && progress ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {progress.current}/{progress.total}
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="mr-2 h-4 w-4" />
-                  Run All ({selectedModels.length})
-                </>
-              )}
-            </Button>
+        <Button
+          onClick={() => primaryModel && runSingleModel(primaryModel)}
+          disabled={!canRunPrimary}
+          className="w-full"
+          onMouseEnter={() => airplaneRef.current?.startAnimation()}
+          onMouseLeave={() => airplaneRef.current?.stopAnimation()}
+        >
+          {running && !progress ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Running...
+            </>
+          ) : !primaryModel ? (
+            <>
+              <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+              Select Model
+            </>
+          ) : (
+            <>
+              <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+              Run tests
+            </>
           )}
-        </div>
+        </Button>
+
+        {/* Additional run options */}
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                Additional run options
+              </span>
+              <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="iterations-prompt" className="text-sm text-muted-foreground whitespace-nowrap">
+                Runs:
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIterations(Math.max(1, iterations - 1))}
+                disabled={running || iterations <= 1}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <Input
+                id="iterations-prompt"
+                type="number"
+                min={1}
+                max={100}
+                value={iterations}
+                onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="h-8 w-16 text-center px-1"
+                disabled={running}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIterations(Math.min(100, iterations + 1))}
+                disabled={running || iterations >= 100}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+              <Button
+                onClick={() => primaryModel && runSingleModel(primaryModel)}
+                disabled={!canRunPrimary || iterations < 2}
+                variant="secondary"
+                className="flex-1"
+                onMouseEnter={() => refreshIconRef.current?.startAnimation()}
+                onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
+              >
+                {running && !progress ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCWIcon ref={refreshIconRef} size={16} className="mr-2" />
+                    Run {iterations}x
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {selectedModels.length > 1 && (
+              <Button
+                onClick={runAllModels}
+                disabled={!canRunAll}
+                variant="outline"
+                className="w-full"
+              >
+                {running && progress ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Running {progress.current}/{progress.total} models...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    Run all {selectedModels.length} models
+                  </>
+                )}
+              </Button>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
 
         {testCaseCount === 0 && (
           <p className="text-xs text-muted-foreground text-center">
