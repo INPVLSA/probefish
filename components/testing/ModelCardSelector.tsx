@@ -185,7 +185,7 @@ export function ModelCardSelector({
                 relative flex items-center gap-2 px-3 py-2 rounded-lg border
                 ${config.styles}
                 ${!isAvailable ? "opacity-60" : ""}
-                ${isPrimary ? "ring-2 ring-primary ring-offset-1" : ""}
+                ${isPrimary ? "ring-2 ring-blue-500 dark:ring-blue-400" : ""}
               `}
             >
               <Icon size={16} className="flex-shrink-0" />
