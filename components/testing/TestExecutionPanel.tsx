@@ -66,7 +66,7 @@ interface TestExecutionPanelProps {
   suiteId: string;
   testCaseCount: number;
   targetType: "prompt" | "endpoint";
-  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean };
+  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean; deepseek: boolean };
   savedComparisonModels?: ModelSelection[];
   onRunComplete: (result: TestRunResult | MultiModelRunResult) => void;
 }

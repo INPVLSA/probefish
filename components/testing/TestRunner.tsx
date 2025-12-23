@@ -40,6 +40,7 @@ interface TestRunnerProps {
     anthropic: boolean;
     gemini: boolean;
     grok: boolean;
+    deepseek: boolean;
   };
   savedComparisonModels?: ModelSelection[];
   onRunComplete?: (result: TestRunResult) => void;
@@ -94,7 +95,7 @@ export function TestRunner({
   targetType = "prompt",
   needsOpenAI = false,
   needsAnthropic = false,
-  availableProviders = { openai: true, anthropic: true, gemini: true, grok: true },
+  availableProviders = { openai: true, anthropic: true, gemini: true, grok: true, deepseek: true },
   savedComparisonModels,
   onRunComplete,
   onMultiModelRunComplete,

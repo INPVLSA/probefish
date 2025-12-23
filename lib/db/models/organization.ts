@@ -24,6 +24,7 @@ export interface IOrganization extends Document {
     anthropic?: ILLMCredential;
     gemini?: ILLMCredential;
     grok?: ILLMCredential;
+    deepseek?: ILLMCredential;
     custom?: Array<{ name: string; baseUrl: string } & ILLMCredential>;
   };
   settings: {
@@ -101,6 +102,7 @@ const organizationSchema = new Schema<IOrganization>(
       anthropic: llmCredentialSchema,
       gemini: llmCredentialSchema,
       grok: llmCredentialSchema,
+      deepseek: llmCredentialSchema,
       custom: [
         {
           name: String,

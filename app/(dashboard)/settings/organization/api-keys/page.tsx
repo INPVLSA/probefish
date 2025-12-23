@@ -47,6 +47,7 @@ import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
 import { GrokLogo } from "@/components/ui/grok-logo";
+import { DeepSeekLogo } from "@/components/ui/deepseek-logo";
 
 interface ApiKeyInfo {
   configured: boolean;
@@ -80,6 +81,12 @@ const providerInfo = {
     description: "Grok 3, Grok 2, and other xAI models",
     placeholder: "xai-...",
     icon: GrokLogo,
+  },
+  deepseek: {
+    name: "DeepSeek",
+    description: "DeepSeek Chat, DeepSeek Reasoner models",
+    placeholder: "sk-...",
+    icon: DeepSeekLogo,
   },
 };
 

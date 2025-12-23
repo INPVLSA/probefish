@@ -17,10 +17,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDown, Layers } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS } from "@/lib/llm/types";
 
 export interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini" | "grok";
+  provider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
   model: string;
 }
 
@@ -32,6 +32,7 @@ interface MultiModelSelectorProps {
     anthropic: boolean;
     gemini: boolean;
     grok: boolean;
+    deepseek: boolean;
   };
 }
 
@@ -52,18 +53,23 @@ const PROVIDER_INFO = {
     name: "Grok (xAI)",
     models: GROK_MODELS,
   },
+  deepseek: {
+    name: "DeepSeek",
+    models: DEEPSEEK_MODELS,
+  },
 };
 
 export function MultiModelSelector({
   selectedModels,
   onChange,
-  availableProviders = { openai: true, anthropic: true, gemini: true, grok: true },
+  availableProviders = { openai: true, anthropic: true, gemini: true, grok: true, deepseek: true },
 }: MultiModelSelectorProps) {
   const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({
     openai: true,
     anthropic: false,
     gemini: false,
     grok: false,
+    deepseek: false,
   });
 
   const isModelSelected = (provider: string, model: string) => {
@@ -72,7 +78,7 @@ export function MultiModelSelector({
     );
   };
 
-  const toggleModel = (provider: "openai" | "anthropic" | "gemini", model: string) => {
+  const toggleModel = (provider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek", model: string) => {
     if (isModelSelected(provider, model)) {
       onChange(
         selectedModels.filter(

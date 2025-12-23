@@ -3,7 +3,8 @@ import { openaiProvider } from '@/lib/llm/providers/openai';
 import { anthropicProvider } from '@/lib/llm/providers/anthropic';
 import { geminiProvider } from '@/lib/llm/providers/gemini';
 import { grokProvider } from '@/lib/llm/providers/grok';
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEFAULT_MODELS } from '@/lib/llm/types';
+import { deepseekProvider } from '@/lib/llm/providers/deepseek';
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS } from '@/lib/llm/types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -449,6 +450,212 @@ describe('Gemini Provider', () => {
   });
 });
 
+describe('DeepSeek Provider', () => {
+  describe('name', () => {
+    it('should have correct provider name', () => {
+      expect(deepseekProvider.name).toBe('deepseek');
+    });
+  });
+
+  describe('listModels', () => {
+    it('should return all DeepSeek models', () => {
+      const models = deepseekProvider.listModels();
+      expect(models).toEqual([...DEEPSEEK_MODELS]);
+    });
+  });
+
+  describe('complete', () => {
+    it('should send correct request format to DeepSeek API', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hello!' } }],
+          model: 'deepseek-chat',
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        }),
+      });
+
+      await deepseekProvider.complete(
+        {
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'You are helpful.' },
+            { role: 'user', content: 'Hi' },
+          ],
+          temperature: 0.5,
+          maxTokens: 100,
+        },
+        'sk-test-key'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.deepseek.com/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer sk-test-key',
+          },
+        })
+      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.model).toBe('deepseek-chat');
+      expect(body.messages).toEqual([
+        { role: 'system', content: 'You are helpful.' },
+        { role: 'user', content: 'Hi' },
+      ]);
+      expect(body.temperature).toBe(0.5);
+      expect(body.max_tokens).toBe(100);
+    });
+
+    it('should parse successful response correctly', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: { content: 'Test response' },
+              finish_reason: 'stop',
+            },
+          ],
+          model: 'deepseek-chat',
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+          },
+        }),
+      });
+
+      const result = await deepseekProvider.complete(
+        {
+          model: 'deepseek-chat',
+          messages: [{ role: 'user', content: 'Hi' }],
+        },
+        'sk-test-key'
+      );
+
+      expect(result.content).toBe('Test response');
+      expect(result.model).toBe('deepseek-chat');
+      expect(result.usage).toEqual({
+        promptTokens: 10,
+        completionTokens: 5,
+        totalTokens: 15,
+      });
+      expect(result.finishReason).toBe('stop');
+    });
+
+    it('should use default temperature when not provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hi' } }],
+          model: 'deepseek-chat',
+        }),
+      });
+
+      await deepseekProvider.complete(
+        {
+          model: 'deepseek-chat',
+          messages: [{ role: 'user', content: 'Hi' }],
+        },
+        'sk-test-key'
+      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.temperature).toBe(0.7);
+    });
+
+    it('should throw error on API failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({
+          error: { message: 'Invalid API key' },
+        }),
+      });
+
+      await expect(
+        deepseekProvider.complete(
+          {
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: 'Hi' }],
+          },
+          'invalid-key'
+        )
+      ).rejects.toThrow('Invalid API key');
+    });
+
+    it('should throw generic error when API error has no message', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      await expect(
+        deepseekProvider.complete(
+          {
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: 'Hi' }],
+          },
+          'sk-test-key'
+        )
+      ).rejects.toThrow('DeepSeek API error: 500');
+    });
+
+    it('should throw error when no choices returned', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [],
+        }),
+      });
+
+      await expect(
+        deepseekProvider.complete(
+          {
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: 'Hi' }],
+          },
+          'sk-test-key'
+        )
+      ).rejects.toThrow('No response from DeepSeek');
+    });
+
+    it('should handle response without usage data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: { content: 'Test response' },
+              finish_reason: 'stop',
+            },
+          ],
+          model: 'deepseek-chat',
+        }),
+      });
+
+      const result = await deepseekProvider.complete(
+        {
+          model: 'deepseek-chat',
+          messages: [{ role: 'user', content: 'Hi' }],
+        },
+        'sk-test-key'
+      );
+
+      expect(result.content).toBe('Test response');
+      expect(result.usage).toBeUndefined();
+    });
+  });
+});
+
 describe('Grok Provider', () => {
   describe('name', () => {
     it('should have correct provider name', () => {
@@ -758,6 +965,33 @@ describe('Provider role mapping', () => {
         ],
       },
       'xai-test'
+    );
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.messages[0].role).toBe('system');
+    expect(body.messages[1].role).toBe('user');
+    expect(body.messages[2].role).toBe('assistant');
+  });
+
+  it('DeepSeek should pass through roles unchanged (OpenAI-compatible)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'Hi' } }],
+        model: 'deepseek-chat',
+      }),
+    });
+
+    await deepseekProvider.complete(
+      {
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'System' },
+          { role: 'user', content: 'User' },
+          { role: 'assistant', content: 'Assistant' },
+        ],
+      },
+      'sk-test'
     );
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);

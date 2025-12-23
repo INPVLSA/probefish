@@ -1,6 +1,7 @@
 # v0.8.0 (Blobfish)
 
 - Grok (xAI) provider support - Grok 3, Grok 2 and variants
+- DeepSeek provider support - DeepSeek Chat and DeepSeek Reasoner
 
 ### v0.7.1
 

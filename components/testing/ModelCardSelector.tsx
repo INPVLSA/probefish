@@ -22,14 +22,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { X, Plus, ChevronDown, AlertCircle, Star, Zap, Brain } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
+import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
 import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
 import { GrokLogo } from "@/components/ui/grok-logo";
+import { DeepSeekLogo } from "@/components/ui/deepseek-logo";
 
 export interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini" | "grok";
+  provider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
   model: string;
   isPrimary?: boolean;
 }
@@ -37,7 +38,7 @@ export interface ModelSelection {
 interface ModelCardSelectorProps {
   selectedModels: ModelSelection[];
   onChange: (models: ModelSelection[]) => void;
-  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean };
+  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean; deepseek: boolean };
   disabled?: boolean;
 }
 
@@ -92,6 +93,13 @@ const PROVIDER_CONFIG = {
     styles: "bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900/20 dark:border-slate-800 dark:text-slate-400",
     badgeStyles: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
   },
+  deepseek: {
+    name: "DeepSeek",
+    models: DEEPSEEK_MODELS,
+    Icon: DeepSeekLogo,
+    styles: "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-400",
+    badgeStyles: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  },
 };
 
 export function ModelCardSelector({
@@ -102,7 +110,7 @@ export function ModelCardSelector({
 }: ModelCardSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
-    new Set(["openai", "anthropic", "gemini", "grok"])
+    new Set(["openai", "anthropic", "gemini", "grok", "deepseek"])
   );
 
   const toggleProvider = (provider: string) => {
@@ -138,7 +146,7 @@ export function ModelCardSelector({
     onChange(newModels);
   };
 
-  const addModel = (provider: "openai" | "anthropic" | "gemini" | "grok", model: string) => {
+  const addModel = (provider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek", model: string) => {
     // Check if already selected
     const exists = selectedModels.some(
       (m) => m.provider === provider && m.model === model

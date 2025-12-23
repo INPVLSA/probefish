@@ -9,8 +9,8 @@ interface RouteParams {
   params: Promise<{ orgId: string }>;
 }
 
-type ProviderKey = "openai" | "anthropic" | "gemini" | "grok";
-const VALID_PROVIDERS: ProviderKey[] = ["openai", "anthropic", "gemini", "grok"];
+type ProviderKey = "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
+const VALID_PROVIDERS: ProviderKey[] = ["openai", "anthropic", "gemini", "grok", "deepseek"];
 
 // GET /api/organizations/[orgId]/api-keys - List API keys (masked)
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!provider || !VALID_PROVIDERS.includes(provider)) {
       return NextResponse.json(
-        { error: "Valid provider is required (openai, anthropic, gemini, grok)" },
+        { error: "Valid provider is required (openai, anthropic, gemini, grok, deepseek)" },
         { status: 400 }
       );
     }

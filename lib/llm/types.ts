@@ -1,6 +1,6 @@
 // LLM Provider Types
 
-export type LLMProvider = "openai" | "anthropic" | "gemini" | "grok";
+export type LLMProvider = "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
 
 export interface LLMMessage {
   role: "system" | "user" | "assistant";
@@ -31,6 +31,7 @@ export interface LLMProviderCredentials {
   anthropicApiKey?: string;
   geminiApiKey?: string;
   grokApiKey?: string;
+  deepseekApiKey?: string;
 }
 
 export interface LLMProviderInterface {
@@ -81,10 +82,16 @@ export const GROK_MODELS = [
   "grok-2-mini",
 ] as const;
 
+export const DEEPSEEK_MODELS = [
+  "deepseek-chat",
+  "deepseek-reasoner",
+] as const;
+
 export type OpenAIModel = (typeof OPENAI_MODELS)[number];
 export type AnthropicModel = (typeof ANTHROPIC_MODELS)[number];
 export type GeminiModel = (typeof GEMINI_MODELS)[number];
 export type GrokModel = (typeof GROK_MODELS)[number];
+export type DeepSeekModel = (typeof DEEPSEEK_MODELS)[number];
 
 // Human-readable labels for models
 export const MODEL_LABELS: Record<string, string> = {
@@ -118,6 +125,9 @@ export const MODEL_LABELS: Record<string, string> = {
   "grok-3-mini-fast": "Grok 3 Mini Fast (grok-3-mini-fast)",
   "grok-2": "Grok 2 (grok-2)",
   "grok-2-mini": "Grok 2 Mini (grok-2-mini)",
+  // DeepSeek
+  "deepseek-chat": "DeepSeek Chat (deepseek-chat)",
+  "deepseek-reasoner": "DeepSeek Reasoner (deepseek-reasoner)",
 };
 
 export function getModelLabel(model: string): string {
@@ -148,6 +158,9 @@ export const MODEL_TYPES: Record<string, ModelType> = {
   "grok-3-mini": "fast",
   "grok-3-mini-fast": "fast",
   "grok-2-mini": "fast",
+  // DeepSeek - reasoner is thinking model
+  "deepseek-chat": "fast",
+  "deepseek-reasoner": "thinking",
 };
 
 export function getModelType(model: string): ModelType {
@@ -160,4 +173,5 @@ export const DEFAULT_MODELS: Record<LLMProvider, string> = {
   anthropic: "claude-haiku-4-5-20251001",
   gemini: "gemini-2.5-flash",
   grok: "grok-3-mini-fast",
+  deepseek: "deepseek-chat",
 };
