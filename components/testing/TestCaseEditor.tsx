@@ -30,6 +30,23 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DeleteIcon } from "@/components/ui/delete";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export interface TestCase {
   _id?: string;
@@ -51,6 +68,167 @@ interface TestCaseEditorProps {
   onRunSelectedCases?: () => void;
   running?: boolean;
   runningCaseId?: string | null;
+}
+
+// Sortable row component
+interface SortableTestCaseRowProps {
+  testCase: TestCase;
+  index: number;
+  selectedCaseIds: string[];
+  onSelectionChange?: (ids: string[]) => void;
+  onRunSingleCase?: (testCaseId: string) => void;
+  running: boolean;
+  runningCaseId: string | null;
+  onEdit: (testCase: TestCase, index: number) => void;
+  onDuplicate: (testCase: TestCase) => void;
+  onDelete: (index: number) => void;
+  onToggle: (testCaseId: string, checked: boolean) => void;
+}
+
+function SortableTestCaseRow({
+  testCase,
+  index,
+  selectedCaseIds,
+  onSelectionChange,
+  onRunSingleCase,
+  running,
+  runningCaseId,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onToggle,
+}: SortableTestCaseRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: testCase._id || `temp-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group cursor-pointer hover:bg-muted transition-colors"
+      onClick={() => onEdit(testCase, index)}
+    >
+      {onSelectionChange && testCase._id && (
+        <Checkbox
+          checked={selectedCaseIds.includes(testCase._id)}
+          onCheckedChange={(checked) => onToggle(testCase._id!, !!checked)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Select ${testCase.name}`}
+        />
+      )}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground/50 hover:text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium truncate">{testCase.name}</span>
+          {testCase.tags && testCase.tags.length > 0 && (
+            <div className="flex gap-1 flex-wrap">
+              {testCase.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs py-0 px-1.5">
+                  {tag}
+                </Badge>
+              ))}
+              {testCase.tags.length > 3 && (
+                <Badge variant="outline" className="text-xs py-0 px-1.5">
+                  +{testCase.tags.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground truncate">
+          {Object.entries(testCase.inputs)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `${k}: "${v}"`)
+            .join(", ") || "No inputs"}
+        </div>
+        {testCase.expectedOutput && (
+          <div className="text-xs text-muted-foreground truncate mt-1 italic">
+            Expected: {testCase.expectedOutput}
+          </div>
+        )}
+      </div>
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onRunSingleCase && testCase._id && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
+                disabled={running}
+              >
+                {runningCaseId === testCase._id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Run this test case</TooltipContent>
+          </Tooltip>
+        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => { e.stopPropagation(); onEdit(testCase, index); }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Edit</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => { e.stopPropagation(); onDuplicate(testCase); }}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Duplicate</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={(e) => { e.stopPropagation(); onDelete(index); }}
+            >
+              <DeleteIcon size={16} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  );
 }
 
 export function TestCaseEditor({
@@ -184,6 +362,38 @@ export function TestCaseEditor({
       onSelectionChange(selectableCases.map((tc) => tc._id!));
     }
   };
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = testCases.findIndex(
+        (tc, idx) => (tc._id || `temp-${idx}`) === active.id
+      );
+      const newIndex = testCases.findIndex(
+        (tc, idx) => (tc._id || `temp-${idx}`) === over.id
+      );
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onChange(arrayMove(testCases, oldIndex, newIndex));
+      }
+    }
+  };
+
+  // Generate stable IDs for sortable context
+  const sortableIds = testCases.map((tc, idx) => tc._id || `temp-${idx}`);
 
   return (
     <Card>
@@ -430,116 +640,32 @@ export function TestCaseEditor({
             <p className="text-sm">Add test cases to run tests.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {testCases.map((testCase, index) => (
-              <div
-                key={testCase._id || index}
-                className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group cursor-pointer hover:bg-muted transition-colors"
-                onClick={() => handleEditCase(testCase, index)}
-              >
-                {onSelectionChange && testCase._id && (
-                  <Checkbox
-                    checked={selectedCaseIds.includes(testCase._id)}
-                    onCheckedChange={(checked) => handleToggleCase(testCase._id!, !!checked)}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Select ${testCase.name}`}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {testCases.map((testCase, index) => (
+                  <SortableTestCaseRow
+                    key={testCase._id || `temp-${index}`}
+                    testCase={testCase}
+                    index={index}
+                    selectedCaseIds={selectedCaseIds}
+                    onSelectionChange={onSelectionChange}
+                    onRunSingleCase={onRunSingleCase}
+                    running={running}
+                    runningCaseId={runningCaseId}
+                    onEdit={handleEditCase}
+                    onDuplicate={handleDuplicateCase}
+                    onDelete={handleDeleteCase}
+                    onToggle={handleToggleCase}
                   />
-                )}
-                <GripVertical className="h-4 w-4 text-muted-foreground/50" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{testCase.name}</span>
-                    {testCase.tags && testCase.tags.length > 0 && (
-                      <div className="flex gap-1 flex-wrap">
-                        {testCase.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs py-0 px-1.5">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {testCase.tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs py-0 px-1.5">
-                            +{testCase.tags.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {Object.entries(testCase.inputs)
-                      .filter(([, v]) => v)
-                      .map(([k, v]) => `${k}: "${v}"`)
-                      .join(", ") || "No inputs"}
-                  </div>
-                  {testCase.expectedOutput && (
-                    <div className="text-xs text-muted-foreground truncate mt-1 italic">
-                      Expected: {testCase.expectedOutput}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {onRunSingleCase && testCase._id && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
-                          disabled={running}
-                        >
-                          {runningCaseId === testCase._id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Run this test case</TooltipContent>
-                    </Tooltip>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => { e.stopPropagation(); handleEditCase(testCase, index); }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => { e.stopPropagation(); handleDuplicateCase(testCase); }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Duplicate</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteCase(index); }}
-                      >
-                        <DeleteIcon size={16} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Delete</TooltipContent>
-                  </Tooltip>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
     </Card>

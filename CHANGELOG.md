@@ -4,6 +4,7 @@
 - DeepSeek provider support - DeepSeek Chat and DeepSeek Reasoner
 - Run single test case - click Play button on any test case row to run it individually
 - Run selected test cases - use checkboxes to select multiple test cases and run them together
+- Drag-to-reorder test cases - drag the grip handle to reorder test cases in a suite
 - UI improvements
 - JSON syntax highlight
 
