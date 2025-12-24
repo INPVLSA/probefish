@@ -8,6 +8,7 @@ export interface ITestCase {
   expectedOutput?: string;
   notes?: string;
   tags?: string[];
+  enabled?: boolean; // Whether the test case is active (default: true)
 }
 
 // Validation Rule - static checks on output
@@ -150,6 +151,10 @@ const testCaseSchema = new Schema<ITestCase>(
     tags: {
       type: [String],
       default: [],
+    },
+    enabled: {
+      type: Boolean,
+      default: true,
     },
   },
   { _id: true }

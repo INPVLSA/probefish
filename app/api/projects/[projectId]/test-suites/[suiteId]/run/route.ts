@@ -159,6 +159,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Filter out disabled/paused test cases
+    testCasesToRun = testCasesToRun.filter((tc) => tc.enabled !== false);
+
+    if (testCasesToRun.length === 0) {
+      return NextResponse.json(
+        { error: "No enabled test cases to run" },
+        { status: 400 }
+      );
+    }
+
     // For prompt testing, verify we have required credentials
     if (testSuite.targetType === "prompt") {
       // Get the prompt to check which provider is needed

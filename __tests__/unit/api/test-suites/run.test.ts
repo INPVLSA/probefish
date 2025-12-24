@@ -542,4 +542,107 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
       expect(data.testRun.summary.total).toBe(4);
     });
   });
+
+  describe('Filtering by enabled status', () => {
+    it('should skip disabled test cases', async () => {
+      setupMocks({
+        testSuite: {
+          testCases: [
+            { _id: mockTestCase1Id, name: 'Test Case 1', inputs: { name: 'World' }, tags: ['smoke'], enabled: true },
+            { _id: mockTestCase2Id, name: 'Test Case 2', inputs: { name: 'User' }, tags: ['regression'], enabled: false },
+            { _id: mockTestCase3Id, name: 'Test Case 3', inputs: { name: 'Admin' }, tags: ['smoke', 'auth'] },
+          ],
+        },
+      });
+
+      const response = await callRoute();
+
+      expect(response.status).toBe(200);
+      // Only 2 enabled test cases should run (testCase1 and testCase3)
+      expect(executeTestCase).toHaveBeenCalledTimes(2);
+
+      const data = await response.json();
+      expect(data.testRun.summary.total).toBe(2);
+    });
+
+    it('should return 400 when all test cases are disabled', async () => {
+      setupMocks({
+        testSuite: {
+          testCases: [
+            { _id: mockTestCase1Id, name: 'Test Case 1', inputs: { name: 'World' }, enabled: false },
+            { _id: mockTestCase2Id, name: 'Test Case 2', inputs: { name: 'User' }, enabled: false },
+          ],
+        },
+      });
+
+      const response = await callRoute();
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe('No enabled test cases to run');
+    });
+
+    it('should apply enabled filter after testCaseIds filter', async () => {
+      setupMocks({
+        testSuite: {
+          testCases: [
+            { _id: mockTestCase1Id, name: 'Test Case 1', inputs: { name: 'World' }, enabled: false },
+            { _id: mockTestCase2Id, name: 'Test Case 2', inputs: { name: 'User' }, enabled: true },
+            { _id: mockTestCase3Id, name: 'Test Case 3', inputs: { name: 'Admin' }, enabled: true },
+          ],
+        },
+      });
+
+      const response = await callRoute({
+        testCaseIds: [mockTestCase1Id.toString(), mockTestCase2Id.toString()],
+      });
+
+      expect(response.status).toBe(200);
+      // Only testCase2 should run (testCase1 is disabled)
+      expect(executeTestCase).toHaveBeenCalledTimes(1);
+
+      const data = await response.json();
+      expect(data.testRun.summary.total).toBe(1);
+    });
+
+    it('should apply enabled filter after tags filter', async () => {
+      setupMocks({
+        testSuite: {
+          testCases: [
+            { _id: mockTestCase1Id, name: 'Test Case 1', inputs: { name: 'World' }, tags: ['smoke'], enabled: false },
+            { _id: mockTestCase2Id, name: 'Test Case 2', inputs: { name: 'User' }, tags: ['smoke'], enabled: true },
+            { _id: mockTestCase3Id, name: 'Test Case 3', inputs: { name: 'Admin' }, tags: ['regression'], enabled: true },
+          ],
+        },
+      });
+
+      const response = await callRoute({
+        tags: ['smoke'],
+      });
+
+      expect(response.status).toBe(200);
+      // Only testCase2 should run (testCase1 has smoke tag but is disabled)
+      expect(executeTestCase).toHaveBeenCalledTimes(1);
+
+      const data = await response.json();
+      expect(data.testRun.summary.total).toBe(1);
+    });
+
+    it('should treat undefined enabled as true (enabled by default)', async () => {
+      setupMocks({
+        testSuite: {
+          testCases: [
+            { _id: mockTestCase1Id, name: 'Test Case 1', inputs: { name: 'World' } },
+            { _id: mockTestCase2Id, name: 'Test Case 2', inputs: { name: 'User' } },
+          ],
+        },
+      });
+
+      const response = await callRoute();
+
+      expect(response.status).toBe(200);
+      // Both test cases should run (enabled is undefined, treated as true)
+      expect(executeTestCase).toHaveBeenCalledTimes(2);
+    });
+  });
 });

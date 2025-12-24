@@ -5,6 +5,7 @@
 - Run single test case - click Play button on any test case row to run it individually
 - Run selected test cases - use checkboxes to select multiple test cases and run them together
 - Drag-to-reorder test cases - drag the grip handle to reorder test cases in a suite
+- Suspend/resume test cases - toggle individual test cases to skip them during runs without deleting
 - UI improvements
 - JSON syntax highlight
 

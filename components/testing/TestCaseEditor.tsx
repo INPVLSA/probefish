@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2 } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
@@ -55,6 +55,7 @@ export interface TestCase {
   expectedOutput?: string;
   notes?: string;
   tags?: string[];
+  enabled?: boolean;
 }
 
 interface TestCaseEditorProps {
@@ -83,6 +84,7 @@ interface SortableTestCaseRowProps {
   onDuplicate: (testCase: TestCase) => void;
   onDelete: (index: number) => void;
   onToggle: (testCaseId: string, checked: boolean) => void;
+  onToggleEnabled: (index: number) => void;
 }
 
 function SortableTestCaseRow({
@@ -97,6 +99,7 @@ function SortableTestCaseRow({
   onDuplicate,
   onDelete,
   onToggle,
+  onToggleEnabled,
 }: SortableTestCaseRowProps) {
   const {
     attributes,
@@ -106,6 +109,8 @@ function SortableTestCaseRow({
     transition,
     isDragging,
   } = useSortable({ id: testCase._id || `temp-${index}` });
+
+  const isEnabled = testCase.enabled !== false;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -117,7 +122,11 @@ function SortableTestCaseRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group cursor-pointer hover:bg-muted transition-colors"
+      className={`flex items-center gap-3 p-3 rounded-lg group cursor-pointer transition-colors ${
+        isEnabled
+          ? "bg-muted/50 hover:bg-muted"
+          : "bg-muted/20 opacity-60"
+      }`}
       onClick={() => onEdit(testCase, index)}
     >
       {onSelectionChange && testCase._id && (
@@ -126,6 +135,7 @@ function SortableTestCaseRow({
           onCheckedChange={(checked) => onToggle(testCase._id!, !!checked)}
           onClick={(e) => e.stopPropagation()}
           aria-label={`Select ${testCase.name}`}
+          disabled={!isEnabled}
         />
       )}
       <div
@@ -138,7 +148,14 @@ function SortableTestCaseRow({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium truncate">{testCase.name}</span>
+          <span className={`font-medium truncate ${!isEnabled ? "line-through text-muted-foreground" : ""}`}>
+            {testCase.name}
+          </span>
+          {!isEnabled && (
+            <Badge variant="outline" className="text-xs py-0 px-1.5 text-muted-foreground">
+              Suspended
+            </Badge>
+          )}
           {testCase.tags && testCase.tags.length > 0 && (
             <div className="flex gap-1 flex-wrap">
               {testCase.tags.slice(0, 3).map((tag) => (
@@ -167,6 +184,23 @@ function SortableTestCaseRow({
         )}
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => { e.stopPropagation(); onToggleEnabled(index); }}
+            >
+              {isEnabled ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <CirclePlay className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{isEnabled ? "Suspend test case" : "Resume test case"}</TooltipContent>
+        </Tooltip>
         {onRunSingleCase && testCase._id && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -175,7 +209,7 @@ function SortableTestCaseRow({
                 size="icon"
                 className="h-8 w-8"
                 onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
-                disabled={running}
+                disabled={running || !isEnabled}
               >
                 {runningCaseId === testCase._id ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -315,6 +349,15 @@ export function TestCaseEditor({
       tags: [...(testCase.tags || [])], // Copy tags
     };
     onChange([...testCases, duplicatedCase]);
+  };
+
+  const handleToggleEnabled = (index: number) => {
+    const updated = [...testCases];
+    updated[index] = {
+      ...updated[index],
+      enabled: updated[index].enabled === false ? true : false,
+    };
+    onChange(updated);
   };
 
   const handleSaveCase = () => {
@@ -661,6 +704,7 @@ export function TestCaseEditor({
                     onDuplicate={handleDuplicateCase}
                     onDelete={handleDeleteCase}
                     onToggle={handleToggleCase}
+                    onToggleEnabled={handleToggleEnabled}
                   />
                 ))}
               </div>
