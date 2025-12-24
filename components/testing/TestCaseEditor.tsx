@@ -22,7 +22,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface TestCase {
@@ -38,12 +44,25 @@ interface TestCaseEditorProps {
   testCases: TestCase[];
   variables: string[];
   onChange: (testCases: TestCase[]) => void;
+  // Selection and run props
+  selectedCaseIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
+  onRunSingleCase?: (testCaseId: string) => void;
+  onRunSelectedCases?: () => void;
+  running?: boolean;
+  runningCaseId?: string | null;
 }
 
 export function TestCaseEditor({
   testCases,
   variables,
   onChange,
+  selectedCaseIds = [],
+  onSelectionChange,
+  onRunSingleCase,
+  onRunSelectedCases,
+  running = false,
+  runningCaseId = null,
 }: TestCaseEditorProps) {
   const [editingCase, setEditingCase] = useState<TestCase | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -143,17 +162,70 @@ export function TestCaseEditor({
     });
   };
 
+  // Selection helpers
+  const selectableCases = testCases.filter((tc) => tc._id);
+  const allSelected = selectableCases.length > 0 && selectableCases.every((tc) => selectedCaseIds.includes(tc._id!));
+  const someSelected = selectedCaseIds.length > 0;
+
+  const handleToggleCase = (testCaseId: string, checked: boolean) => {
+    if (!onSelectionChange) return;
+    if (checked) {
+      onSelectionChange([...selectedCaseIds, testCaseId]);
+    } else {
+      onSelectionChange(selectedCaseIds.filter((id) => id !== testCaseId));
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (!onSelectionChange) return;
+    if (allSelected) {
+      onSelectionChange([]);
+    } else {
+      onSelectionChange(selectableCases.map((tc) => tc._id!));
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg">Test Cases</CardTitle>
-            <CardDescription>
-              Define test cases with variable values
-            </CardDescription>
+          <div className="flex items-center gap-3">
+            {onSelectionChange && testCases.length > 0 && (
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={handleSelectAll}
+                aria-label="Select all test cases"
+              />
+            )}
+            <div>
+              <CardTitle className="text-lg">Test Cases</CardTitle>
+              <CardDescription>
+                Define test cases with variable values
+              </CardDescription>
+            </div>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <div className="flex items-center gap-2">
+            {someSelected && onRunSelectedCases && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={onRunSelectedCases}
+                disabled={running}
+              >
+                {running && !runningCaseId ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Run Selected ({selectedCaseIds.length})
+                  </>
+                )}
+              </Button>
+            )}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" onClick={handleAddCase}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -348,6 +420,7 @@ export function TestCaseEditor({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -364,6 +437,14 @@ export function TestCaseEditor({
                 className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group cursor-pointer hover:bg-muted transition-colors"
                 onClick={() => handleEditCase(testCase, index)}
               >
+                {onSelectionChange && testCase._id && (
+                  <Checkbox
+                    checked={selectedCaseIds.includes(testCase._id)}
+                    onCheckedChange={(checked) => handleToggleCase(testCase._id!, !!checked)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select ${testCase.name}`}
+                  />
+                )}
                 <GripVertical className="h-4 w-4 text-muted-foreground/50" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -396,33 +477,65 @@ export function TestCaseEditor({
                   )}
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => { e.stopPropagation(); handleEditCase(testCase, index); }}
-                    title="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => { e.stopPropagation(); handleDuplicateCase(testCase); }}
-                    title="Duplicate"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteCase(index); }}
-                    title="Delete"
-                  >
-                    <DeleteIcon size={16} />
-                  </Button>
+                  {onRunSingleCase && testCase._id && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
+                          disabled={running}
+                        >
+                          {runningCaseId === testCase._id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Run this test case</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => { e.stopPropagation(); handleEditCase(testCase, index); }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => { e.stopPropagation(); handleDuplicateCase(testCase); }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Duplicate</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCase(index); }}
+                      >
+                        <DeleteIcon size={16} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             ))}

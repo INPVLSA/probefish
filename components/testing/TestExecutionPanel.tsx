@@ -75,6 +75,7 @@ interface TestExecutionPanelProps {
   availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean; deepseek: boolean };
   savedComparisonModels?: ModelSelection[];
   availableTags?: string[];
+  selectedTestCaseIds?: string[];
   onRunComplete: (result: TestRunResult | MultiModelRunResult) => void;
 }
 
@@ -86,6 +87,7 @@ export function TestExecutionPanel({
   availableProviders,
   savedComparisonModels,
   availableTags = [],
+  selectedTestCaseIds = [],
   onRunComplete,
 }: TestExecutionPanelProps) {
   const [selectedModels, setSelectedModels] = useState<ModelSelection[]>(
@@ -163,6 +165,7 @@ export function TestExecutionPanel({
             note: runNote || undefined,
             iterations,
             tags: selectedTags.length > 0 ? selectedTags : undefined,
+            testCaseIds: selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
           }),
         }
       );
@@ -226,6 +229,7 @@ export function TestExecutionPanel({
               note: runNote || undefined,
               iterations,
               tags: selectedTags.length > 0 ? selectedTags : undefined,
+              testCaseIds: selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
             }),
           }
         );
@@ -290,6 +294,7 @@ export function TestExecutionPanel({
               note: runNote || undefined,
               iterations,
               tags: selectedTags.length > 0 ? selectedTags : undefined,
+              testCaseIds: selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
             }),
           }
         );

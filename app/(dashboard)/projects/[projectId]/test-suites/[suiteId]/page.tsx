@@ -151,6 +151,11 @@ export default function TestSuiteDetailPage({
   const [multiModelResults, setMultiModelResults] = useState<MultiModelRunResult | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
+  // Test case selection state for running individual/selected cases
+  const [selectedTestCaseIds, setSelectedTestCaseIds] = useState<string[]>([]);
+  const [runningCaseId, setRunningCaseId] = useState<string | null>(null);
+  const [isRunningTests, setIsRunningTests] = useState(false);
+
   // Compute available tags from test cases
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
@@ -338,7 +343,11 @@ export default function TestSuiteDetailPage({
   };
 
   // Unified handler for both single and multi-model results
-  const handleRunComplete = (result: TestRunResult | MultiModelRunResult) => {
+  const handleRunComplete = useCallback((result: TestRunResult | MultiModelRunResult) => {
+    // Reset running states
+    setIsRunningTests(false);
+    setRunningCaseId(null);
+
     // Check if it's a multi-model result
     if ("results" in result && Array.isArray(result.results)) {
       // Multi-model result
@@ -361,6 +370,9 @@ export default function TestSuiteDetailPage({
       } else {
         toast.warning(`Tests completed on ${successCount} model${successCount !== 1 ? "s" : ""}, ${failCount} failed`);
       }
+
+      // Clear selection after successful multi-model run
+      setSelectedTestCaseIds([]);
     } else {
       // Single model result
       const singleResult = result as TestRunResult;
@@ -370,9 +382,59 @@ export default function TestSuiteDetailPage({
         setRunHistory((prev) => [newRun, ...prev]);
         setMultiModelResults(null); // Clear multi-model results
         toast.success("Tests completed!");
+
+        // Clear selection after successful run
+        setSelectedTestCaseIds([]);
       }
     }
-  };
+  }, []);
+
+  // Run test cases with specific IDs
+  const runTestCases = useCallback(async (testCaseIds: string[]) => {
+    if (testCaseIds.length === 0) return;
+
+    setIsRunningTests(true);
+
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/test-suites/${suiteId}/run`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            testCaseIds,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to run tests");
+        handleRunComplete({ success: false, error: data.error });
+      } else {
+        handleRunComplete({ success: true, testRun: data.testRun });
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
+      toast.error(errorMessage);
+      handleRunComplete({ success: false, error: errorMessage });
+    }
+  }, [projectId, suiteId, handleRunComplete]);
+
+  // Handler for running a single test case
+  const handleRunSingleCase = useCallback(async (testCaseId: string) => {
+    setRunningCaseId(testCaseId);
+    setSelectedTestCaseIds([testCaseId]);
+    await runTestCases([testCaseId]);
+    setRunningCaseId(null);
+  }, [runTestCases]);
+
+  // Handler for running selected test cases
+  const handleRunSelectedCases = useCallback(async () => {
+    if (selectedTestCaseIds.length === 0) return;
+    await runTestCases(selectedTestCaseIds);
+  }, [selectedTestCaseIds, runTestCases]);
 
   if (loading) {
     return (
@@ -563,6 +625,12 @@ export default function TestSuiteDetailPage({
                   setTestCases(cases);
                   setHasChanges(true);
                 }}
+                selectedCaseIds={selectedTestCaseIds}
+                onSelectionChange={setSelectedTestCaseIds}
+                onRunSingleCase={handleRunSingleCase}
+                onRunSelectedCases={handleRunSelectedCases}
+                running={isRunningTests}
+                runningCaseId={runningCaseId}
               />
             </TabsContent>
 
@@ -695,11 +763,12 @@ export default function TestSuiteDetailPage({
           <TestExecutionPanel
             projectId={projectId}
             suiteId={suiteId}
-            testCaseCount={testCases.length}
+            testCaseCount={selectedTestCaseIds.length > 0 ? selectedTestCaseIds.length : testCases.length}
             targetType={testSuite?.targetType || "prompt"}
             availableProviders={storedApiKeys}
             savedComparisonModels={testSuite?.comparisonModels}
             availableTags={availableTags}
+            selectedTestCaseIds={selectedTestCaseIds}
             onRunComplete={handleRunComplete}
           />
 

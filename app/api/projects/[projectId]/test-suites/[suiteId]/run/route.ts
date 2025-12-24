@@ -126,9 +126,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Tags filter - if provided, only run test cases with matching tags (OR logic)
     const tagsFilter = Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string" && t.trim()) : [];
 
-    // Filter test cases by tags if filter is provided
+    // Test case IDs filter - if provided, only run specific test cases (takes precedence over tags)
+    const testCaseIds = Array.isArray(body.testCaseIds)
+      ? body.testCaseIds.filter((id: unknown) => typeof id === "string" && id.trim())
+      : [];
+
+    // Filter test cases by IDs or tags
     let testCasesToRun = testSuite.testCases;
-    if (tagsFilter.length > 0) {
+    if (testCaseIds.length > 0) {
+      // Filter by specific test case IDs (takes precedence)
+      testCasesToRun = testSuite.testCases.filter(
+        (tc) => testCaseIds.includes(tc._id?.toString())
+      );
+
+      if (testCasesToRun.length === 0) {
+        return NextResponse.json(
+          { error: "No test cases match the selected IDs" },
+          { status: 400 }
+        );
+      }
+    } else if (tagsFilter.length > 0) {
+      // Filter by tags
       testCasesToRun = testSuite.testCases.filter(
         (tc) => tc.tags?.some((tag) => tagsFilter.includes(tag))
       );

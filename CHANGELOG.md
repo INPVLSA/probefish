@@ -2,6 +2,8 @@
 
 - Grok (xAI) provider support - Grok 3, Grok 2 and variants
 - DeepSeek provider support - DeepSeek Chat and DeepSeek Reasoner
+- Run single test case - click Play button on any test case row to run it individually
+- Run selected test cases - use checkboxes to select multiple test cases and run them together
 - UI improvements
 - JSON syntax highlight
 
