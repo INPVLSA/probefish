@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,13 @@ export default function TestSuiteDetailPage({
   });
   const [multiModelResults, setMultiModelResults] = useState<MultiModelRunResult | null>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+  // Compute available tags from test cases
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    testCases.forEach((tc) => tc.tags?.forEach((t) => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [testCases]);
 
   const fetchTestSuite = useCallback(async () => {
     try {
@@ -692,6 +699,7 @@ export default function TestSuiteDetailPage({
             targetType={testSuite?.targetType || "prompt"}
             availableProviders={storedApiKeys}
             savedComparisonModels={testSuite?.comparisonModels}
+            availableTags={availableTags}
             onRunComplete={handleRunComplete}
           />
 

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2 } from "lucide-react";
+import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2, Tag } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RefreshCWIcon, RefreshCCWIconWIcon } from "@/components/ui/refresh-cw";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
@@ -73,6 +74,7 @@ interface TestExecutionPanelProps {
   targetType: "prompt" | "endpoint";
   availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean; deepseek: boolean };
   savedComparisonModels?: ModelSelection[];
+  availableTags?: string[];
   onRunComplete: (result: TestRunResult | MultiModelRunResult) => void;
 }
 
@@ -83,6 +85,7 @@ export function TestExecutionPanel({
   targetType,
   availableProviders,
   savedComparisonModels,
+  availableTags = [],
   onRunComplete,
 }: TestExecutionPanelProps) {
   const [selectedModels, setSelectedModels] = useState<ModelSelection[]>(
@@ -92,6 +95,7 @@ export function TestExecutionPanel({
   const [error, setError] = useState("");
   const [runNote, setRunNote] = useState("");
   const [iterations, setIterations] = useState(1);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [progress, setProgress] = useState<{
     current: number;
     total: number;
@@ -158,6 +162,7 @@ export function TestExecutionPanel({
             },
             note: runNote || undefined,
             iterations,
+            tags: selectedTags.length > 0 ? selectedTags : undefined,
           }),
         }
       );
@@ -220,6 +225,7 @@ export function TestExecutionPanel({
               modelOverride: { provider: model.provider, model: model.model },
               note: runNote || undefined,
               iterations,
+              tags: selectedTags.length > 0 ? selectedTags : undefined,
             }),
           }
         );
@@ -283,6 +289,7 @@ export function TestExecutionPanel({
             body: JSON.stringify({
               note: runNote || undefined,
               iterations,
+              tags: selectedTags.length > 0 ? selectedTags : undefined,
             }),
           }
         );
@@ -306,7 +313,7 @@ export function TestExecutionPanel({
 
     return (
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-0">
           <CardTitle className="text-lg flex items-center gap-2">
             <Play className="h-5 w-5" />
             Run Tests
@@ -336,67 +343,145 @@ export function TestExecutionPanel({
             />
           </div>
 
-          <div className="flex gap-2 items-center">
-            <div className="flex items-center gap-1">
-              <Label htmlFor="iterations-endpoint" className="text-xs text-muted-foreground whitespace-nowrap">
-                Runs:
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setIterations(Math.max(1, iterations - 1))}
-                disabled={running || iterations <= 1}
-              >
-                <Minus className="h-3 w-3" />
+          {/* Primary Run Button */}
+          <Button
+            onClick={runEndpointTests}
+            disabled={running || testCaseCount === 0}
+            className="w-full"
+            onMouseEnter={() => airplaneRef.current?.startAnimation()}
+            onMouseLeave={() => airplaneRef.current?.stopAnimation()}
+          >
+            {running ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
+                Run tests
+              </>
+            )}
+          </Button>
+
+          {/* Additional run options */}
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Additional run options
+                </span>
+                <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
               </Button>
-              <Input
-                id="iterations-endpoint"
-                type="number"
-                min={1}
-                max={100}
-                value={iterations}
-                onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="h-8 w-12 text-center px-1"
-                disabled={running}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setIterations(Math.min(100, iterations + 1))}
-                disabled={running || iterations >= 100}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-            <Button
-              onClick={runEndpointTests}
-              disabled={running || testCaseCount === 0}
-              className="flex-1"
-              onMouseEnter={() => iterations === 1 ? airplaneRef.current?.startAnimation() : refreshIconRef.current?.startAnimation()}
-              onMouseLeave={() => iterations === 1 ? airplaneRef.current?.stopAnimation() : refreshIconRef.current?.stopAnimation()}
-            >
-              {running ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Running...
-                </>
-              ) : iterations === 1 ? (
-                <>
-                  <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
-                  Run Tests
-                </>
-              ) : (
-                <>
-                  <RefreshCWIcon ref={refreshIconRef} size={16} className="mr-2" />
-                  Run {iterations}x
-                </>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3 space-y-3">
+              {/* Tag Filter */}
+              {availableTags.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-sm text-muted-foreground">Filter by tags</Label>
+                    {selectedTags.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs ml-auto"
+                        onClick={() => setSelectedTags([])}
+                        disabled={running}
+                      >
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableTags.map((tag) => {
+                      const isSelected = selectedTags.includes(tag);
+                      return (
+                        <Badge
+                          key={tag}
+                          variant={isSelected ? "default" : "outline"}
+                          className="cursor-pointer hover:bg-muted"
+                          onClick={() => {
+                            if (running) return;
+                            if (isSelected) {
+                              setSelectedTags(selectedTags.filter((t) => t !== tag));
+                            } else {
+                              setSelectedTags([...selectedTags, tag]);
+                            }
+                          }}
+                        >
+                          {tag}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                  {selectedTags.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Running tests with any of the selected tags
+                    </p>
+                  )}
+                </div>
               )}
-            </Button>
-          </div>
+
+              {/* Iterations */}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="iterations-endpoint" className="text-sm text-muted-foreground whitespace-nowrap">
+                  Runs:
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIterations(Math.max(1, iterations - 1))}
+                  disabled={running || iterations <= 1}
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
+                <Input
+                  id="iterations-endpoint"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={iterations}
+                  onChange={(e) => setIterations(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                  className="h-8 w-16 text-center px-1"
+                  disabled={running}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIterations(Math.min(100, iterations + 1))}
+                  disabled={running || iterations >= 100}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+                <Button
+                  onClick={runEndpointTests}
+                  disabled={running || testCaseCount === 0 || iterations < 2}
+                  variant="secondary"
+                  className="flex-1"
+                  onMouseEnter={() => refreshIconRef.current?.startAnimation()}
+                  onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
+                >
+                  {running ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Running...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCWIcon ref={refreshIconRef} size={16} className="mr-2" />
+                      Run {iterations}x
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {testCaseCount === 0 && (
             <p className="text-xs text-muted-foreground text-center">
@@ -501,6 +586,54 @@ export function TestExecutionPanel({
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3 space-y-3">
+            {/* Tag Filter */}
+            {availableTags.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm text-muted-foreground">Filter by tags</Label>
+                  {selectedTags.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs ml-auto"
+                      onClick={() => setSelectedTags([])}
+                      disabled={running}
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableTags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag);
+                    return (
+                      <Badge
+                        key={tag}
+                        variant={isSelected ? "default" : "outline"}
+                        className="cursor-pointer hover:bg-muted"
+                        onClick={() => {
+                          if (running) return;
+                          if (isSelected) {
+                            setSelectedTags(selectedTags.filter((t) => t !== tag));
+                          } else {
+                            setSelectedTags([...selectedTags, tag]);
+                          }
+                        }}
+                      >
+                        {tag}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                {selectedTags.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Running tests with any of the selected tags
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               <Label htmlFor="iterations-prompt" className="text-sm text-muted-foreground whitespace-nowrap">
                 Runs:

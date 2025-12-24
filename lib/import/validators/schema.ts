@@ -73,6 +73,7 @@ export const TestCaseSchema = z.object({
   inputs: z.record(z.string(), z.string()).default({}),
   expectedOutput: z.string().optional(),
   notes: z.string().optional(),
+  tags: z.array(z.string()).default([]),
 });
 
 // Validation rule schema

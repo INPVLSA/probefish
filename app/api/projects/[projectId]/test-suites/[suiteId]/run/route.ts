@@ -123,6 +123,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Number of iterations to run (default: 1, max: 100)
     const iterations = Math.min(Math.max(1, parseInt(body.iterations) || 1), 100);
 
+    // Tags filter - if provided, only run test cases with matching tags (OR logic)
+    const tagsFilter = Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string" && t.trim()) : [];
+
+    // Filter test cases by tags if filter is provided
+    let testCasesToRun = testSuite.testCases;
+    if (tagsFilter.length > 0) {
+      testCasesToRun = testSuite.testCases.filter(
+        (tc) => tc.tags?.some((tag) => tagsFilter.includes(tag))
+      );
+
+      if (testCasesToRun.length === 0) {
+        return NextResponse.json(
+          { error: "No test cases match the selected tags" },
+          { status: 400 }
+        );
+      }
+    }
+
     // For prompt testing, verify we have required credentials
     if (testSuite.targetType === "prompt") {
       // Get the prompt to check which provider is needed
@@ -193,7 +211,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Create test run
-    const totalTestCount = testSuite.testCases.length * iterations;
+    const totalTestCount = testCasesToRun.length * iterations;
     const testRun: ITestRun = {
       _id: new mongoose.Types.ObjectId(),
       runAt: new Date(),
@@ -220,7 +238,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let judgeScoreCount = 0;
 
     for (let iteration = 1; iteration <= iterations; iteration++) {
-      for (const testCase of testSuite.testCases) {
+      for (const testCase of testCasesToRun) {
         const result = await executeTestCase({
           testCase,
           targetType: testSuite.targetType,

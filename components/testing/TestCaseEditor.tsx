@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -21,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X } from "lucide-react";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface TestCase {
@@ -30,6 +31,7 @@ export interface TestCase {
   inputs: Record<string, string>;
   expectedOutput?: string;
   notes?: string;
+  tags?: string[];
 }
 
 interface TestCaseEditorProps {
@@ -46,6 +48,34 @@ export function TestCaseEditor({
   const [editingCase, setEditingCase] = useState<TestCase | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+
+  // Collect all unique tags from existing test cases for autocomplete
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    testCases.forEach((tc) => tc.tags?.forEach((t) => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [testCases]);
+
+  const handleAddTag = (tag: string) => {
+    const normalizedTag = tag.trim().toLowerCase();
+    if (!normalizedTag || !editingCase) return;
+    if (editingCase.tags?.includes(normalizedTag)) return;
+
+    setEditingCase({
+      ...editingCase,
+      tags: [...(editingCase.tags || []), normalizedTag],
+    });
+    setTagInput("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    if (!editingCase) return;
+    setEditingCase({
+      ...editingCase,
+      tags: editingCase.tags?.filter((t) => t !== tagToRemove) || [],
+    });
+  };
 
   const handleAddCase = () => {
     const newCase: TestCase = {
@@ -53,9 +83,11 @@ export function TestCaseEditor({
       inputs: variables.reduce((acc, v) => ({ ...acc, [v]: "" }), {}),
       expectedOutput: "",
       notes: "",
+      tags: [],
     };
     setEditingCase(newCase);
     setEditingIndex(null);
+    setTagInput("");
     setDialogOpen(true);
   };
 
@@ -67,8 +99,9 @@ export function TestCaseEditor({
         inputs[v] = "";
       }
     }
-    setEditingCase({ ...testCase, inputs });
+    setEditingCase({ ...testCase, inputs, tags: testCase.tags || [] });
     setEditingIndex(index);
+    setTagInput("");
     setDialogOpen(true);
   };
 
@@ -82,6 +115,7 @@ export function TestCaseEditor({
       ...testCase,
       _id: undefined, // Remove _id so it gets a new one when saved
       name: `${testCase.name} (copy)`,
+      tags: [...(testCase.tags || [])], // Copy tags
     };
     onChange([...testCases, duplicatedCase]);
   };
@@ -228,6 +262,80 @@ export function TestCaseEditor({
                       rows={2}
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Tags (optional)</Label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {editingCase.tags?.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="pl-2 pr-1 py-0.5 gap-1"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        id="tag-input"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddTag(tagInput);
+                          }
+                        }}
+                        placeholder="Add a tag..."
+                        list="tag-suggestions"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddTag(tagInput)}
+                        disabled={!tagInput.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    {allTags.length > 0 && (
+                      <datalist id="tag-suggestions">
+                        {allTags
+                          .filter((t) => !editingCase.tags?.includes(t))
+                          .map((tag) => (
+                            <option key={tag} value={tag} />
+                          ))}
+                      </datalist>
+                    )}
+                    {allTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        <span className="text-xs text-muted-foreground mr-1">Existing:</span>
+                        {allTags
+                          .filter((t) => !editingCase.tags?.includes(t))
+                          .slice(0, 8)
+                          .map((tag) => (
+                            <Badge
+                              key={tag}
+                              variant="outline"
+                              className="text-xs cursor-pointer hover:bg-muted"
+                              onClick={() => handleAddTag(tag)}
+                            >
+                              + {tag}
+                            </Badge>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <DialogFooter>
@@ -258,7 +366,23 @@ export function TestCaseEditor({
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground/50" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{testCase.name}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium truncate">{testCase.name}</span>
+                    {testCase.tags && testCase.tags.length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {testCase.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs py-0 px-1.5">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {testCase.tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs py-0 px-1.5">
+                            +{testCase.tags.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {Object.entries(testCase.inputs)
                       .filter(([, v]) => v)

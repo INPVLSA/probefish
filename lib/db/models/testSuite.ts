@@ -7,6 +7,7 @@ export interface ITestCase {
   inputs: Record<string, string>;
   expectedOutput?: string;
   notes?: string;
+  tags?: string[];
 }
 
 // Validation Rule - static checks on output
@@ -146,6 +147,10 @@ const testCaseSchema = new Schema<ITestCase>(
     },
     expectedOutput: String,
     notes: String,
+    tags: {
+      type: [String],
+      default: [],
+    },
   },
   { _id: true }
 );

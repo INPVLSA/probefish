@@ -98,6 +98,7 @@ export interface TestCaseExport {
   inputs: Record<string, string>;
   expectedOutput?: string;
   notes?: string;
+  tags?: string[];
 }
 
 export interface ValidationRuleExport {
