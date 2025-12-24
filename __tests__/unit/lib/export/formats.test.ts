@@ -64,6 +64,7 @@ describe("Export Formats", () => {
             name: "Test Case 1",
             inputs: { name: "World" },
             expectedOutput: "Hello World",
+            tags: ["smoke", "happy-path"],
           },
         ],
         validationRules: [
@@ -132,6 +133,37 @@ describe("Export Formats", () => {
 
       expect(json).toContain("\n");
       expect(json).toContain("  ");
+    });
+
+    it("should include test case tags in export", () => {
+      const json = toJSON(mockProjectExport);
+      const parsed = JSON.parse(json);
+
+      expect(parsed.testSuites[0].testCases[0].tags).toBeDefined();
+      expect(parsed.testSuites[0].testCases[0].tags).toEqual(["smoke", "happy-path"]);
+    });
+
+    it("should handle test cases with empty tags", () => {
+      const exportWithEmptyTags: ProjectExport = {
+        ...mockProjectExport,
+        testSuites: [
+          {
+            ...mockProjectExport.testSuites[0],
+            testCases: [
+              {
+                name: "Test without tags",
+                inputs: { name: "World" },
+                tags: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      const json = toJSON(exportWithEmptyTags);
+      const parsed = JSON.parse(json);
+
+      expect(parsed.testSuites[0].testCases[0].tags).toEqual([]);
     });
 
     it("should handle single test suite export", () => {
