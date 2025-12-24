@@ -41,6 +41,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { PreformattedText } from "@/components/ui/preformatted-text";
 
 interface TestResult {
   testCaseId: string;
@@ -622,7 +623,7 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
                                                 <div>
                                                   <div className="text-xs font-medium text-muted-foreground mb-2">Output</div>
                                                   <div className="bg-card border rounded p-3">
-                                                    <pre className="text-sm whitespace-pre-wrap">{result.output || "No output"}</pre>
+                                                    <PreformattedText content={result.output} />
                                                   </div>
                                                 </div>
 

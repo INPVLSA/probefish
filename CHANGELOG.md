@@ -3,6 +3,7 @@
 - Grok (xAI) provider support - Grok 3, Grok 2 and variants
 - DeepSeek provider support - DeepSeek Chat and DeepSeek Reasoner
 - UI improvements
+- JSON syntax highlight
 
 ### v0.7.1
 
