@@ -66,6 +66,7 @@ export interface LLMJudgeConfig {
 interface JudgeConfigEditorProps {
   config: LLMJudgeConfig;
   onChange: (config: LLMJudgeConfig) => void;
+  availableProviders?: Record<LLMProvider, boolean>;
 }
 
 const DEFAULT_CRITERIA: JudgeCriterion[] = [
@@ -91,6 +92,7 @@ const DEFAULT_CRITERIA: JudgeCriterion[] = [
 export function JudgeConfigEditor({
   config,
   onChange,
+  availableProviders,
 }: JudgeConfigEditorProps) {
   // Criterion dialog state
   const [editingCriterion, setEditingCriterion] =
@@ -251,11 +253,21 @@ export function JudgeConfigEditor({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic</SelectItem>
-                  <SelectItem value="gemini">Google Gemini</SelectItem>
-                  <SelectItem value="grok">Grok (xAI)</SelectItem>
-                  <SelectItem value="deepseek">DeepSeek</SelectItem>
+                  <SelectItem value="openai" disabled={availableProviders && !availableProviders.openai}>
+                    OpenAI {availableProviders && !availableProviders.openai && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="anthropic" disabled={availableProviders && !availableProviders.anthropic}>
+                    Anthropic {availableProviders && !availableProviders.anthropic && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="gemini" disabled={availableProviders && !availableProviders.gemini}>
+                    Google Gemini {availableProviders && !availableProviders.gemini && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="grok" disabled={availableProviders && !availableProviders.grok}>
+                    Grok (xAI) {availableProviders && !availableProviders.grok && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="deepseek" disabled={availableProviders && !availableProviders.deepseek}>
+                    DeepSeek {availableProviders && !availableProviders.deepseek && "(no key)"}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

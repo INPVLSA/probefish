@@ -651,6 +651,7 @@ export default function TestSuiteDetailPage({
                   setLlmJudgeConfig(config);
                   setHasChanges(true);
                 }}
+                availableProviders={storedApiKeys}
               />
             </TabsContent>
 
