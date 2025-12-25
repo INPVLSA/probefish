@@ -38,7 +38,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { LLMProvider, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
+import { LLMProvider, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS, getModelLabel } from "@/lib/llm/types";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface JudgeCriterion {
@@ -271,7 +271,7 @@ export function JudgeConfigEditor({
                 <SelectContent>
                   {models.map((model) => (
                     <SelectItem key={model} value={model}>
-                      {model}
+                      {getModelLabel(model)}
                     </SelectItem>
                   ))}
                 </SelectContent>
