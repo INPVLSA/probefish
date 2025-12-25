@@ -12,12 +12,70 @@ import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
 import Prompt from "@/lib/db/models/prompt";
 import Endpoint from "@/lib/db/models/endpoint";
 import { executeTestCase, toTestResult } from "@/lib/testing";
-import { LLMProviderCredentials } from "@/lib/llm";
+import { LLMProviderCredentials, LLMProvider } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatcher";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
+}
+
+// Provider configuration
+const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini", "grok", "deepseek"];
+
+const PROVIDER_CREDENTIAL_KEYS: Record<LLMProvider, keyof LLMProviderCredentials> = {
+  openai: "openaiApiKey",
+  anthropic: "anthropicApiKey",
+  gemini: "geminiApiKey",
+  grok: "grokApiKey",
+  deepseek: "deepseekApiKey",
+};
+
+const PROVIDER_NAMES: Record<LLMProvider, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  gemini: "Gemini",
+  grok: "Grok",
+  deepseek: "DeepSeek",
+};
+
+// Decrypt all provider credentials from organization
+function decryptCredentials(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgCredentials: any
+): LLMProviderCredentials {
+  const credentials: LLMProviderCredentials = {};
+  if (!orgCredentials) return credentials;
+
+  for (const provider of PROVIDERS) {
+    const encryptedKey = orgCredentials[provider]?.apiKey;
+    if (encryptedKey) {
+      try {
+        credentials[PROVIDER_CREDENTIAL_KEYS[provider]] = decrypt(encryptedKey);
+      } catch (e) {
+        console.error(`Failed to decrypt ${PROVIDER_NAMES[provider]} key:`, e);
+      }
+    }
+  }
+  return credentials;
+}
+
+// Check if credentials exist for a provider
+function checkProviderCredentials(
+  provider: string,
+  credentials: LLMProviderCredentials,
+  context?: string
+): NextResponse | null {
+  const credKey = PROVIDER_CREDENTIAL_KEYS[provider as LLMProvider];
+  if (credKey && !credentials[credKey]) {
+    const providerName = PROVIDER_NAMES[provider as LLMProvider] || provider;
+    const suffix = context ? ` for ${context}` : "";
+    return NextResponse.json(
+      { error: `${providerName} API key is required${suffix}. Configure it in Settings > API Keys.` },
+      { status: 400 }
+    );
+  }
+  return null;
 }
 
 // POST /api/projects/[projectId]/test-suites/[suiteId]/run - Execute test suite
@@ -76,42 +134,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Decrypt stored API keys from organization
-    const credentials: LLMProviderCredentials = {};
-
-    if (organization.llmCredentials?.openai?.apiKey) {
-      try {
-        credentials.openaiApiKey = decrypt(organization.llmCredentials.openai.apiKey);
-      } catch (e) {
-        console.error("Failed to decrypt OpenAI key:", e);
-      }
-    }
-
-    if (organization.llmCredentials?.anthropic?.apiKey) {
-      try {
-        credentials.anthropicApiKey = decrypt(organization.llmCredentials.anthropic.apiKey);
-      } catch (e) {
-        console.error("Failed to decrypt Anthropic key:", e);
-      }
-    }
-
-    if (organization.llmCredentials?.gemini?.apiKey) {
-      try {
-        credentials.geminiApiKey = decrypt(organization.llmCredentials.gemini.apiKey);
-      } catch (e) {
-        console.error("Failed to decrypt Gemini key:", e);
-      }
-    }
+    const credentials = decryptCredentials(organization.llmCredentials);
 
     // Allow override from request body if provided
     const body = await request.json().catch(() => ({}));
-    if (body.openaiApiKey) {
-      credentials.openaiApiKey = body.openaiApiKey;
-    }
-    if (body.anthropicApiKey) {
-      credentials.anthropicApiKey = body.anthropicApiKey;
-    }
-    if (body.geminiApiKey) {
-      credentials.geminiApiKey = body.geminiApiKey;
+    for (const provider of PROVIDERS) {
+      const credKey = PROVIDER_CREDENTIAL_KEYS[provider];
+      if (body[credKey]) {
+        credentials[credKey] = body[credKey];
+      }
     }
 
     // Model override for multi-model comparison
@@ -186,41 +217,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // Use modelOverride provider if provided, otherwise use version's provider
       const provider = modelOverride?.provider || version?.modelConfig.provider || "openai";
-      if (provider === "openai" && !credentials.openaiApiKey) {
-        return NextResponse.json(
-          { error: "OpenAI API key is required. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
-      if (provider === "anthropic" && !credentials.anthropicApiKey) {
-        return NextResponse.json(
-          { error: "Anthropic API key is required. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
-      if (provider === "gemini" && !credentials.geminiApiKey) {
-        return NextResponse.json(
-          { error: "Gemini API key is required. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
+      const credError = checkProviderCredentials(provider, credentials);
+      if (credError) return credError;
     }
 
     // For LLM judge, check credentials
     if (testSuite.llmJudgeConfig.enabled) {
       const judgeProvider = testSuite.llmJudgeConfig.provider || "openai";
-      if (judgeProvider === "openai" && !credentials.openaiApiKey) {
-        return NextResponse.json(
-          { error: "OpenAI API key is required for LLM judge. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
-      if (judgeProvider === "anthropic" && !credentials.anthropicApiKey) {
-        return NextResponse.json(
-          { error: "Anthropic API key is required for LLM judge. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
+      const credError = checkProviderCredentials(judgeProvider, credentials, "LLM judge");
+      if (credError) return credError;
     }
 
     // Load the target

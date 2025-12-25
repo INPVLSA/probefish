@@ -7,6 +7,7 @@
 - Drag-to-reorder test cases - drag the grip handle to reorder test cases in a suite
 - Suspend/resume test cases - toggle individual test cases to skip them during runs without deleting
 - Fixed issue with ignoring score threshold
+- LLM Judge now supports all providers (Grok, DeepSeek added)
 - UI improvements
 - JSON syntax highlight
 

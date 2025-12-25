@@ -22,7 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { X, Plus, ChevronDown, AlertCircle, Star, Zap, Brain, Layers } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
+import { LLMProvider, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
 import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
@@ -30,7 +30,7 @@ import { GrokLogo } from "@/components/ui/grok-logo";
 import { DeepSeekLogo } from "@/components/ui/deepseek-logo";
 
 export interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
+  provider: LLMProvider;
   model: string;
   isPrimary?: boolean;
 }
@@ -147,7 +147,7 @@ export function ModelCardSelector({
     onChange(newModels);
   };
 
-  const addModel = (provider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek", model: string) => {
+  const addModel = (provider: LLMProvider, model: string) => {
     // Check if already selected
     const exists = selectedModels.some(
       (m) => m.provider === provider && m.model === model

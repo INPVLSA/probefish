@@ -2,6 +2,9 @@
 
 export type LLMProvider = "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
 
+// Extended type that includes "custom" for prompt model config
+export type LLMProviderOrCustom = LLMProvider | "custom";
+
 export interface LLMMessage {
   role: "system" | "user" | "assistant";
   content: string;

@@ -25,10 +25,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Cpu, ChevronDown, Settings2 } from "lucide-react";
 import { useState } from "react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
+import { LLMProvider, LLMProviderOrCustom, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
 
 export interface ModelConfig {
-  provider?: "openai" | "anthropic" | "gemini" | "grok" | "deepseek" | "custom";
+  provider?: LLMProviderOrCustom;
   model?: string;
   temperature?: number;
   maxTokens?: number;
@@ -57,7 +57,7 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
             ? DEEPSEEK_MODELS
             : OPENAI_MODELS;
 
-  const handleProviderChange = (newProvider: "openai" | "anthropic" | "gemini" | "grok" | "deepseek") => {
+  const handleProviderChange = (newProvider: LLMProvider) => {
     onChange({
       ...config,
       provider: newProvider,

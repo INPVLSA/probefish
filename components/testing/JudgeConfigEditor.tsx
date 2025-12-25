@@ -38,7 +38,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
+import { LLMProvider, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface JudgeCriterion {
@@ -56,7 +56,7 @@ export interface JudgeValidationRule {
 
 export interface LLMJudgeConfig {
   enabled: boolean;
-  provider?: "openai" | "anthropic" | "gemini";
+  provider?: LLMProvider;
   model?: string;
   criteria: JudgeCriterion[];
   validationRules?: JudgeValidationRule[];
@@ -120,7 +120,7 @@ export function JudgeConfigEditor({
     onChange(newConfig);
   };
 
-  const handleProviderChange = (provider: "openai" | "anthropic" | "gemini") => {
+  const handleProviderChange = (provider: LLMProvider) => {
     onChange({ ...config, provider, model: DEFAULT_MODELS[provider] });
   };
 
@@ -216,7 +216,11 @@ export function JudgeConfigEditor({
       ? ANTHROPIC_MODELS
       : config.provider === "gemini"
         ? GEMINI_MODELS
-        : OPENAI_MODELS;
+        : config.provider === "grok"
+          ? GROK_MODELS
+          : config.provider === "deepseek"
+            ? DEEPSEEK_MODELS
+            : OPENAI_MODELS;
 
   return (
     <Card>
@@ -241,9 +245,7 @@ export function JudgeConfigEditor({
               <Label>Provider</Label>
               <Select
                 value={config.provider || "openai"}
-                onValueChange={(v) =>
-                  handleProviderChange(v as "openai" | "anthropic" | "gemini")
-                }
+                onValueChange={(v) => handleProviderChange(v as LLMProvider)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -252,6 +254,8 @@ export function JudgeConfigEditor({
                   <SelectItem value="openai">OpenAI</SelectItem>
                   <SelectItem value="anthropic">Anthropic</SelectItem>
                   <SelectItem value="gemini">Google Gemini</SelectItem>
+                  <SelectItem value="grok">Grok (xAI)</SelectItem>
+                  <SelectItem value="deepseek">DeepSeek</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -4,13 +4,13 @@ import { Organization } from "@/lib/db/models";
 import { requireOrgPermission, authError } from "@/lib/auth/authorization";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { encrypt, decrypt, maskApiKey, isEncrypted } from "@/lib/utils/encryption";
+import { LLMProvider } from "@/lib/llm/types";
 
 interface RouteParams {
   params: Promise<{ orgId: string }>;
 }
 
-type ProviderKey = "openai" | "anthropic" | "gemini" | "grok" | "deepseek";
-const VALID_PROVIDERS: ProviderKey[] = ["openai", "anthropic", "gemini", "grok", "deepseek"];
+const VALID_PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini", "grok", "deepseek"];
 
 // GET /api/organizations/[orgId]/api-keys - List API keys (masked)
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Encrypt and store the API key
     const encryptedKey = encrypt(apiKey);
-    org.llmCredentials[provider as ProviderKey] = {
+    org.llmCredentials[provider as LLMProvider] = {
       apiKey: encryptedKey,
       encryptedAt: new Date(),
     };

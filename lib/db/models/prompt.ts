@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { LLMProviderOrCustom } from "@/lib/llm/types";
 
 export interface IPromptVersion {
   version: number;
@@ -6,7 +7,7 @@ export interface IPromptVersion {
   systemPrompt?: string;
   variables: string[]; // Extracted from content like {{var}}
   modelConfig: {
-    provider?: "openai" | "anthropic" | "gemini" | "custom";
+    provider?: LLMProviderOrCustom;
     model?: string;
     temperature?: number;
     maxTokens?: number;

@@ -1,5 +1,7 @@
 // Export Type Definitions
 
+import { LLMProvider, LLMProviderOrCustom } from "@/lib/llm/types";
+
 export type ExportFormat = "json" | "junit" | "csv";
 export type ExportScope = "project" | "test-suite";
 
@@ -50,7 +52,7 @@ export interface PromptVersionExport {
 }
 
 export interface ModelConfigExport {
-  provider?: "openai" | "anthropic" | "gemini" | "custom";
+  provider?: LLMProviderOrCustom;
   model?: string;
   temperature?: number;
   maxTokens?: number;
@@ -119,7 +121,7 @@ export interface ValidationRuleExport {
 
 export interface LLMJudgeConfigExport {
   enabled: boolean;
-  provider?: "openai" | "anthropic" | "gemini";
+  provider?: LLMProvider;
   model?: string;
   criteria: JudgeCriterionExport[];
   validationRules: JudgeValidationRuleExport[];
