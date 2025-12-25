@@ -6,6 +6,7 @@
 - Run selected test cases - use checkboxes to select multiple test cases and run them together
 - Drag-to-reorder test cases - drag the grip handle to reorder test cases in a suite
 - Suspend/resume test cases - toggle individual test cases to skip them during runs without deleting
+- Fixed issue with ignoring score threshold
 - UI improvements
 - JSON syntax highlight
 
