@@ -1,27 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
+import { authenticateToken, hasScope } from "@/lib/auth/tokenAuth";
 import Project from "@/lib/db/models/project";
 import User from "@/lib/db/models/user";
 
 // GET /api/projects - List all projects for user's organization
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let organizationId: string;
+
+    // Check auth header to determine auth method
+    const authHeader = request.headers.get("authorization");
+
+    if (authHeader?.startsWith("Bearer ")) {
+      // Token auth - authenticateToken handles DB connection internally
+      const tokenResult = await authenticateToken(request);
+      if (!tokenResult.success || !tokenResult.token) {
+        return NextResponse.json(
+          { error: tokenResult.error || "Invalid token" },
+          { status: 401 }
+        );
+      }
+
+      // Check for required scope
+      if (!hasScope(tokenResult.token, "projects:read")) {
+        return NextResponse.json(
+          { error: "Missing required scope: projects:read" },
+          { status: 403 }
+        );
+      }
+
+      organizationId = tokenResult.organizationId!;
+    } else {
+      // Session auth - validate JWT first (no DB needed)
+      const session = await getSession();
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Only connect to DB after session is validated
+      await connectDB();
+
+      const user = await User.findById(session.userId);
+      if (!user || user.organizationIds.length === 0) {
+        return NextResponse.json({ error: "No organization found" }, { status: 404 });
+      }
+
+      organizationId = user.organizationIds[0].toString();
     }
 
+    // Ensure DB is connected for the query (token auth already connected, but this is safe to call multiple times)
     await connectDB();
-
-    const user = await User.findById(session.userId);
-    if (!user || user.organizationIds.length === 0) {
-      return NextResponse.json({ error: "No organization found" }, { status: 404 });
-    }
 
     const { searchParams } = new URL(request.url);
     const parentId = searchParams.get("parentId");
-    const organizationId = user.organizationIds[0]; // Use first org for now
 
     const query: Record<string, unknown> = { organizationId };
     if (parentId) {
