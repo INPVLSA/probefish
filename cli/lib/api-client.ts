@@ -102,8 +102,15 @@ export async function listProjects(): Promise<ProjectsResponse> {
 }
 
 // Test Suites
-export async function listTestSuites(projectId: string): Promise<TestSuitesResponse> {
-  return request<TestSuitesResponse>(`/projects/${projectId}/test-suites`);
+export async function listTestSuites(
+  projectId: string,
+  options?: { summary?: boolean }
+): Promise<TestSuitesResponse> {
+  return request<TestSuitesResponse>(`/projects/${projectId}/test-suites`, {
+    params: {
+      summary: options?.summary ? 'true' : undefined,
+    },
+  });
 }
 
 export async function getTestSuite(
@@ -117,12 +124,13 @@ export async function getTestSuite(
 export async function listTestRuns(
   projectId: string,
   suiteId: string,
-  options?: { limit?: number; page?: number }
+  options?: { limit?: number; page?: number; summary?: boolean }
 ): Promise<TestRunsResponse> {
   return request<TestRunsResponse>(`/projects/${projectId}/test-suites/${suiteId}/runs`, {
     params: {
       limit: options?.limit,
       page: options?.page,
+      summary: options?.summary ? 'true' : undefined,
     },
   });
 }

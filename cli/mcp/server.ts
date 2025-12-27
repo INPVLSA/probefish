@@ -62,14 +62,14 @@ server.registerTool(
 server.registerTool(
   'probefish_list_suites',
   {
-    description: 'List test suites in a project',
+    description: 'List test suites in a project (returns summary data, use probefish_get_suite for full details)',
     inputSchema: {
       projectId: z.string().describe('The project ID'),
     },
   },
   async ({ projectId }) => {
     checkAuth();
-    const response = await listTestSuites(projectId);
+    const response = await listTestSuites(projectId, { summary: true });
     return {
       content: [
         {
@@ -190,7 +190,7 @@ server.registerTool(
 server.registerTool(
   'probefish_list_runs',
   {
-    description: 'List test runs for a test suite',
+    description: 'List test runs for a test suite (returns summary data without individual results)',
     inputSchema: {
       projectId: z.string().describe('The project ID'),
       suiteId: z.string().describe('The test suite ID'),
@@ -199,7 +199,7 @@ server.registerTool(
   },
   async ({ projectId, suiteId, limit }) => {
     checkAuth();
-    const response = await listTestRuns(projectId, suiteId, { limit });
+    const response = await listTestRuns(projectId, suiteId, { limit, summary: true });
     return {
       content: [
         {
