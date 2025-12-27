@@ -1,6 +1,7 @@
 # v0.9.0
 
 - CLI tooling - run tests, manage test cases from terminal
+- MCP server - integrate with Claude Code and AI assistants
 - Test case CRUD API endpoints
 - Token auth support for projects endpoint
 - Improved auth security - validate before DB connection

@@ -9,13 +9,14 @@ import { exportCommand } from './commands/export.js';
 import { addCommand } from './commands/add.js';
 import { updateCommand } from './commands/update.js';
 import { deleteCommand } from './commands/delete.js';
+import { mcpCommand } from './commands/mcp.js';
 
 const program = new Command();
 
 program
   .name('probefish')
   .description('CLI for Probefish - LLM prompt testing platform')
-  .version('0.8.0');
+  .version('0.9.0');
 
 // Register commands
 program.addCommand(authCommand);
@@ -26,5 +27,6 @@ program.addCommand(exportCommand);
 program.addCommand(addCommand);
 program.addCommand(updateCommand);
 program.addCommand(deleteCommand);
+program.addCommand(mcpCommand);
 
 program.parse();
