@@ -141,6 +141,7 @@ export async function collectProjectData(
         inputs: tc.inputs instanceof Map ? Object.fromEntries(tc.inputs) : tc.inputs || {},
         expectedOutput: tc.expectedOutput,
         notes: tc.notes,
+        tags: tc.tags || [],
       })),
       validationRules: (suite.validationRules || []).map((rule) => ({
         type: rule.type,

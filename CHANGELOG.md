@@ -1,4 +1,17 @@
-Release v0.7.1
+# v0.8.0 (Blobfish)
+
+- Grok (xAI) provider support - Grok 3, Grok 2 and variants
+- DeepSeek provider support - DeepSeek Chat and DeepSeek Reasoner
+- Run single test case - click Play button on any test case row to run it individually
+- Run selected test cases - use checkboxes to select multiple test cases and run them together
+- Drag-to-reorder test cases - drag the grip handle to reorder test cases in a suite
+- Suspend/resume test cases - toggle individual test cases to skip them during runs without deleting
+- Fixed issue with ignoring score threshold
+- LLM Judge now supports all providers (Grok, DeepSeek added)
+- UI improvements
+- JSON syntax highlight
+
+### v0.7.1
 
 - Prompt preview in test suite
 - "Latest" prompt version option for test suites
@@ -9,6 +22,6 @@ Release v0.7.1
 - Run tests multiple times (N iterations) for consistency testing
 - UI improvements
 
-v0.7.0 (Mahi-mahi)
+# v0.7.0 (Mahi-mahi)
 
 - Open Source now.

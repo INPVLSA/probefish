@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { WindIcon, WindIconHandle } from "@/components/ui/wind";
+import { PreformattedText } from "@/components/ui/preformatted-text";
 
 const INPUT_COLLAPSE_THRESHOLD = 150; // Characters before collapsing
 
@@ -256,9 +257,7 @@ function TestResultItem({ result }: { result: TestResult }) {
               Output
             </div>
             <div className="bg-muted rounded p-2 text-sm max-h-40 overflow-auto">
-              <pre className="whitespace-pre-wrap break-words font-mono text-xs">
-                {result.output || "(empty)"}
-              </pre>
+              <PreformattedText content={result.output} fallback="(empty)" className="text-xs" />
             </div>
           </div>
 

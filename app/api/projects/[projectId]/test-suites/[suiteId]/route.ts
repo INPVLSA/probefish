@@ -145,6 +145,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             model: body.llmJudgeConfig.model,
             criteria: body.llmJudgeConfig.criteria || [],
             validationRules: body.llmJudgeConfig.validationRules || [],
+            minScore: body.llmJudgeConfig.minScore,
           };
           testSuite.markModified("llmJudgeConfig");
         } else if (key === "comparisonModels") {

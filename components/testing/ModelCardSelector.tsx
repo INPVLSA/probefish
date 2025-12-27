@@ -21,14 +21,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { X, Plus, ChevronDown, AlertCircle, Star, Zap, Brain } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
+import { X, Plus, ChevronDown, AlertCircle, Star, Zap, Brain, Layers } from "lucide-react";
+import { LLMProvider, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, getModelLabel, getModelType, ModelType } from "@/lib/llm/types";
 import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
+import { GrokLogo } from "@/components/ui/grok-logo";
+import { DeepSeekLogo } from "@/components/ui/deepseek-logo";
 
 export interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini";
+  provider: LLMProvider;
   model: string;
   isPrimary?: boolean;
 }
@@ -36,7 +38,7 @@ export interface ModelSelection {
 interface ModelCardSelectorProps {
   selectedModels: ModelSelection[];
   onChange: (models: ModelSelection[]) => void;
-  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean };
+  availableProviders: { openai: boolean; anthropic: boolean; gemini: boolean; grok: boolean; deepseek: boolean };
   disabled?: boolean;
 }
 
@@ -84,6 +86,20 @@ const PROVIDER_CONFIG = {
     styles: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400",
     badgeStyles: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
+  grok: {
+    name: "Grok",
+    models: GROK_MODELS,
+    Icon: GrokLogo,
+    styles: "bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900/20 dark:border-slate-800 dark:text-slate-400",
+    badgeStyles: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
+  },
+  deepseek: {
+    name: "DeepSeek",
+    models: DEEPSEEK_MODELS,
+    Icon: DeepSeekLogo,
+    styles: "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-400",
+    badgeStyles: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  },
 };
 
 export function ModelCardSelector({
@@ -94,8 +110,9 @@ export function ModelCardSelector({
 }: ModelCardSelectorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
-    new Set(["openai", "anthropic", "gemini"])
+    new Set(["openai", "anthropic", "gemini", "grok", "deepseek"])
   );
+  const [showOtherModels, setShowOtherModels] = useState(false);
 
   const toggleProvider = (provider: string) => {
     setExpandedProviders((prev) => {
@@ -130,7 +147,7 @@ export function ModelCardSelector({
     onChange(newModels);
   };
 
-  const addModel = (provider: "openai" | "anthropic" | "gemini", model: string) => {
+  const addModel = (provider: LLMProvider, model: string) => {
     // Check if already selected
     const exists = selectedModels.some(
       (m) => m.provider === provider && m.model === model
@@ -150,92 +167,103 @@ export function ModelCardSelector({
   };
 
 
+  const primaryModel = selectedModels.find((m) => m.isPrimary) || selectedModels[0];
+  const otherModels = selectedModels.filter((m, i) =>
+    primaryModel ? (m.provider !== primaryModel.provider || m.model !== primaryModel.model) : i !== 0
+  );
+
+  const renderModelCard = (selection: ModelSelection, index: number) => {
+    const config = PROVIDER_CONFIG[selection.provider];
+    const Icon = config.Icon;
+    const isAvailable = availableProviders[selection.provider];
+    const isPrimary = selection.isPrimary || (index === 0 && !selectedModels.some(m => m.isPrimary));
+    const modelType = getModelType(selection.model);
+    const typeIcon = getModelTypeIcon(modelType);
+    const typeLabel = getModelTypeLabel(modelType);
+
+    return (
+      <div
+        key={`${selection.provider}-${selection.model}-${index}`}
+        className={`
+          relative flex items-center gap-2 px-3 py-2 rounded-lg border
+          ${config.styles}
+          ${!isAvailable ? "opacity-60" : ""}
+          ${isPrimary ? "ring-2 ring-blue-500 dark:ring-blue-400" : ""}
+        `}
+      >
+        <Icon size={16} className="flex-shrink-0" />
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-medium opacity-70 flex items-center gap-1">
+            {config.name}
+            {typeIcon && typeLabel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>{typeIcon}</span>
+                </TooltipTrigger>
+                <TooltipContent>{typeLabel}</TooltipContent>
+              </Tooltip>
+            )}
+          </span>
+          <span className="text-sm truncate" title={selection.model}>
+            {(() => {
+              const label = getModelLabel(selection.model);
+              const match = label.match(/^(.+?)\s*\([^)]+\)$/);
+              return match ? match[1] : label;
+            })()}
+          </span>
+        </div>
+        {!isAvailable && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>API key not configured</TooltipContent>
+          </Tooltip>
+        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setPrimaryModel(index)}
+              disabled={disabled || isPrimary}
+              className={`p-0.5 rounded transition-colors ${
+                isPrimary
+                  ? "text-yellow-500"
+                  : "opacity-40 hover:opacity-100 hover:text-yellow-500"
+              }`}
+            >
+              <Star className={`h-4 w-4 ${isPrimary ? "fill-current" : ""}`} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isPrimary ? "Primary model" : "Set as primary"}
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => removeModel(index)}
+              disabled={disabled}
+              className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Remove model</TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
+      {/* Primary model */}
       <div className="flex flex-wrap gap-2">
-        {selectedModels.map((selection, index) => {
-          const config = PROVIDER_CONFIG[selection.provider];
-          const Icon = config.Icon;
-          const isAvailable = availableProviders[selection.provider];
-          const isPrimary = selection.isPrimary;
-          const modelType = getModelType(selection.model);
-          const typeIcon = getModelTypeIcon(modelType);
-          const typeLabel = getModelTypeLabel(modelType);
-
-          return (
-            <div
-              key={`${selection.provider}-${selection.model}-${index}`}
-              className={`
-                relative flex items-center gap-2 px-3 py-2 rounded-lg border
-                ${config.styles}
-                ${!isAvailable ? "opacity-60" : ""}
-                ${isPrimary ? "ring-2 ring-primary ring-offset-1" : ""}
-              `}
-            >
-              <Icon size={16} className="flex-shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-medium opacity-70 flex items-center gap-1">
-                  {config.name}
-                  {typeIcon && typeLabel && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>{typeIcon}</span>
-                      </TooltipTrigger>
-                      <TooltipContent>{typeLabel}</TooltipContent>
-                    </Tooltip>
-                  )}
-                </span>
-                <span className="text-sm truncate" title={selection.model}>
-                  {(() => {
-                    const label = getModelLabel(selection.model);
-                    const match = label.match(/^(.+?)\s*\([^)]+\)$/);
-                    return match ? match[1] : label;
-                  })()}
-                </span>
-              </div>
-              {!isAvailable && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <AlertCircle className="h-4 w-4 text-amber-500" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>API key not configured</TooltipContent>
-                </Tooltip>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setPrimaryModel(index)}
-                    disabled={disabled || isPrimary}
-                    className={`p-0.5 rounded transition-colors ${
-                      isPrimary
-                        ? "text-yellow-500"
-                        : "opacity-40 hover:opacity-100 hover:text-yellow-500"
-                    }`}
-                  >
-                    <Star className={`h-4 w-4 ${isPrimary ? "fill-current" : ""}`} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isPrimary ? "Primary model" : "Set as primary"}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => removeModel(index)}
-                    disabled={disabled}
-                    className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Remove model</TooltipContent>
-              </Tooltip>
-            </div>
-          );
-        })}
+        {primaryModel && renderModelCard(
+          primaryModel,
+          selectedModels.findIndex((m) => m.provider === primaryModel.provider && m.model === primaryModel.model)
+        )}
 
         {/* Add Model Button */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -371,6 +399,31 @@ export function ModelCardSelector({
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Other models - collapsible */}
+      {otherModels.length > 0 && (
+        <Collapsible open={showOtherModels} onOpenChange={setShowOtherModels}>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Layers className="h-4 w-4" />
+              <span>{otherModels.length} model{otherModels.length !== 1 ? "s" : ""} selected for comparison</span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${showOtherModels ? "rotate-180" : ""}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2">
+            <div className="flex flex-wrap gap-2">
+              {otherModels.map((selection) => {
+                const originalIndex = selectedModels.findIndex(
+                  (m) => m.provider === selection.provider && m.model === selection.model
+                );
+                return renderModelCard(selection, originalIndex);
+              })}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

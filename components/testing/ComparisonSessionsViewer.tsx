@@ -35,10 +35,12 @@ import {
 import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
-import { getModelLabel } from "@/lib/llm/types";
+import { GrokLogo } from "@/components/ui/grok-logo";
+import { DeepSeekLogo } from "@/components/ui/deepseek-logo";
+import { LLMProvider, getModelLabel } from "@/lib/llm/types";
 
 interface ModelSelection {
-  provider: "openai" | "anthropic" | "gemini";
+  provider: LLMProvider;
   model: string;
   isPrimary?: boolean;
 }
@@ -94,6 +96,10 @@ const ProviderIcon = ({ provider, size = 14 }: { provider: string; size?: number
       return <AnthropicLogo size={size} />;
     case "gemini":
       return <GeminiLogo size={size} />;
+    case "grok":
+      return <GrokLogo size={size} />;
+    case "deepseek":
+      return <DeepSeekLogo size={size} />;
     default:
       return null;
   }

@@ -38,7 +38,7 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from "@/lib/llm/types";
+import { LLMProvider, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS, getModelLabel } from "@/lib/llm/types";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface JudgeCriterion {
@@ -56,7 +56,7 @@ export interface JudgeValidationRule {
 
 export interface LLMJudgeConfig {
   enabled: boolean;
-  provider?: "openai" | "anthropic" | "gemini";
+  provider?: LLMProvider;
   model?: string;
   criteria: JudgeCriterion[];
   validationRules?: JudgeValidationRule[];
@@ -66,6 +66,7 @@ export interface LLMJudgeConfig {
 interface JudgeConfigEditorProps {
   config: LLMJudgeConfig;
   onChange: (config: LLMJudgeConfig) => void;
+  availableProviders?: Record<LLMProvider, boolean>;
 }
 
 const DEFAULT_CRITERIA: JudgeCriterion[] = [
@@ -91,6 +92,7 @@ const DEFAULT_CRITERIA: JudgeCriterion[] = [
 export function JudgeConfigEditor({
   config,
   onChange,
+  availableProviders,
 }: JudgeConfigEditorProps) {
   // Criterion dialog state
   const [editingCriterion, setEditingCriterion] =
@@ -120,19 +122,8 @@ export function JudgeConfigEditor({
     onChange(newConfig);
   };
 
-  const handleProviderChange = (provider: "openai" | "anthropic" | "gemini") => {
-    let model: string;
-    switch (provider) {
-      case "anthropic":
-        model = "claude-haiku-4-5-20251015";
-        break;
-      case "gemini":
-        model = "gemini-2.5-flash";
-        break;
-      default:
-        model = "gpt-4o-mini";
-    }
-    onChange({ ...config, provider, model });
+  const handleProviderChange = (provider: LLMProvider) => {
+    onChange({ ...config, provider, model: DEFAULT_MODELS[provider] });
   };
 
   const handleModelChange = (model: string) => {
@@ -227,7 +218,11 @@ export function JudgeConfigEditor({
       ? ANTHROPIC_MODELS
       : config.provider === "gemini"
         ? GEMINI_MODELS
-        : OPENAI_MODELS;
+        : config.provider === "grok"
+          ? GROK_MODELS
+          : config.provider === "deepseek"
+            ? DEEPSEEK_MODELS
+            : OPENAI_MODELS;
 
   return (
     <Card>
@@ -252,17 +247,27 @@ export function JudgeConfigEditor({
               <Label>Provider</Label>
               <Select
                 value={config.provider || "openai"}
-                onValueChange={(v) =>
-                  handleProviderChange(v as "openai" | "anthropic" | "gemini")
-                }
+                onValueChange={(v) => handleProviderChange(v as LLMProvider)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic</SelectItem>
-                  <SelectItem value="gemini">Google Gemini</SelectItem>
+                  <SelectItem value="openai" disabled={availableProviders && !availableProviders.openai}>
+                    OpenAI {availableProviders && !availableProviders.openai && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="anthropic" disabled={availableProviders && !availableProviders.anthropic}>
+                    Anthropic {availableProviders && !availableProviders.anthropic && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="gemini" disabled={availableProviders && !availableProviders.gemini}>
+                    Google Gemini {availableProviders && !availableProviders.gemini && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="grok" disabled={availableProviders && !availableProviders.grok}>
+                    Grok (xAI) {availableProviders && !availableProviders.grok && "(no key)"}
+                  </SelectItem>
+                  <SelectItem value="deepseek" disabled={availableProviders && !availableProviders.deepseek}>
+                    DeepSeek {availableProviders && !availableProviders.deepseek && "(no key)"}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -278,7 +283,7 @@ export function JudgeConfigEditor({
                 <SelectContent>
                   {models.map((model) => (
                     <SelectItem key={model} value={model}>
-                      {model}
+                      {getModelLabel(model)}
                     </SelectItem>
                   ))}
                 </SelectContent>

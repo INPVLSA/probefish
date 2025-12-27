@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -24,7 +25,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Loader2, Key, Play, Layers, ChevronDown, Repeat } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Loader2, Key, Play, Layers, ChevronDown, Repeat, Tag, X } from "lucide-react";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
 import { MultiModelSelector, ModelSelection } from "./MultiModelSelector";
 
@@ -39,8 +45,11 @@ interface TestRunnerProps {
     openai: boolean;
     anthropic: boolean;
     gemini: boolean;
+    grok: boolean;
+    deepseek: boolean;
   };
   savedComparisonModels?: ModelSelection[];
+  availableTags?: string[];
   onRunComplete?: (result: TestRunResult) => void;
   onMultiModelRunComplete?: (results: MultiModelRunResult) => void;
 }
@@ -93,8 +102,9 @@ export function TestRunner({
   targetType = "prompt",
   needsOpenAI = false,
   needsAnthropic = false,
-  availableProviders = { openai: true, anthropic: true, gemini: true },
+  availableProviders = { openai: true, anthropic: true, gemini: true, grok: true, deepseek: true },
   savedComparisonModels,
+  availableTags = [],
   onRunComplete,
   onMultiModelRunComplete,
 }: TestRunnerProps) {
@@ -117,6 +127,8 @@ export function TestRunner({
     current: number;
     total: number;
   } | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const airplaneRef = useRef<AirplaneIconHandle>(null);
 
   // Initialize from saved models
@@ -181,6 +193,7 @@ export function TestRunner({
             modelOverride: modelOverride
               ? { provider: modelOverride.provider, model: modelOverride.model }
               : undefined,
+            tags: selectedTags.length > 0 ? selectedTags : undefined,
           }),
         }
       );
@@ -237,6 +250,7 @@ export function TestRunner({
               openaiApiKey: openaiKey || undefined,
               anthropicApiKey: anthropicKey || undefined,
               modelOverride: { provider: model.provider, model: model.model },
+              tags: selectedTags.length > 0 ? selectedTags : undefined,
             }),
           }
         );
@@ -304,6 +318,96 @@ export function TestRunner({
                   Running {iterations}x iterations...
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Tag Filter */}
+          {availableTags.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Popover open={tagFilterOpen} onOpenChange={setTagFilterOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1"
+                      disabled={running}
+                    >
+                      <Tag className="h-3 w-3" />
+                      Filter by tags
+                      {selectedTags.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                          {selectedTags.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="start">
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground px-1">
+                        Select tags to filter test cases (OR logic)
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {availableTags.map((tag) => {
+                          const isSelected = selectedTags.includes(tag);
+                          return (
+                            <Badge
+                              key={tag}
+                              variant={isSelected ? "default" : "outline"}
+                              className="cursor-pointer hover:bg-muted"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedTags(selectedTags.filter((t) => t !== tag));
+                                } else {
+                                  setSelectedTags([...selectedTags, tag]);
+                                }
+                              }}
+                            >
+                              {tag}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                      {selectedTags.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-7 text-xs"
+                          onClick={() => setSelectedTags([])}
+                        >
+                          Clear all
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {selectedTags.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap flex-1">
+                    {selectedTags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="pl-2 pr-1 py-0.5 gap-1"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
+                          className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                          disabled={running}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedTags.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Running tests with any of the selected tags
+                </p>
+              )}
             </div>
           )}
 

@@ -25,10 +25,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Cpu, ChevronDown, Settings2 } from "lucide-react";
 import { useState } from "react";
-import { OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS } from "@/lib/llm/types";
+import { LLMProvider, LLMProviderOrCustom, OPENAI_MODELS, ANTHROPIC_MODELS, GEMINI_MODELS, GROK_MODELS, DEEPSEEK_MODELS, DEFAULT_MODELS } from "@/lib/llm/types";
 
 export interface ModelConfig {
-  provider?: "openai" | "anthropic" | "gemini" | "custom";
+  provider?: LLMProviderOrCustom;
   model?: string;
   temperature?: number;
   maxTokens?: number;
@@ -42,12 +42,6 @@ interface ModelConfigEditorProps {
   onChange: (config: ModelConfig) => void;
 }
 
-const DEFAULT_MODELS: Record<string, string> = {
-  openai: "gpt-4o-mini",
-  anthropic: "claude-haiku-4-5-20251015",
-  gemini: "gemini-2.5-flash",
-};
-
 export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -57,9 +51,13 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
       ? ANTHROPIC_MODELS
       : provider === "gemini"
         ? GEMINI_MODELS
-        : OPENAI_MODELS;
+        : provider === "grok"
+          ? GROK_MODELS
+          : provider === "deepseek"
+            ? DEEPSEEK_MODELS
+            : OPENAI_MODELS;
 
-  const handleProviderChange = (newProvider: "openai" | "anthropic" | "gemini") => {
+  const handleProviderChange = (newProvider: LLMProvider) => {
     onChange({
       ...config,
       provider: newProvider,
@@ -116,7 +114,7 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
             <Select
               value={provider}
               onValueChange={(v) =>
-                handleProviderChange(v as "openai" | "anthropic" | "gemini")
+                handleProviderChange(v as "openai" | "anthropic" | "gemini" | "grok")
               }
             >
               <SelectTrigger className="w-full">
@@ -126,6 +124,8 @@ export function ModelConfigEditor({ config, onChange }: ModelConfigEditorProps) 
                 <SelectItem value="openai">OpenAI</SelectItem>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="gemini">Google Gemini</SelectItem>
+                <SelectItem value="grok">Grok (xAI)</SelectItem>
+                <SelectItem value="deepseek">DeepSeek</SelectItem>
               </SelectContent>
             </Select>
           </div>

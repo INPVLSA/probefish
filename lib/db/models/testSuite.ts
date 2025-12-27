@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { LLMProvider } from "@/lib/llm/types";
 
 // Test Case - a single test with variable inputs
 export interface ITestCase {
@@ -7,6 +8,8 @@ export interface ITestCase {
   inputs: Record<string, string>;
   expectedOutput?: string;
   notes?: string;
+  tags?: string[];
+  enabled?: boolean; // Whether the test case is active (default: true)
 }
 
 // Validation Rule - static checks on output
@@ -35,7 +38,7 @@ export interface IJudgeValidationRule {
 // LLM Judge Configuration
 export interface ILLMJudgeConfig {
   enabled: boolean;
-  provider?: "openai" | "anthropic" | "gemini";
+  provider?: LLMProvider;
   model?: string;
   criteria: IJudgeCriterion[];
   validationRules?: IJudgeValidationRule[]; // Pass/fail gates
@@ -44,7 +47,7 @@ export interface ILLMJudgeConfig {
 
 // Model selection for multi-model comparison
 export interface IModelSelection {
-  provider: "openai" | "anthropic" | "gemini";
+  provider: LLMProvider;
   model: string;
   isPrimary?: boolean;
 }
@@ -146,6 +149,14 @@ const testCaseSchema = new Schema<ITestCase>(
     },
     expectedOutput: String,
     notes: String,
+    tags: {
+      type: [String],
+      default: [],
+    },
+    enabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { _id: true }
 );
@@ -219,7 +230,7 @@ const llmJudgeConfigSchema = new Schema<ILLMJudgeConfig>(
     },
     provider: {
       type: String,
-      enum: ["openai", "anthropic", "gemini"],
+      enum: ["openai", "anthropic", "gemini", "grok", "deepseek"],
     },
     model: String,
     criteria: [judgeCriterionSchema],
@@ -360,7 +371,7 @@ const testSuiteSchema = new Schema<ITestSuite>(
       {
         provider: {
           type: String,
-          enum: ["openai", "anthropic", "gemini"],
+          enum: ["openai", "anthropic", "gemini", "grok", "deepseek"],
           required: true,
         },
         model: {
@@ -394,7 +405,7 @@ const testSuiteSchema = new Schema<ITestSuite>(
             {
               provider: {
                 type: String,
-                enum: ["openai", "anthropic", "gemini"],
+                enum: ["openai", "anthropic", "gemini", "grok", "deepseek"],
                 required: true,
               },
               model: {

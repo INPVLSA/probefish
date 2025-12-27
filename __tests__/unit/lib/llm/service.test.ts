@@ -4,6 +4,8 @@ import {
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
+  GROK_MODELS,
+  DEEPSEEK_MODELS,
 } from '@/lib/llm/types';
 
 describe('LLMService', () => {
@@ -13,7 +15,9 @@ describe('LLMService', () => {
       expect(providers).toContain('openai');
       expect(providers).toContain('anthropic');
       expect(providers).toContain('gemini');
-      expect(providers).toHaveLength(3);
+      expect(providers).toContain('grok');
+      expect(providers).toContain('deepseek');
+      expect(providers).toHaveLength(5);
     });
   });
 
@@ -34,6 +38,18 @@ describe('LLMService', () => {
       const models = llmService.getModels('gemini');
       expect(models).toEqual([...GEMINI_MODELS]);
       expect(models.some(m => m.includes('gemini'))).toBe(true);
+    });
+
+    it('should return Grok models for grok provider', () => {
+      const models = llmService.getModels('grok');
+      expect(models).toEqual([...GROK_MODELS]);
+      expect(models.some(m => m.includes('grok'))).toBe(true);
+    });
+
+    it('should return DeepSeek models for deepseek provider', () => {
+      const models = llmService.getModels('deepseek');
+      expect(models).toEqual([...DEEPSEEK_MODELS]);
+      expect(models.some(m => m.includes('deepseek'))).toBe(true);
     });
 
     it('should return empty array for unknown provider', () => {
@@ -79,6 +95,30 @@ describe('LLMService', () => {
       expect(result).toBe(false);
     });
 
+    it('should return true when Grok API key is set', () => {
+      const result = llmService.hasCredentials('grok', {
+        grokApiKey: 'xai-test-key',
+      });
+      expect(result).toBe(true);
+    });
+
+    it('should return false when Grok API key is not set', () => {
+      const result = llmService.hasCredentials('grok', {});
+      expect(result).toBe(false);
+    });
+
+    it('should return true when DeepSeek API key is set', () => {
+      const result = llmService.hasCredentials('deepseek', {
+        deepseekApiKey: 'sk-test-key',
+      });
+      expect(result).toBe(true);
+    });
+
+    it('should return false when DeepSeek API key is not set', () => {
+      const result = llmService.hasCredentials('deepseek', {});
+      expect(result).toBe(false);
+    });
+
     it('should return false for unknown provider', () => {
       const result = llmService.hasCredentials('unknown' as any, {
         openaiApiKey: 'sk-test',
@@ -91,17 +131,23 @@ describe('LLMService', () => {
         openaiApiKey: 'sk-openai',
         anthropicApiKey: 'sk-anthropic',
         geminiApiKey: 'gemini-key',
+        grokApiKey: 'xai-key',
+        deepseekApiKey: 'sk-deepseek',
       };
 
       // Each provider should only care about its own key
       expect(llmService.hasCredentials('openai', { anthropicApiKey: 'x' })).toBe(false);
       expect(llmService.hasCredentials('anthropic', { openaiApiKey: 'x' })).toBe(false);
       expect(llmService.hasCredentials('gemini', { openaiApiKey: 'x' })).toBe(false);
+      expect(llmService.hasCredentials('grok', { openaiApiKey: 'x' })).toBe(false);
+      expect(llmService.hasCredentials('deepseek', { openaiApiKey: 'x' })).toBe(false);
 
       // But should work with all keys present
       expect(llmService.hasCredentials('openai', credentials)).toBe(true);
       expect(llmService.hasCredentials('anthropic', credentials)).toBe(true);
       expect(llmService.hasCredentials('gemini', credentials)).toBe(true);
+      expect(llmService.hasCredentials('grok', credentials)).toBe(true);
+      expect(llmService.hasCredentials('deepseek', credentials)).toBe(true);
     });
   });
 });

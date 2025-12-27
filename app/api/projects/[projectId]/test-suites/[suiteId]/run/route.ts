@@ -12,12 +12,70 @@ import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
 import Prompt from "@/lib/db/models/prompt";
 import Endpoint from "@/lib/db/models/endpoint";
 import { executeTestCase, toTestResult } from "@/lib/testing";
-import { LLMProviderCredentials } from "@/lib/llm";
+import { LLMProviderCredentials, LLMProvider } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatcher";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
+}
+
+// Provider configuration
+const PROVIDERS: LLMProvider[] = ["openai", "anthropic", "gemini", "grok", "deepseek"];
+
+const PROVIDER_CREDENTIAL_KEYS: Record<LLMProvider, keyof LLMProviderCredentials> = {
+  openai: "openaiApiKey",
+  anthropic: "anthropicApiKey",
+  gemini: "geminiApiKey",
+  grok: "grokApiKey",
+  deepseek: "deepseekApiKey",
+};
+
+const PROVIDER_NAMES: Record<LLMProvider, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  gemini: "Gemini",
+  grok: "Grok",
+  deepseek: "DeepSeek",
+};
+
+// Decrypt all provider credentials from organization
+function decryptCredentials(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgCredentials: any
+): LLMProviderCredentials {
+  const credentials: LLMProviderCredentials = {};
+  if (!orgCredentials) return credentials;
+
+  for (const provider of PROVIDERS) {
+    const encryptedKey = orgCredentials[provider]?.apiKey;
+    if (encryptedKey) {
+      try {
+        credentials[PROVIDER_CREDENTIAL_KEYS[provider]] = decrypt(encryptedKey);
+      } catch (e) {
+        console.error(`Failed to decrypt ${PROVIDER_NAMES[provider]} key:`, e);
+      }
+    }
+  }
+  return credentials;
+}
+
+// Check if credentials exist for a provider
+function checkProviderCredentials(
+  provider: string,
+  credentials: LLMProviderCredentials,
+  context?: string
+): NextResponse | null {
+  const credKey = PROVIDER_CREDENTIAL_KEYS[provider as LLMProvider];
+  if (credKey && !credentials[credKey]) {
+    const providerName = PROVIDER_NAMES[provider as LLMProvider] || provider;
+    const suffix = context ? ` for ${context}` : "";
+    return NextResponse.json(
+      { error: `${providerName} API key is required${suffix}. Configure it in Settings > API Keys.` },
+      { status: 400 }
+    );
+  }
+  return null;
 }
 
 // POST /api/projects/[projectId]/test-suites/[suiteId]/run - Execute test suite
@@ -76,42 +134,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Decrypt stored API keys from organization
-    const credentials: LLMProviderCredentials = {};
-
-    if (organization.llmCredentials?.openai?.apiKey) {
-      try {
-        credentials.openaiApiKey = decrypt(organization.llmCredentials.openai.apiKey);
-      } catch (e) {
-        console.error("Failed to decrypt OpenAI key:", e);
-      }
-    }
-
-    if (organization.llmCredentials?.anthropic?.apiKey) {
-      try {
-        credentials.anthropicApiKey = decrypt(organization.llmCredentials.anthropic.apiKey);
-      } catch (e) {
-        console.error("Failed to decrypt Anthropic key:", e);
-      }
-    }
-
-    if (organization.llmCredentials?.gemini?.apiKey) {
-      try {
-        credentials.geminiApiKey = decrypt(organization.llmCredentials.gemini.apiKey);
-      } catch (e) {
-        console.error("Failed to decrypt Gemini key:", e);
-      }
-    }
+    const credentials = decryptCredentials(organization.llmCredentials);
 
     // Allow override from request body if provided
     const body = await request.json().catch(() => ({}));
-    if (body.openaiApiKey) {
-      credentials.openaiApiKey = body.openaiApiKey;
-    }
-    if (body.anthropicApiKey) {
-      credentials.anthropicApiKey = body.anthropicApiKey;
-    }
-    if (body.geminiApiKey) {
-      credentials.geminiApiKey = body.geminiApiKey;
+    for (const provider of PROVIDERS) {
+      const credKey = PROVIDER_CREDENTIAL_KEYS[provider];
+      if (body[credKey]) {
+        credentials[credKey] = body[credKey];
+      }
     }
 
     // Model override for multi-model comparison
@@ -122,6 +153,52 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Number of iterations to run (default: 1, max: 100)
     const iterations = Math.min(Math.max(1, parseInt(body.iterations) || 1), 100);
+
+    // Tags filter - if provided, only run test cases with matching tags (OR logic)
+    const tagsFilter = Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string" && t.trim()) : [];
+
+    // Test case IDs filter - if provided, only run specific test cases (takes precedence over tags)
+    const testCaseIds = Array.isArray(body.testCaseIds)
+      ? body.testCaseIds.filter((id: unknown) => typeof id === "string" && id.trim())
+      : [];
+
+    // Filter test cases by IDs or tags
+    let testCasesToRun = testSuite.testCases;
+    if (testCaseIds.length > 0) {
+      // Filter by specific test case IDs (takes precedence)
+      testCasesToRun = testSuite.testCases.filter(
+        (tc) => testCaseIds.includes(tc._id?.toString())
+      );
+
+      if (testCasesToRun.length === 0) {
+        return NextResponse.json(
+          { error: "No test cases match the selected IDs" },
+          { status: 400 }
+        );
+      }
+    } else if (tagsFilter.length > 0) {
+      // Filter by tags
+      testCasesToRun = testSuite.testCases.filter(
+        (tc) => tc.tags?.some((tag) => tagsFilter.includes(tag))
+      );
+
+      if (testCasesToRun.length === 0) {
+        return NextResponse.json(
+          { error: "No test cases match the selected tags" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Filter out disabled/paused test cases
+    testCasesToRun = testCasesToRun.filter((tc) => tc.enabled !== false);
+
+    if (testCasesToRun.length === 0) {
+      return NextResponse.json(
+        { error: "No enabled test cases to run" },
+        { status: 400 }
+      );
+    }
 
     // For prompt testing, verify we have required credentials
     if (testSuite.targetType === "prompt") {
@@ -140,41 +217,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // Use modelOverride provider if provided, otherwise use version's provider
       const provider = modelOverride?.provider || version?.modelConfig.provider || "openai";
-      if (provider === "openai" && !credentials.openaiApiKey) {
-        return NextResponse.json(
-          { error: "OpenAI API key is required. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
-      if (provider === "anthropic" && !credentials.anthropicApiKey) {
-        return NextResponse.json(
-          { error: "Anthropic API key is required. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
-      if (provider === "gemini" && !credentials.geminiApiKey) {
-        return NextResponse.json(
-          { error: "Gemini API key is required. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
+      const credError = checkProviderCredentials(provider, credentials);
+      if (credError) return credError;
     }
 
     // For LLM judge, check credentials
     if (testSuite.llmJudgeConfig.enabled) {
       const judgeProvider = testSuite.llmJudgeConfig.provider || "openai";
-      if (judgeProvider === "openai" && !credentials.openaiApiKey) {
-        return NextResponse.json(
-          { error: "OpenAI API key is required for LLM judge. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
-      if (judgeProvider === "anthropic" && !credentials.anthropicApiKey) {
-        return NextResponse.json(
-          { error: "Anthropic API key is required for LLM judge. Configure it in Settings > API Keys." },
-          { status: 400 }
-        );
-      }
+      const credError = checkProviderCredentials(judgeProvider, credentials, "LLM judge");
+      if (credError) return credError;
     }
 
     // Load the target
@@ -193,7 +244,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Create test run
-    const totalTestCount = testSuite.testCases.length * iterations;
+    const totalTestCount = testCasesToRun.length * iterations;
     const testRun: ITestRun = {
       _id: new mongoose.Types.ObjectId(),
       runAt: new Date(),
@@ -220,7 +271,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let judgeScoreCount = 0;
 
     for (let iteration = 1; iteration <= iterations; iteration++) {
-      for (const testCase of testSuite.testCases) {
+      for (const testCase of testCasesToRun) {
         const result = await executeTestCase({
           testCase,
           targetType: testSuite.targetType,

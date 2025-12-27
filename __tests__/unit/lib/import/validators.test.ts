@@ -189,6 +189,86 @@ describe("Import Validators", () => {
       expect(result.success).toBe(false);
     });
 
+    it("should validate test cases with tags", () => {
+      const withTestCaseTags = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test with tags",
+                inputs: { name: "World" },
+                tags: ["smoke", "regression", "auth"],
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withTestCaseTags);
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept test cases with empty tags array", () => {
+      const withEmptyTags = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test without tags",
+                inputs: { name: "World" },
+                tags: [],
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withEmptyTags);
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept test cases without tags field (defaults to empty)", () => {
+      const withoutTags = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test without tags field",
+                inputs: { name: "World" },
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withoutTags);
+
+      expect(result.success).toBe(true);
+    });
+
     it("should validate validation rule types", () => {
       const withValidationRules = {
         ...validProjectExport,

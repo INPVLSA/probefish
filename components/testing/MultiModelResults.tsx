@@ -30,6 +30,8 @@ import {
 import { OpenAILogo } from "@/components/ui/openai-logo";
 import { AnthropicLogo } from "@/components/ui/anthropic-logo";
 import { GeminiLogo } from "@/components/ui/gemini-logo";
+import { GrokLogo } from "@/components/ui/grok-logo";
+import { DeepSeekLogo } from "@/components/ui/deepseek-logo";
 import { getModelLabel } from "@/lib/llm/types";
 import { MultiModelRunResult } from "./TestRunner";
 
@@ -83,6 +85,10 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
         return <AnthropicLogo size={size} />;
       case "gemini":
         return <GeminiLogo size={size} />;
+      case "grok":
+        return <GrokLogo size={size} />;
+      case "deepseek":
+        return <DeepSeekLogo size={size} />;
       default:
         return null;
     }
