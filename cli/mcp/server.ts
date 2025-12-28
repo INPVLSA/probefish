@@ -5,6 +5,7 @@ import {
   listProjects,
   listTestSuites,
   listTestRuns,
+  getTestRun,
   getTestSuite,
   runTestSuite,
   exportTestSuite,
@@ -210,6 +211,31 @@ server.registerTool(
         {
           type: 'text',
           text: JSON.stringify(response.runs),
+        },
+      ],
+    };
+  }
+);
+
+// Tool: Get single test run
+server.registerTool(
+  'probefish_get_run',
+  {
+    description: 'Get details of a specific test run including all individual results',
+    inputSchema: {
+      projectId: z.string().describe('The project ID'),
+      suiteId: z.string().describe('The test suite ID'),
+      runId: z.string().describe('The test run ID'),
+    },
+  },
+  async ({ projectId, suiteId, runId }) => {
+    checkAuth();
+    const response = await getTestRun(projectId, suiteId, runId);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(response.run),
         },
       ],
     };

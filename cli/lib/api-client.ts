@@ -140,6 +140,14 @@ export async function listTestRuns(
   });
 }
 
+export async function getTestRun(
+  projectId: string,
+  suiteId: string,
+  runId: string
+): Promise<{ run: TestRunsResponse['runs'][0] }> {
+  return request(`/projects/${projectId}/test-suites/${suiteId}/runs/${runId}`);
+}
+
 export async function runTestSuite(
   projectId: string,
   suiteId: string,
