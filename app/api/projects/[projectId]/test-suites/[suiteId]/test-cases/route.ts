@@ -171,7 +171,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ testCases: testSuite.testCases });
+    // Parse pagination params
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get("limit") || "0", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+
+    const total = testSuite.testCases.length;
+    let testCases = testSuite.testCases;
+
+    if (limit > 0) {
+      testCases = testSuite.testCases.slice(offset, offset + limit);
+    }
+
+    return NextResponse.json({
+      testCases,
+      pagination: { total, limit: limit || total, offset },
+    });
   } catch (error) {
     console.error("Error fetching test cases:", error);
     return NextResponse.json(

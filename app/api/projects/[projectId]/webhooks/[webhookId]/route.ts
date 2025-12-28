@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth/authorization";
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import Webhook from "@/lib/db/models/webhook";
+import { isAllowedWebhookUrl } from "@/lib/webhooks/validation";
 
 interface RouteParams {
   params: Promise<{ projectId: string; webhookId: string }>;
@@ -96,6 +97,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (!url?.trim()) {
         return NextResponse.json(
           { error: "Webhook URL is required" },
+          { status: 400 }
+        );
+      }
+      if (!isAllowedWebhookUrl(url.trim())) {
+        return NextResponse.json(
+          { error: "Webhook URL is not allowed. Cannot use localhost or private IP addresses." },
           { status: 400 }
         );
       }

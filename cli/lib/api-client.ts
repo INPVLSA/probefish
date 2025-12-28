@@ -115,9 +115,14 @@ export async function listTestSuites(
 
 export async function getTestSuite(
   projectId: string,
-  suiteId: string
+  suiteId: string,
+  options?: { summary?: boolean }
 ): Promise<{ testSuite: TestSuitesResponse['testSuites'][0] }> {
-  return request(`/projects/${projectId}/test-suites/${suiteId}`);
+  return request(`/projects/${projectId}/test-suites/${suiteId}`, {
+    params: {
+      summary: options?.summary ? 'true' : undefined,
+    },
+  });
 }
 
 // Test Runs
@@ -205,9 +210,18 @@ export async function addTestCases(
 
 export async function listTestCases(
   projectId: string,
-  suiteId: string
-): Promise<{ testCases: Array<{ _id: string; name: string; inputs: Record<string, string>; expectedOutput: string; enabled: boolean }> }> {
-  return request(`/projects/${projectId}/test-suites/${suiteId}/test-cases`);
+  suiteId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<{
+  testCases: Array<{ _id: string; name: string; inputs: Record<string, string>; expectedOutput: string; enabled: boolean }>;
+  pagination: { total: number; limit: number; offset: number };
+}> {
+  return request(`/projects/${projectId}/test-suites/${suiteId}/test-cases`, {
+    params: {
+      limit: options?.limit,
+      offset: options?.offset,
+    },
+  });
 }
 
 export async function getTestCase(

@@ -44,16 +44,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const summary = searchParams.get("summary") === "true";
+
     const testSuite = await TestSuite.findOne({
       _id: suiteId,
       projectId,
-    });
+    }).select("-runHistory -comparisonSessions");
 
     if (!testSuite) {
       return NextResponse.json(
         { error: "Test suite not found" },
         { status: 404 }
       );
+    }
+
+    // When summary=true, strip results from lastRun to reduce payload
+    if (summary && testSuite.lastRun) {
+      const suiteObj = testSuite.toObject();
+      suiteObj.lastRun = {
+        _id: testSuite.lastRun._id,
+        runAt: testSuite.lastRun.runAt,
+        status: testSuite.lastRun.status,
+        summary: testSuite.lastRun.summary,
+      };
+      return NextResponse.json({ testSuite: suiteObj });
     }
 
     return NextResponse.json({ testSuite });

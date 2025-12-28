@@ -51,7 +51,7 @@ server.registerTool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.projects, null, 2),
+          text: JSON.stringify(response.projects),
         },
       ],
     };
@@ -74,7 +74,7 @@ server.registerTool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.testSuites, null, 2),
+          text: JSON.stringify(response.testSuites),
         },
       ],
     };
@@ -85,7 +85,7 @@ server.registerTool(
 server.registerTool(
   'probefish_get_suite',
   {
-    description: 'Get details of a specific test suite including test cases',
+    description: 'Get details of a specific test suite including test cases (lastRun excludes individual results)',
     inputSchema: {
       projectId: z.string().describe('The project ID'),
       suiteId: z.string().describe('The test suite ID'),
@@ -93,12 +93,12 @@ server.registerTool(
   },
   async ({ projectId, suiteId }) => {
     checkAuth();
-    const response = await getTestSuite(projectId, suiteId);
+    const response = await getTestSuite(projectId, suiteId, { summary: true });
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.testSuite, null, 2),
+          text: JSON.stringify(response.testSuite),
         },
       ],
     };
@@ -109,20 +109,25 @@ server.registerTool(
 server.registerTool(
   'probefish_list_test_cases',
   {
-    description: 'List all test cases in a test suite',
+    description: 'List test cases in a test suite (paginated, default limit 50)',
     inputSchema: {
       projectId: z.string().describe('The project ID'),
       suiteId: z.string().describe('The test suite ID'),
+      limit: z.number().optional().describe('Maximum number of test cases to return (default: 50)'),
+      offset: z.number().optional().describe('Number of test cases to skip (default: 0)'),
     },
   },
-  async ({ projectId, suiteId }) => {
+  async ({ projectId, suiteId, limit, offset }) => {
     checkAuth();
-    const response = await listTestCases(projectId, suiteId);
+    const response = await listTestCases(projectId, suiteId, {
+      limit: limit ?? 50,
+      offset: offset ?? 0,
+    });
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.testCases, null, 2),
+          text: JSON.stringify({ testCases: response.testCases, pagination: response.pagination }),
         },
       ],
     };
@@ -179,7 +184,7 @@ server.registerTool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify(summary, null, 2),
+          text: JSON.stringify(summary),
         },
       ],
     };
@@ -204,7 +209,7 @@ server.registerTool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.runs, null, 2),
+          text: JSON.stringify(response.runs),
         },
       ],
     };
@@ -264,7 +269,7 @@ server.registerTool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.testCases[0], null, 2),
+          text: JSON.stringify(response.testCases[0]),
         },
       ],
     };
@@ -295,7 +300,7 @@ server.registerTool(
       content: [
         {
           type: 'text',
-          text: JSON.stringify(response.testCase, null, 2),
+          text: JSON.stringify(response.testCase),
         },
       ],
     };
