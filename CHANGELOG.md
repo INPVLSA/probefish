@@ -1,4 +1,4 @@
-# v0.9.0
+# v0.9.0 (Swordfish)
 
 - CLI tooling - run tests, manage test cases from terminal
 - MCP server - integrate with Claude Code and AI assistants
