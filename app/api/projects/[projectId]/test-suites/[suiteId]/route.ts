@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         runAt: testSuite.lastRun.runAt,
         status: testSuite.lastRun.status,
         summary: testSuite.lastRun.summary,
-      };
+      } as typeof suiteObj.lastRun;
       return NextResponse.json({ testSuite: suiteObj });
     }
 

@@ -165,14 +165,14 @@ server.registerTool(
 
     // Format summary
     const summary = {
-      runId: response.run._id,
-      status: response.run.status,
-      total: response.run.summary.total,
-      passed: response.run.summary.passed,
-      failed: response.run.summary.failed,
-      avgScore: response.run.summary.avgScore,
-      avgResponseTime: response.run.summary.avgResponseTime,
-      results: response.run.results.map((r) => ({
+      runId: response.testRun._id,
+      status: response.testRun.status,
+      total: response.testRun.summary.total,
+      passed: response.testRun.summary.passed,
+      failed: response.testRun.summary.failed,
+      avgScore: response.testRun.summary.avgScore,
+      avgResponseTime: response.testRun.summary.avgResponseTime,
+      results: response.testRun.results.map((r) => ({
         testCase: r.testCaseName,
         passed: r.validationPassed,
         score: r.judgeScore,
