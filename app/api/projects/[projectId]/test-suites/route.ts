@@ -29,6 +29,44 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
+    const { searchParams } = new URL(request.url);
+    const summary = searchParams.get("summary") === "true";
+
+    if (summary) {
+      // Return lightweight summary without testCases and lastRun.results
+      const testSuites = await TestSuite.aggregate([
+        { $match: { projectId: new (await import("mongoose")).Types.ObjectId(projectId) } },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            description: 1,
+            targetType: 1,
+            targetId: 1,
+            testCaseCount: { $size: { $ifNull: ["$testCases", []] } },
+            lastRun: {
+              $cond: {
+                if: { $ifNull: ["$lastRun", false] },
+                then: {
+                  _id: "$lastRun._id",
+                  runAt: "$lastRun.runAt",
+                  status: "$lastRun.status",
+                  summary: "$lastRun.summary",
+                },
+                else: null,
+              },
+            },
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        },
+        { $sort: { updatedAt: -1 } },
+      ]);
+
+      return NextResponse.json({ testSuites });
+    }
+
+    // Full response (existing behavior)
     const testSuites = await TestSuite.find({ projectId })
       .select("-runHistory")
       .sort({ updatedAt: -1 });

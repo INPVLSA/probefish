@@ -13,6 +13,10 @@ todos.md
 !.yarn/releases
 !.yarn/versions
 
+.claude/
+playwright-report
+test-results
+
 # testing
 /coverage
 
@@ -22,6 +26,7 @@ todos.md
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store

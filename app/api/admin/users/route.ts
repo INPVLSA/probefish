@@ -3,6 +3,10 @@ import connectDB from "@/lib/db/mongodb";
 import { User } from "@/lib/db/models";
 import { requireSuperAdmin, authError } from "@/lib/auth/authorization";
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // GET /api/admin/users - List all users (super admin only)
 export async function GET(request: NextRequest) {
   try {
@@ -21,9 +25,10 @@ export async function GET(request: NextRequest) {
 
     const query: Record<string, unknown> = {};
     if (search) {
+      const escapedSearch = escapeRegex(search);
       query.$or = [
-        { email: { $regex: search, $options: "i" } },
-        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: escapedSearch, $options: "i" } },
+        { name: { $regex: escapedSearch, $options: "i" } },
       ];
     }
 

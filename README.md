@@ -170,6 +170,26 @@ Features:
 
 See [API Authentication Guide](_docs/api-authentication.md) for detailed documentation on CI/CD integration with GitLab CI, GitHub Actions, and Jenkins.
 
+### CLI & MCP Server
+
+Command-line interface for terminal usage and CI/CD pipelines:
+
+```bash
+npm install -g probefish
+
+probefish auth token <your-token>
+probefish config set api.baseUrl https://your-instance.com/api
+probefish run <suite-id> -p <project-id>
+```
+
+MCP server for AI assistant integration (Claude Code, etc.):
+
+```bash
+probefish mcp serve
+```
+
+See [CLI Documentation](_docs/cli.md) for full command reference.
+
 ## Getting Started
 
 ### Prerequisites

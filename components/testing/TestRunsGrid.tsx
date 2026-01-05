@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, Fragment, useRef, useEffect } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import {
   Table,
@@ -30,7 +30,6 @@ import {
 import {
   CheckCircle2,
   XCircle,
-  Clock,
   Brain,
   ChevronUp,
   ChevronDown,
@@ -40,7 +39,9 @@ import {
   Pencil,
   Check,
   X,
+  Clock,
 } from "lucide-react";
+import { ClockIcon, ClockIconHandle } from "@/components/ui/clock";
 import { PreformattedText } from "@/components/ui/preformatted-text";
 
 interface TestResult {
@@ -96,6 +97,17 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const emptyClockIconRef = useRef<ClockIconHandle>(null);
+
+  // Animate empty state icon when no runs
+  useEffect(() => {
+    if (runs.length === 0) {
+      const timer = setTimeout(() => {
+        emptyClockIconRef.current?.startAnimation();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [runs.length]);
 
   const saveNote = async (runId: string) => {
     setSavingNote(true);
@@ -268,7 +280,7 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center py-8 text-muted-foreground">
-            <Clock className="h-8 w-8 mb-3" />
+            <ClockIcon ref={emptyClockIconRef} size={48} className="inline-block mb-4 opacity-50" animateOnLoad />
             <p>No test runs recorded.</p>
             <p className="text-sm">Run tests to see history here.</p>
           </div>

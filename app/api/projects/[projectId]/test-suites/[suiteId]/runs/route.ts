@@ -51,6 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const status = searchParams.get("status");
     const sortBy = searchParams.get("sortBy") || "runAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
+    const summary = searchParams.get("summary") === "true";
 
     const testSuite = await TestSuite.findOne({
       _id: suiteId,
@@ -101,8 +102,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const skip = (page - 1) * limit;
     const paginatedRuns = runs.slice(skip, skip + limit);
 
+    // Return summary (without results) or full response
+    const responseRuns = summary
+      ? paginatedRuns.map((run) => ({
+          _id: run._id,
+          runAt: run.runAt,
+          status: run.status,
+          note: run.note,
+          iterations: run.iterations,
+          modelOverride: run.modelOverride,
+          summary: run.summary,
+        }))
+      : paginatedRuns;
+
     return NextResponse.json({
-      runs: paginatedRuns,
+      runs: responseRuns,
       pagination: {
         page,
         limit,

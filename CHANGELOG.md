@@ -1,3 +1,11 @@
+# v0.9.0 (Swordfish)
+
+- CLI tooling - run tests, manage test cases from terminal
+- MCP server - integrate with Claude Code and AI assistants
+- Test case CRUD API endpoints
+- Token auth support for projects endpoint
+- Improved auth security - validate before DB connection
+
 # v0.8.0 (Blobfish)
 
 - Grok (xAI) provider support - Grok 3, Grok 2 and variants

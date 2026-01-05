@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { IWebhook, WebhookEvent, IWebhookDelivery } from "@/lib/db/models/webhook";
+import { isAllowedWebhookUrl } from "./validation";
 
 export interface WebhookPayload {
   event: WebhookEvent;
@@ -48,6 +49,15 @@ export async function deliverWebhook(
   event: WebhookEvent,
   retry = 0
 ): Promise<DeliveryResult> {
+  // SSRF protection: validate URL before making request
+  if (!isAllowedWebhookUrl(webhook.url)) {
+    return {
+      success: false,
+      error: "Webhook URL is not allowed (internal or private address)",
+      duration: 0,
+    };
+  }
+
   const startTime = Date.now();
   const payloadString = JSON.stringify(payload);
 
