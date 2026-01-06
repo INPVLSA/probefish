@@ -274,3 +274,18 @@ export async function validateToken(): Promise<boolean> {
     throw error;
   }
 }
+
+// Validate an arbitrary token against the API (for HTTP MCP auth)
+export async function validateBearerToken(token: string, baseUrl: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${baseUrl}/projects`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}

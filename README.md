@@ -182,11 +182,17 @@ probefish config set api.baseUrl https://your-instance.com/api
 probefish run <suite-id> -p <project-id>
 ```
 
-MCP server for AI assistant integration (Claude Code, etc.):
+MCP server for AI assistant integration (Claude Code, Cursor, etc.):
 
 ```bash
+# Stdio mode (local AI assistants)
 probefish mcp serve
+
+# HTTP mode (remote access, web clients)
+probefish mcp serve --http --port 3001
 ```
+
+HTTP mode enables remote MCP access via Streamable HTTP transport with Bearer token authentication.
 
 See [CLI Documentation](_docs/cli.md) for full command reference.
 
