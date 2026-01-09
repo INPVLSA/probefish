@@ -182,11 +182,17 @@ probefish config set api.baseUrl https://your-instance.com/api
 probefish run <suite-id> -p <project-id>
 ```
 
-MCP server for AI assistant integration (Claude Code, etc.):
+MCP server for AI assistant integration (Claude Code, Cursor, etc.):
 
 ```bash
+# Stdio mode (local AI assistants)
 probefish mcp serve
+
+# HTTP mode (remote access, web clients)
+probefish mcp serve --http --port 3001
 ```
+
+HTTP mode enables remote MCP access via Streamable HTTP transport with Bearer token authentication.
 
 See [CLI Documentation](_docs/cli.md) for full command reference.
 
@@ -237,4 +243,6 @@ npm start
 
 ## License
 
-Apache License 2.0 - see [LICENSE](LICENSE) for details.
+Elastic License 2.0 (ELv2) - see [LICENSE](LICENSE) for details.
+
+This is a source-available license. You can use, modify, and self-host Probefish freely for your own purposes. You cannot offer it as a managed service to third parties or remove license key functionality, unless agreed otherwise under a separate commercial license.

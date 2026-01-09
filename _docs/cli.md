@@ -173,9 +173,17 @@ Options:
 ### mcp - MCP Server
 
 ```bash
-probefish mcp serve   # Start MCP server
-probefish mcp info    # Show configuration info
+probefish mcp serve              # Start MCP server (stdio mode)
+probefish mcp serve --http       # Start HTTP server for remote access
+probefish mcp serve --http -p 8080  # Custom port
+probefish mcp serve --http --no-auth  # Disable auth (not recommended)
+probefish mcp info               # Show configuration info
 ```
+
+Options:
+- `--http` - Run as HTTP server instead of stdio
+- `-p, --port <number>` - HTTP server port (default: 3001)
+- `--no-auth` - Disable authentication for HTTP mode (not recommended)
 
 ## CI/CD Integration
 
@@ -385,6 +393,134 @@ Ensure your token has the required scopes:
 - `test-suites:write` - Create/update/delete test cases
 - `test-runs:execute` - Run test suites
 - `exports:read` - Export data
+
+## Remote MCP Access (HTTP Mode)
+
+For remote access or web-based MCP clients, you can run the MCP server in HTTP mode using the Streamable HTTP transport.
+
+### Starting the HTTP Server
+
+```bash
+# Start on default port 3001
+probefish mcp serve --http
+
+# Start on custom port
+probefish mcp serve --http --port 8080
+```
+
+The server outputs connection info:
+```
+Probefish MCP Server (HTTP mode)
+Endpoint: http://localhost:3001
+Auth: Bearer token validated against API
+```
+
+### Authentication
+
+By default, HTTP mode validates Bearer tokens against the Probefish API. Use any valid Probefish API token:
+
+```
+Authorization: Bearer pf_your_token_here
+```
+
+Tokens are validated by making a request to the Probefish API and cached for 5 minutes for performance.
+
+**Disabling Authentication (Not Recommended):**
+
+For local development or trusted networks only, you can disable authentication:
+
+```bash
+probefish mcp serve --http --no-auth
+```
+
+When disabled, the server accepts all requests without authentication.
+
+### Connecting from Claude Code
+
+Use the `claude mcp add` command to connect to the remote HTTP server:
+
+```bash
+claude mcp add --transport http probefish http://your-server:3001 \
+  --header "Authorization: Bearer <your-probefish-token>"
+```
+
+Or use the interactive menu:
+```bash
+claude mcp add
+# Select "http" transport, enter URL and headers
+```
+
+### Connecting Other MCP Clients
+
+For other MCP clients that support Streamable HTTP transport, add to your config:
+
+```json
+{
+  "mcpServers": {
+    "probefish": {
+      "type": "streamableHttp",
+      "url": "http://your-server:3001",
+      "headers": {
+        "Authorization": "Bearer <your-probefish-token>"
+      }
+    }
+  }
+}
+```
+
+### Testing the Connection
+
+```bash
+# List available tools
+curl -X POST http://localhost:3001 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-token>" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+
+# Call a tool
+curl -X POST http://localhost:3001 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-token>" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"probefish_list_projects","arguments":{}},"id":2}'
+```
+
+### Exposing to Remote Clients
+
+The HTTP server binds to localhost by default. For remote access:
+
+**Option 1: Reverse Proxy (Recommended for production)**
+
+Use nginx, Caddy, or similar to proxy requests with TLS:
+
+```nginx
+# nginx example
+location /mcp {
+    proxy_pass http://localhost:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
+```
+
+**Option 2: SSH Tunnel (Development/testing)**
+
+From your client machine:
+```bash
+ssh -L 3001:localhost:3001 user@your-server.com
+```
+
+Then connect to `http://localhost:3001` locally.
+
+### HTTP Mode vs Stdio Mode
+
+| Aspect | Stdio Mode | HTTP Mode |
+|--------|------------|-----------|
+| Use case | Local AI assistants | Remote clients, web apps |
+| Connection | Process pipes | HTTP/SSE |
+| Auth | Uses CLI config | Bearer token per request |
+| Concurrency | Single client | Multiple clients |
+| Command | `probefish mcp serve` | `probefish mcp serve --http` |
 
 ## Output Formats
 

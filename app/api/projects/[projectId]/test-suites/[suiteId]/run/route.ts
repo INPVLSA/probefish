@@ -330,6 +330,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       testSuite.runHistory = testSuite.runHistory.slice(0, 10);
     }
 
+    // Mark nested fields as modified so Mongoose persists changes
+    testSuite.markModified("lastRun");
+    testSuite.markModified("runHistory");
+
     await testSuite.save();
 
     // Get previous run for regression detection

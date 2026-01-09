@@ -1,6 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { z } from 'zod';
+import { createHttpMcpServer } from './http-transport.js';
 import {
   listProjects,
   listTestSuites,
@@ -16,8 +18,8 @@ import {
 } from '../lib/api-client.js';
 import { getToken, getBaseUrl } from '../lib/config.js';
 
-// Create MCP server
-const server = new McpServer({
+// Create MCP server (exported for use by HTTP transport)
+export const server = new McpServer({
   name: 'probefish',
   version: '0.9.0',
 });
@@ -358,11 +360,8 @@ server.registerTool(
   }
 );
 
-// Start server
-export async function startMcpServer(): Promise<void> {
-  log('Starting MCP server...');
-  const transport = new StdioServerTransport();
-
+// Connect to any transport
+async function connectToTransport(transport: Transport): Promise<void> {
   server.server.oninitialized = () => {
     log('MCP server initialized and connected');
   };
@@ -378,4 +377,45 @@ export async function startMcpServer(): Promise<void> {
     log(`Failed to connect: ${error}`);
     throw error;
   }
+}
+
+// Start server in stdio mode (default)
+export async function startMcpServer(): Promise<void> {
+  log('Starting MCP server (stdio mode)...');
+  const transport = new StdioServerTransport();
+  await connectToTransport(transport);
+}
+
+// Start server in HTTP mode
+export async function startHttpMcpServer(
+  port: number,
+  baseUrl: string,
+  noAuth?: boolean
+): Promise<void> {
+  log(`Starting MCP server (HTTP mode on port ${port})...`);
+
+  const { server: httpServer, transport, close } = createHttpMcpServer({
+    port,
+    baseUrl,
+    noAuth,
+  });
+
+  await connectToTransport(transport);
+
+  httpServer.listen(port, () => {
+    log(`HTTP MCP server listening on http://localhost:${port}`);
+    console.log(`\nProbefish MCP Server (HTTP mode)`);
+    console.log(`Endpoint: http://localhost:${port}`);
+    console.log(`Auth: ${noAuth ? 'disabled' : 'Bearer token validated against API'}\n`);
+  });
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    log('Shutting down...');
+    await close();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }

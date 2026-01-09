@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const testSuite = await TestSuite.findOne({
       _id: suiteId,
       projectId,
-    }).select("-runHistory -comparisonSessions");
+    }).select("-comparisonSessions");
 
     if (!testSuite) {
       return NextResponse.json(
