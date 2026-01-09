@@ -1,4 +1,5 @@
 ### v0.9.1
+- SSE transport support for remote MCP access
 - Fixed AI Judge Score Threshold Not Applied
 - Fixed history persistence bug
 - License updated to ELv2
