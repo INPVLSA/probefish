@@ -1,3 +1,8 @@
+### v0.9.1
+- 
+- Fixed history persistence bug
+- License updated to ELv2
+
 # v0.9.0 (Swordfish)
 
 - CLI tooling - run tests, manage test cases from terminal

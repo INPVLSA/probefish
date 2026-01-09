@@ -187,6 +187,7 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
     llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
     runHistory: [],
     save: mockSave,
+    markModified: vi.fn(),
     ...overrides,
   });
 
