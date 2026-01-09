@@ -1,3 +1,7 @@
+### v0.9.2
+- Added healthcheck for containers
+- Added `container_name` to compose configuration
+
 ### v0.9.1
 - SSE transport support for remote MCP access
 - Fixed AI Judge Score Threshold Not Applied
