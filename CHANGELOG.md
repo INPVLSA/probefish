@@ -1,5 +1,5 @@
 ### v0.9.1
-- 
+- Fixed AI Judge Score Threshold Not Applied
 - Fixed history persistence bug
 - License updated to ELv2
 

@@ -583,11 +583,12 @@ export async function executeTestCase(params: {
         result.judgeScores = judgeResult.scores;
         result.judgeReasoning = judgeResult.reasoning;
 
-        // Check minimum score threshold
-        if (judgeConfig.minScore !== undefined && judgeConfig.minScore > 0) {
-          if (judgeResult.score < judgeConfig.minScore) {
+        // Check minimum score threshold (default to 70% if not set)
+        const effectiveMinScore = judgeConfig.minScore ?? 0.7;
+        if (effectiveMinScore > 0) {
+          if (judgeResult.score < effectiveMinScore) {
             result.validationPassed = false;
-            const minScorePercent = (judgeConfig.minScore * 100).toFixed(0);
+            const minScorePercent = (effectiveMinScore * 100).toFixed(0);
             const actualScorePercent = (judgeResult.score * 100).toFixed(0);
             result.validationErrors.push(
               `Judge score ${actualScorePercent}% is below minimum threshold of ${minScorePercent}%`
