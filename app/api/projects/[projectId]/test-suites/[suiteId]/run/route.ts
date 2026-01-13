@@ -8,10 +8,18 @@ import {
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import Project from "@/lib/db/models/project";
 import Organization from "@/lib/db/models/organization";
-import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
+import TestSuite, { ITestRun, ITestCase } from "@/lib/db/models/testSuite";
 import Prompt from "@/lib/db/models/prompt";
 import Endpoint from "@/lib/db/models/endpoint";
 import { executeTestCase, toTestResult } from "@/lib/testing";
+import { executeTestSuiteWithStreaming } from "@/lib/testing/streamingExecutor";
+import {
+  createSSEStream,
+  sendSSEEvent,
+  createSSEResponse,
+  startHeartbeat,
+  closeSSEStream,
+} from "@/lib/testing/sseHelpers";
 import { LLMProviderCredentials, LLMProvider } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatcher";
@@ -243,6 +251,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Check for streaming mode
+    const url = new URL(request.url);
+    const streamMode = url.searchParams.get("stream") === "true";
+
+    if (streamMode) {
+      // STREAMING MODE: Return SSE stream with real-time results
+      return handleStreamingRun({
+        request,
+        projectId,
+        testSuite,
+        project,
+        target,
+        testCasesToRun,
+        credentials,
+        modelOverride,
+        runNote,
+        iterations,
+        userId: auth.context.user.id,
+      });
+    }
+
+    // NON-STREAMING MODE: Original synchronous execution
     // Create test run
     const totalTestCount = testCasesToRun.length * iterations;
     const testRun: ITestRun = {
@@ -374,4 +404,146 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+// Handle streaming test run with SSE
+interface StreamingRunParams {
+  request: NextRequest;
+  projectId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  testSuite: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  project: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  target: any;
+  testCasesToRun: ITestCase[];
+  credentials: LLMProviderCredentials;
+  modelOverride?: { provider: string; model: string };
+  runNote?: string;
+  iterations: number;
+  userId: string;
+}
+
+async function handleStreamingRun({
+  request,
+  projectId,
+  testSuite,
+  project,
+  target,
+  testCasesToRun,
+  credentials,
+  modelOverride,
+  runNote,
+  iterations,
+  userId,
+}: StreamingRunParams): Promise<Response> {
+  const sse = createSSEStream();
+  const stopHeartbeat = startHeartbeat(sse, 15000);
+
+  const runId = new mongoose.Types.ObjectId();
+  const totalTestCount = testCasesToRun.length * iterations;
+
+  // Start async execution
+  (async () => {
+    try {
+      // Send connected event
+      await sendSSEEvent(sse, "connected", {
+        runId: runId.toString(),
+        total: totalTestCount,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Execute with streaming callbacks
+      const { testRun, aborted } = await executeTestSuiteWithStreaming(
+        {
+          testCases: testCasesToRun,
+          targetType: testSuite.targetType,
+          target,
+          targetVersion: testSuite.targetVersion,
+          validationRules: testSuite.validationRules,
+          judgeConfig: testSuite.llmJudgeConfig,
+          credentials,
+          modelOverride: modelOverride ? {
+            provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+            model: modelOverride.model,
+          } : undefined,
+          iterations,
+          runId,
+          runBy: new mongoose.Types.ObjectId(userId),
+          note: runNote,
+        },
+        {
+          onProgress: async (progress) => {
+            await sendSSEEvent(sse, "progress", progress);
+          },
+          onResult: async (result) => {
+            await sendSSEEvent(sse, "result", result);
+          },
+          onError: async (error, testCaseId) => {
+            await sendSSEEvent(sse, "error", {
+              message: error.message,
+              testCaseId,
+            });
+          },
+        },
+        request.signal
+      );
+
+      // Save to database
+      testSuite.lastRun = testRun;
+      testSuite.runHistory.unshift(testRun);
+      if (testSuite.runHistory.length > 10) {
+        testSuite.runHistory = testSuite.runHistory.slice(0, 10);
+      }
+      testSuite.markModified("lastRun");
+      testSuite.markModified("runHistory");
+      await testSuite.save();
+
+      // Get previous run for regression detection
+      const previousRun = testSuite.runHistory[1];
+
+      // Dispatch webhooks (async, don't block)
+      dispatchWebhooks(
+        projectId,
+        { id: projectId, name: project.name },
+        {
+          id: testRun._id.toString(),
+          suiteId: testSuite._id.toString(),
+          suiteName: testSuite.name,
+          status: testRun.status,
+          summary: testRun.summary,
+          previousRun: previousRun
+            ? {
+                passed: previousRun.summary.passed,
+                failed: previousRun.summary.failed,
+              }
+            : undefined,
+        }
+      ).catch((error) => {
+        console.error("Error dispatching webhooks:", error);
+      });
+
+      // Send complete event
+      await sendSSEEvent(sse, "complete", {
+        runId: runId.toString(),
+        status: aborted ? "incomplete" : "completed",
+        testRun,
+      });
+    } catch (error) {
+      console.error("Streaming execution error:", error);
+      try {
+        await sendSSEEvent(sse, "error", {
+          message: error instanceof Error ? error.message : "Execution failed",
+          code: "EXECUTION_ERROR",
+        });
+      } catch {
+        // Stream may be closed
+      }
+    } finally {
+      stopHeartbeat();
+      await closeSSEStream(sse);
+    }
+  })();
+
+  return createSSEResponse(sse.stream.readable);
 }

@@ -1,3 +1,9 @@
+### v0.9.3
+- Implemented Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive
+
+### v0.9.2
+- Added healthcheck
+
 ### v0.9.1
 - SSE transport support for remote MCP access
 - Fixed AI Judge Score Threshold Not Applied
