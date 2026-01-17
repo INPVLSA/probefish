@@ -204,7 +204,7 @@ export default function TestSuiteDetailPage({
       setTestSuite(suite);
       setName(suite.name);
       setDescription(suite.description || "");
-      setTargetVersion(suite.targetVersion);
+      setTargetVersion(suite.targetVersion ?? undefined);
       setTestCases(suite.testCases || []);
       setValidationRules(suite.validationRules || []);
       setLlmJudgeConfig(
