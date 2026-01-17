@@ -129,14 +129,29 @@ function SortableTestCaseRow({
       }`}
       onClick={() => onEdit(testCase, index)}
     >
-      {onSelectionChange && testCase._id && (
-        <Checkbox
-          checked={selectedCaseIds.includes(testCase._id)}
-          onCheckedChange={(checked) => onToggle(testCase._id!, !!checked)}
-          onClick={(e) => e.stopPropagation()}
-          aria-label={`Select ${testCase.name}`}
-          disabled={!isEnabled}
-        />
+      {onSelectionChange && (
+        testCase._id ? (
+          <Checkbox
+            checked={selectedCaseIds.includes(testCase._id)}
+            onCheckedChange={(checked) => onToggle(testCase._id!, !!checked)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Select ${testCase.name}`}
+            disabled={!isEnabled}
+          />
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={false}
+                  disabled
+                  aria-label="Save suite to enable selection"
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Save suite to enable selection</TooltipContent>
+          </Tooltip>
+        )
       )}
       <div
         {...attributes}
@@ -201,25 +216,43 @@ function SortableTestCaseRow({
           </TooltipTrigger>
           <TooltipContent>{isEnabled ? "Suspend test case" : "Resume test case"}</TooltipContent>
         </Tooltip>
-        {onRunSingleCase && testCase._id && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
-                disabled={running || !isEnabled}
-              >
-                {runningCaseId === testCase._id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Run this test case</TooltipContent>
-          </Tooltip>
+        {onRunSingleCase && (
+          testCase._id ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
+                  disabled={running || !isEnabled}
+                >
+                  {runningCaseId === testCase._id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Run this test case</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Save suite to run</TooltipContent>
+            </Tooltip>
+          )
         )}
         <Tooltip>
           <TooltipTrigger asChild>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,8 +118,33 @@ export default function TestSuiteDetailPage({
 }) {
   const { projectId, suiteId } = use(params);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const defaultTab = searchParams.get("tab") || "test-cases";
+
+  // Tab state with URL hash sync
+  const validTabs = ["test-cases", "validation", "judge", "settings", "history", "compare"];
+  const [activeTab, setActiveTab] = useState("test-cases");
+
+  // Read hash on mount and handle hash changes
+  useEffect(() => {
+    const getTabFromHash = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      return validTabs.includes(hash) ? hash : "test-cases";
+    };
+
+    setActiveTab(getTabFromHash());
+
+    const handleHashChange = () => {
+      setActiveTab(getTabFromHash());
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Update URL hash when tab changes
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    window.history.replaceState(null, "", `#${value}`);
+  }, []);
 
   const [testSuite, setTestSuite] = useState<TestSuite | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
@@ -577,7 +602,7 @@ export default function TestSuiteDetailPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Tabs defaultValue={defaultTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList>
               <TabsTrigger value="test-cases">
                 Test Cases

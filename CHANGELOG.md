@@ -1,3 +1,10 @@
+### v1.0.0
+- Going SaaS, plans and license implementation. Self-hosted free forever.
+- Added Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive
+- Fixed newly added test case has no selection checkbox until suite saved and page reloaded
+- Minor UI improvements
+- Added URL hash based tab persistence for testing suite, project
+
 ### v0.9.2
 - Added healthcheck for containers
 - Added `container_name` to compose configuration
