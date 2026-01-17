@@ -4,6 +4,7 @@
 - Fixed newly added test case has no selection checkbox until suite saved and page reloaded
 - Minor UI improvements
 - Added URL hash based tab persistence for testing suite, project
+- Added auto JSON support for fields in "Edit Test Case" modal
 
 ### v0.9.2
 - Added healthcheck for containers

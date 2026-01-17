@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
@@ -57,6 +57,27 @@ export interface TestCase {
   tags?: string[];
   enabled?: boolean;
 }
+
+// JSON helper functions
+const isLikelyJson = (value: string): boolean => {
+  const trimmed = value.trim();
+  return (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+         (trimmed.startsWith("[") && trimmed.endsWith("]"));
+};
+
+const tryParseJson = (value: string): { valid: boolean; formatted?: string } => {
+  try {
+    const parsed = JSON.parse(value);
+    return { valid: true, formatted: JSON.stringify(parsed, null, 2) };
+  } catch {
+    return { valid: false };
+  };
+};
+
+const formatJsonIfValid = (value: string): string => {
+  const result = tryParseJson(value);
+  return result.formatted || value;
+};
 
 interface TestCaseEditorProps {
   testCases: TestCase[];
@@ -546,15 +567,62 @@ export function TestCaseEditor({
                       <Label>Variables</Label>
                       {variables.map((varName) => {
                         const value = editingCase.inputs[varName] || "";
-                        const useTextarea = value.length > 80 || value.includes("\n");
+                        const looksLikeJson = isLikelyJson(value);
+                        const jsonStatus = looksLikeJson ? tryParseJson(value) : null;
+                        const useTextarea = value.length > 80 || value.includes("\n") || looksLikeJson;
+
                         return (
                           <div key={varName} className="space-y-1">
-                            <Label
-                              htmlFor={`var-${varName}`}
-                              className="text-sm text-muted-foreground"
-                            >
-                              {`{{${varName}}}`}
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label
+                                htmlFor={`var-${varName}`}
+                                className="text-sm text-muted-foreground"
+                              >
+                                {`{{${varName}}}`}
+                              </Label>
+                              {looksLikeJson && (
+                                <div className="flex items-center gap-1.5">
+                                  {jsonStatus?.valid ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 text-green-600 border-green-300">
+                                          <Check className="h-3 w-3" />
+                                          JSON
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Valid JSON</TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 text-amber-600 border-amber-300">
+                                          <AlertCircle className="h-3 w-3" />
+                                          JSON
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Invalid JSON syntax</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {jsonStatus?.valid && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 px-2 text-xs"
+                                          onClick={() => updateEditingInput(varName, formatJsonIfValid(value))}
+                                        >
+                                          <Braces className="h-3 w-3 mr-1" />
+                                          Format
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Format JSON</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                             {useTextarea ? (
                               <Textarea
                                 id={`var-${varName}`}
@@ -563,8 +631,8 @@ export function TestCaseEditor({
                                   updateEditingInput(varName, e.target.value)
                                 }
                                 placeholder={`Value for ${varName}`}
-                                rows={3}
-                                className="max-h-40 resize-y"
+                                rows={looksLikeJson ? 6 : 3}
+                                className={`max-h-60 resize-y ${looksLikeJson ? "font-mono text-sm" : ""}`}
                               />
                             ) : (
                               <Input
