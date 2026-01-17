@@ -83,7 +83,7 @@ interface TestRunsGridProps {
   onRunUpdated?: () => void;
 }
 
-type SortField = "runAt" | "passRate" | "avgScore" | "avgResponseTime" | "total";
+type SortField = "runAt" | "passRate" | "avgScore" | "avgResponseTime";
 type SortDirection = "asc" | "desc";
 type StatusFilter = "all" | "completed" | "failed" | "running";
 
@@ -203,9 +203,6 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
           break;
         case "avgResponseTime":
           comparison = a.summary.avgResponseTime - b.summary.avgResponseTime;
-          break;
-        case "total":
-          comparison = a.summary.total - b.summary.total;
           break;
       }
 
@@ -368,15 +365,6 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
                     <SortIcon field="avgResponseTime" />
                   </button>
                 </TableHead>
-                <TableHead>
-                  <button
-                    onClick={() => handleSort("total")}
-                    className="flex items-center hover:text-foreground transition-colors"
-                  >
-                    Tests
-                    <SortIcon field="total" />
-                  </button>
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -495,12 +483,11 @@ export function TestRunsGrid({ runs, projectId, suiteId, onSelectRun, onRunUpdat
                           <span>{run.summary.avgResponseTime}ms</span>
                         </div>
                       </TableCell>
-                      <TableCell>{run.summary.total}</TableCell>
                     </TableRow>
 
                     {isExpanded && (
                       <TableRow className="bg-muted/20 hover:bg-muted/20">
-                        <TableCell colSpan={6} className="p-0">
+                        <TableCell colSpan={5} className="p-0">
                           <div className="p-4 space-y-4">
                             {/* Summary Stats */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
