@@ -5,6 +5,7 @@
 - Minor UI improvements
 - Added URL hash based tab persistence for testing suite, project
 - Added auto JSON support for fields in "Edit Test Case" modal
+- Added ability to duplicate static validation rule (for ones makes sense to duplicate) 
 
 ### v0.9.2
 - Added healthcheck for containers

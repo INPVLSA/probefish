@@ -28,7 +28,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Check, X, Hash, Type, Code, Timer, ShieldCheck, AlertTriangle, Braces, FileJson } from "lucide-react";
+import { Plus, Pencil, Check, X, Hash, Type, Code, Timer, ShieldCheck, AlertTriangle, Braces, FileJson, Copy } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DeleteIcon } from "@/components/ui/delete";
 
 export interface ValidationRule {
@@ -94,6 +99,19 @@ export function ValidationRulesEditor({
     onChange(updated);
   };
 
+  // Rules that don't make sense to duplicate (singleton rules)
+  const canDuplicate = (rule: ValidationRule): boolean => {
+    return !["isJson", "containsJson"].includes(rule.type);
+  };
+
+  const handleDuplicateRule = (rule: ValidationRule) => {
+    const duplicatedRule: ValidationRule = {
+      ...rule,
+      message: rule.message ? `${rule.message} (copy)` : undefined,
+    };
+    onChange([...rules, duplicatedRule]);
+  };
+
   const handleSaveRule = () => {
     if (!editingRule) return;
 
@@ -154,7 +172,7 @@ export function ValidationRulesEditor({
           <div>
             <CardTitle className="text-lg">Validation Rules</CardTitle>
             <CardDescription>
-              Define rules to validate output
+              Define rules to validate output for all test cases
             </CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -381,22 +399,47 @@ export function ValidationRulesEditor({
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleEditRule(rule, index)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleDeleteRule(index)}
-                    >
-                      <DeleteIcon size={16} />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEditRule(rule, index)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                    {canDuplicate(rule) && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDuplicateRule(rule)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Duplicate</TooltipContent>
+                      </Tooltip>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => handleDeleteRule(index)}
+                        >
+                          <DeleteIcon size={16} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               );
