@@ -142,6 +142,7 @@ export function isWithinLimit(
 export interface LicenseStatusSummary {
   plan: PlanTier;
   isLicensed: boolean;
+  deploymentMode: "self-hosted" | "cloud";
   features: PlanFeatures;
   license: {
     id: string;
@@ -163,6 +164,7 @@ export function getLicenseStatus(
   return {
     plan,
     isLicensed: plan !== "free",
+    deploymentMode: isCloudMode() ? "cloud" : "self-hosted",
     features,
     license: license
       ? {

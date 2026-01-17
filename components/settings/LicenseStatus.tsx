@@ -27,11 +27,11 @@ interface LicenseStatusData extends LicenseStatusSummary {
   features: PlanFeatures;
 }
 
-const PLAN_LABELS: Record<PlanTier, string> = {
-  free: "Free",
-  pro: "Pro",
-  enterprise: "Enterprise",
-};
+function getPlanLabel(plan: PlanTier, deploymentMode?: "self-hosted" | "cloud"): string {
+  const prefix = deploymentMode === "cloud" ? "Cloud" : "Self-Hosted";
+  const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
+  return `${prefix} ${planName}`;
+}
 
 const PLAN_COLORS: Record<PlanTier, string> = {
   free: "bg-gray-500",
@@ -85,7 +85,7 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
       const json = await res.json();
 
       if (res.ok) {
-        toast.success(`License activated: ${PLAN_LABELS[json.plan as PlanTier]} plan`);
+        toast.success(`License activated: ${getPlanLabel(json.plan as PlanTier)} plan`);
         setLicenseKey("");
         setShowKeyInput(false);
         fetchLicenseStatus();
@@ -177,7 +177,7 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
               </CardDescription>
             </div>
             <Badge className={PLAN_COLORS[data.plan]}>
-              {PLAN_LABELS[data.plan]}
+              {getPlanLabel(data.plan, data.deploymentMode)}
             </Badge>
           </div>
         </CardHeader>
