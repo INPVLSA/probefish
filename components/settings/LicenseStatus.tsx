@@ -145,15 +145,18 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
     );
   }
 
-  const formatLimit = (value: number) => {
+  const formatLimit = (value: number | null | undefined) => {
+    if (value == null) {
+      return "N/A";
+    }
     if (value === Infinity || value === Number.MAX_SAFE_INTEGER) {
       return "Unlimited";
     }
     return value.toLocaleString();
   };
 
-  const calculateProgress = (current: number, max: number) => {
-    if (max === Infinity || max === Number.MAX_SAFE_INTEGER) {
+  const calculateProgress = (current: number | null | undefined, max: number | null | undefined) => {
+    if (current == null || max == null || max === Infinity || max === Number.MAX_SAFE_INTEGER || max === 0) {
       return 0;
     }
     return Math.min((current / max) * 100, 100);
@@ -199,32 +202,34 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
           )}
 
           {/* Features List */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">Features</h4>
-            <div className="grid grid-cols-2 gap-3">
-              {(["apiAccess", "webhooks", "sso", "auditLog", "customBranding", "advancedAnalytics", "prioritySupport"] as const).map((feature) => (
-                <div key={feature} className="flex items-center gap-2">
-                  {data.features[feature] ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className={`text-sm ${data.features[feature] ? "" : "text-muted-foreground"}`}>
-                    {feature === "apiAccess" && "API Access"}
-                    {feature === "webhooks" && "Webhooks"}
-                    {feature === "sso" && "SSO / SAML"}
-                    {feature === "auditLog" && "Audit Logging"}
-                    {feature === "customBranding" && "Custom Branding"}
-                    {feature === "advancedAnalytics" && "Advanced Analytics"}
-                    {feature === "prioritySupport" && "Priority Support"}
-                  </span>
-                </div>
-              ))}
+          {data.features && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Features</h4>
+              <div className="grid grid-cols-2 gap-3">
+                {(["apiAccess", "webhooks", "sso", "auditLog", "customBranding", "advancedAnalytics", "prioritySupport"] as const).map((feature) => (
+                  <div key={feature} className="flex items-center gap-2">
+                    {data.features?.[feature] ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className={`text-sm ${data.features?.[feature] ? "" : "text-muted-foreground"}`}>
+                      {feature === "apiAccess" && "API Access"}
+                      {feature === "webhooks" && "Webhooks"}
+                      {feature === "sso" && "SSO / SAML"}
+                      {feature === "auditLog" && "Audit Logging"}
+                      {feature === "customBranding" && "Custom Branding"}
+                      {feature === "advancedAnalytics" && "Advanced Analytics"}
+                      {feature === "prioritySupport" && "Priority Support"}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Usage Limits */}
-          {data.usage && (
+          {data.usage && data.features && (
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Usage This Month</h4>
               <div className="space-y-3">
@@ -232,11 +237,11 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
                   <div className="flex justify-between text-sm">
                     <span>Test Runs</span>
                     <span>
-                      {data.usage.testRunsThisMonth.toLocaleString()} / {formatLimit(data.features.maxTestRunsPerMonth)}
+                      {(data.usage.testRunsThisMonth ?? 0).toLocaleString()} / {formatLimit(data.features?.maxTestRunsPerMonth)}
                     </span>
                   </div>
                   <Progress
-                    value={calculateProgress(data.usage.testRunsThisMonth, data.features.maxTestRunsPerMonth)}
+                    value={calculateProgress(data.usage.testRunsThisMonth, data.features?.maxTestRunsPerMonth)}
                   />
                 </div>
               </div>
@@ -244,27 +249,29 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
           )}
 
           {/* Limits */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">Plan Limits</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Projects</span>
-                <span className="font-medium">{formatLimit(data.features.maxProjects)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Test Runs / Month</span>
-                <span className="font-medium">{formatLimit(data.features.maxTestRunsPerMonth)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Team Members</span>
-                <span className="font-medium">{formatLimit(data.features.maxTeamMembers)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Endpoints</span>
-                <span className="font-medium">{formatLimit(data.features.maxEndpoints)}</span>
+          {data.features && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Plan Limits</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Projects</span>
+                  <span className="font-medium">{formatLimit(data.features?.maxProjects)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Test Runs / Month</span>
+                  <span className="font-medium">{formatLimit(data.features?.maxTestRunsPerMonth)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Team Members</span>
+                  <span className="font-medium">{formatLimit(data.features?.maxTeamMembers)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Endpoints</span>
+                  <span className="font-medium">{formatLimit(data.features?.maxEndpoints)}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* License Key Management */}
           <div className="border-t pt-4 space-y-4">
