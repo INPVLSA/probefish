@@ -51,6 +51,8 @@ describe('Test Suite PATCH API - comparisonModels', () => {
 
     vi.mocked(getSession).mockResolvedValue({
       userId: mockUserId.toString(),
+      email: 'test@example.com',
+      name: 'Test User',
     });
 
     vi.mocked(User.findById).mockResolvedValue({
@@ -67,13 +69,22 @@ describe('Test Suite PATCH API - comparisonModels', () => {
       _id: mockSuiteId,
       projectId: mockProjectId,
       name: 'Test Suite',
-      comparisonModels: [],
+      description: undefined as string | undefined,
+      comparisonModels: [] as Array<{ provider: string; model: string; isPrimary?: boolean }>,
       save: mockSave,
       markModified: mockMarkModified,
       ...testSuiteOverrides,
+    } as {
+      _id: mongoose.Types.ObjectId;
+      projectId: mongoose.Types.ObjectId;
+      name: string;
+      description?: string;
+      comparisonModels: Array<{ provider: string; model: string; isPrimary?: boolean }>;
+      save: ReturnType<typeof vi.fn>;
+      markModified: ReturnType<typeof vi.fn>;
     };
 
-    vi.mocked(TestSuite.findOne).mockResolvedValue(testSuite);
+    vi.mocked(TestSuite.findOne).mockResolvedValue(testSuite as any);
 
     return { mockSave, mockMarkModified, testSuite };
   };

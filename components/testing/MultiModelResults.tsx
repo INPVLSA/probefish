@@ -221,7 +221,7 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
         )}
 
         {/* Comparison Grid */}
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -287,14 +287,14 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
                     {isExpanded && (
                       <TableRow className="bg-muted/30">
                         <TableCell colSpan={results.results.length + 1} className="p-0">
-                          <div className="grid gap-2 p-3" style={{ gridTemplateColumns: `repeat(${results.results.length}, 1fr)` }}>
+                          <div className="grid gap-2 p-3" style={{ gridTemplateColumns: `repeat(${results.results.length}, minmax(0, 1fr))` }}>
                             {results.results.map((_, modelIdx) => {
                               const testResult = getTestResult(modelIdx, testCaseName);
                               const modelName = results.results[modelIdx].model.model;
 
                               if (!testResult) {
                                 return (
-                                  <div key={modelIdx} className="p-2 rounded border bg-muted/50 text-sm text-muted-foreground">
+                                  <div key={modelIdx} className="p-2 rounded border bg-muted/50 text-sm text-muted-foreground min-w-0">
                                     No result
                                   </div>
                                 );
@@ -303,7 +303,7 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
                               return (
                                 <div
                                   key={modelIdx}
-                                  className={`p-2 rounded border ${
+                                  className={`p-2 rounded border min-w-0 overflow-hidden ${
                                     testResult.validationPassed
                                       ? "bg-green-50/50 border-green-200 dark:bg-green-900/5 dark:border-green-800"
                                       : "bg-red-50/50 border-red-200 dark:bg-red-900/5 dark:border-red-800"
@@ -313,16 +313,16 @@ export function MultiModelResults({ results }: MultiModelResultsProps) {
                                     <span className="font-mono text-xs text-muted-foreground truncate">
                                       {modelName.split("-").slice(-2).join("-")}
                                     </span>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
                                       <Clock className="h-3 w-3" />
                                       {(testResult.responseTime / 1000).toFixed(1)}s
                                     </div>
                                   </div>
-                                  <div className="text-sm line-clamp-4 whitespace-pre-wrap">
+                                  <div className="text-sm line-clamp-4 whitespace-pre-wrap break-words overflow-hidden">
                                     {testResult.output}
                                   </div>
                                   {testResult.validationErrors.length > 0 && (
-                                    <div className="mt-1 text-xs text-red-600">
+                                    <div className="mt-1 text-xs text-red-600 break-words">
                                       {testResult.validationErrors.join(", ")}
                                     </div>
                                   )}

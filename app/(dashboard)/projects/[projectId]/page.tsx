@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +101,34 @@ export default function ProjectDetailPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = use(params);
+
+  // Tab state with URL hash sync
+  const validTabs = ["test-results", "prompts", "endpoints", "test-suites"];
+  const [activeTab, setActiveTab] = useState("test-results");
+
+  // Read hash on mount and handle hash changes
+  useEffect(() => {
+    const getTabFromHash = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      return validTabs.includes(hash) ? hash : "test-results";
+    };
+
+    setActiveTab(getTabFromHash());
+
+    const handleHashChange = () => {
+      setActiveTab(getTabFromHash());
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Update URL hash when tab changes
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    window.history.replaceState(null, "", `#${value}`);
+  }, []);
+
   const [project, setProject] = useState<Project | null>(null);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
@@ -302,7 +330,7 @@ export default function ProjectDetailPage({
         </div>
       </div>
 
-      <Tabs defaultValue="test-results" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="test-results" className="gap-2">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Building2, Users, Key, Mail, KeyRound } from "lucide-react";
+import { Building2, Users, Key, Mail, KeyRound, Shield } from "lucide-react";
 
 const iconMap = {
   Building2,
@@ -11,6 +11,7 @@ const iconMap = {
   Key,
   Mail,
   KeyRound,
+  Shield,
 } as const;
 
 type IconName = keyof typeof iconMap;

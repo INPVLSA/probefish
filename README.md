@@ -1,5 +1,7 @@
 ![probefish.png](_docs/probefish.png)
 
+# Website: [probefish.app](https://probefish.app/)
+
 A web-based LLM prompt and endpoint testing platform. Organize, version, test, and validate Large Language Model prompts and HTTP endpoints through comprehensive test suites with static validation rules and LLM-based judge evaluation.
 
 ## Acknowledgments

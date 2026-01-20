@@ -1,3 +1,19 @@
+### v1.0.0
+- Going SaaS, plans and license implementation. Self-hosted free forever.
+- Added validation rules per test case
+- Added Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive
+- Added URL hash based tab persistence for testing suite, project
+- Added auto JSON support for fields in "Edit Test Case" modal
+- Added ability to duplicate static validation rule (for ones makes sense to duplicate)
+- Added full support of SMTP. Removed Resend.
+- Added Magic Links support
+- Fixed newly added test case has no selection checkbox until suite saved and page reloaded
+- Minor UI improvements
+
+### v0.9.2
+- Added healthcheck for containers
+- Added `container_name` to compose configuration
+
 ### v0.9.1
 - SSE transport support for remote MCP access
 - Fixed AI Judge Score Threshold Not Applied

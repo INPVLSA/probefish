@@ -22,7 +22,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck } from "lucide-react";
+import { ValidationRule, ValidationRulesEditor } from "./ValidationRulesEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
@@ -48,6 +49,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+// Judge validation rule for per-case config
+interface JudgeValidationRule {
+  name: string;
+  description: string;
+  failureMessage?: string;
+  severity: "fail" | "warning";
+}
+
 export interface TestCase {
   _id?: string;
   name: string;
@@ -56,7 +65,41 @@ export interface TestCase {
   notes?: string;
   tags?: string[];
   enabled?: boolean;
+  // Per-case validation configuration
+  validationMode?: "text" | "rules";
+  validationRules?: ValidationRule[];
+  judgeValidationRules?: JudgeValidationRule[];
 }
+
+// Helper function to determine effective validation mode
+function getEffectiveMode(testCase: TestCase): "text" | "rules" {
+  if (testCase.validationMode) return testCase.validationMode;
+  // Legacy detection: if expectedOutput exists, use text mode
+  if (testCase.expectedOutput?.trim()) return "text";
+  // Default for new test cases: rules mode
+  return "rules";
+}
+
+// JSON helper functions
+const isLikelyJson = (value: string): boolean => {
+  const trimmed = value.trim();
+  return (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+         (trimmed.startsWith("[") && trimmed.endsWith("]"));
+};
+
+const tryParseJson = (value: string): { valid: boolean; formatted?: string } => {
+  try {
+    const parsed = JSON.parse(value);
+    return { valid: true, formatted: JSON.stringify(parsed, null, 2) };
+  } catch {
+    return { valid: false };
+  };
+};
+
+const formatJsonIfValid = (value: string): string => {
+  const result = tryParseJson(value);
+  return result.formatted || value;
+};
 
 interface TestCaseEditorProps {
   testCases: TestCase[];
@@ -129,14 +172,29 @@ function SortableTestCaseRow({
       }`}
       onClick={() => onEdit(testCase, index)}
     >
-      {onSelectionChange && testCase._id && (
-        <Checkbox
-          checked={selectedCaseIds.includes(testCase._id)}
-          onCheckedChange={(checked) => onToggle(testCase._id!, !!checked)}
-          onClick={(e) => e.stopPropagation()}
-          aria-label={`Select ${testCase.name}`}
-          disabled={!isEnabled}
-        />
+      {onSelectionChange && (
+        testCase._id ? (
+          <Checkbox
+            checked={selectedCaseIds.includes(testCase._id)}
+            onCheckedChange={(checked) => onToggle(testCase._id!, !!checked)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Select ${testCase.name}`}
+            disabled={!isEnabled}
+          />
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={false}
+                  disabled
+                  aria-label="Save suite to enable selection"
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Save suite to enable selection</TooltipContent>
+          </Tooltip>
+        )
       )}
       <div
         {...attributes}
@@ -201,25 +259,43 @@ function SortableTestCaseRow({
           </TooltipTrigger>
           <TooltipContent>{isEnabled ? "Suspend test case" : "Resume test case"}</TooltipContent>
         </Tooltip>
-        {onRunSingleCase && testCase._id && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
-                disabled={running || !isEnabled}
-              >
-                {runningCaseId === testCase._id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Run this test case</TooltipContent>
-          </Tooltip>
+        {onRunSingleCase && (
+          testCase._id ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => { e.stopPropagation(); onRunSingleCase(testCase._id!); }}
+                  disabled={running || !isEnabled}
+                >
+                  {runningCaseId === testCase._id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Run this test case</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Save suite to run</TooltipContent>
+            </Tooltip>
+          )
         )}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -513,15 +589,62 @@ export function TestCaseEditor({
                       <Label>Variables</Label>
                       {variables.map((varName) => {
                         const value = editingCase.inputs[varName] || "";
-                        const useTextarea = value.length > 80 || value.includes("\n");
+                        const looksLikeJson = isLikelyJson(value);
+                        const jsonStatus = looksLikeJson ? tryParseJson(value) : null;
+                        const useTextarea = value.length > 80 || value.includes("\n") || looksLikeJson;
+
                         return (
                           <div key={varName} className="space-y-1">
-                            <Label
-                              htmlFor={`var-${varName}`}
-                              className="text-sm text-muted-foreground"
-                            >
-                              {`{{${varName}}}`}
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label
+                                htmlFor={`var-${varName}`}
+                                className="text-sm text-muted-foreground"
+                              >
+                                {`{{${varName}}}`}
+                              </Label>
+                              {looksLikeJson && (
+                                <div className="flex items-center gap-1.5">
+                                  {jsonStatus?.valid ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 text-green-600 border-green-300">
+                                          <Check className="h-3 w-3" />
+                                          JSON
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Valid JSON</TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 text-amber-600 border-amber-300">
+                                          <AlertCircle className="h-3 w-3" />
+                                          JSON
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Invalid JSON syntax</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {jsonStatus?.valid && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 px-2 text-xs"
+                                          onClick={() => updateEditingInput(varName, formatJsonIfValid(value))}
+                                        >
+                                          <Braces className="h-3 w-3 mr-1" />
+                                          Format
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Format JSON</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                             {useTextarea ? (
                               <Textarea
                                 id={`var-${varName}`}
@@ -530,8 +653,8 @@ export function TestCaseEditor({
                                   updateEditingInput(varName, e.target.value)
                                 }
                                 placeholder={`Value for ${varName}`}
-                                rows={3}
-                                className="max-h-40 resize-y"
+                                rows={looksLikeJson ? 6 : 3}
+                                className={`max-h-60 resize-y ${looksLikeJson ? "font-mono text-sm" : ""}`}
                               />
                             ) : (
                               <Input
@@ -554,23 +677,72 @@ export function TestCaseEditor({
                     </p>
                   )}
 
+                  {/* Validation Mode Toggle */}
                   <div className="space-y-2">
-                    <Label htmlFor="expected-output">
-                      Expected Output (optional)
-                    </Label>
-                    <Textarea
-                      id="expected-output"
-                      value={editingCase.expectedOutput || ""}
-                      onChange={(e) =>
-                        setEditingCase({
-                          ...editingCase,
-                          expectedOutput: e.target.value,
-                        })
-                      }
-                      placeholder="What output do you expect? (used by LLM judge)"
-                      rows={3}
-                    />
+                    <Label>Validation</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={getEffectiveMode(editingCase) === "text" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditingCase({ ...editingCase, validationMode: "text" })}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Expected Output
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={getEffectiveMode(editingCase) === "rules" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditingCase({ ...editingCase, validationMode: "rules" })}
+                      >
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Validation Rules
+                      </Button>
+                    </div>
                   </div>
+
+                  {/* Conditional Content based on mode */}
+                  {getEffectiveMode(editingCase) === "text" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="expected-output">
+                        Expected Output (optional)
+                      </Label>
+                      <Textarea
+                        id="expected-output"
+                        value={editingCase.expectedOutput || ""}
+                        onChange={(e) =>
+                          setEditingCase({
+                            ...editingCase,
+                            expectedOutput: e.target.value,
+                          })
+                        }
+                        placeholder="What output do you expect? (used by LLM judge)"
+                        rows={3}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Per-Case Validation Rules</Label>
+                        {(editingCase.validationRules?.length || 0) > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {editingCase.validationRules?.length} rule{editingCase.validationRules?.length !== 1 ? "s" : ""}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Added to suite-level rules (both are checked)
+                      </p>
+                      <div className="border rounded-lg p-3 bg-muted/30">
+                        <ValidationRulesEditor
+                          rules={editingCase.validationRules || []}
+                          onChange={(rules) => setEditingCase({ ...editingCase, validationRules: rules })}
+                          compact
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes (optional)</Label>

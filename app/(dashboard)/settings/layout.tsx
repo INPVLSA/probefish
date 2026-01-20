@@ -80,6 +80,12 @@ const settingsNav = [
     requiredRole: ["owner", "admin"],
   },
   {
+    href: "/settings/organization/license",
+    label: "License",
+    icon: "Shield" as const,
+    requiredRole: ["owner", "admin"],
+  },
+  {
     href: "/settings/tokens",
     label: "Access Tokens",
     icon: "KeyRound" as const,

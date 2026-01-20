@@ -386,6 +386,292 @@ describe("Import Validators", () => {
     });
   });
 
+  describe("per-case validation rules", () => {
+    it("should accept test case with validationMode text", () => {
+      const withValidationMode = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test case",
+                inputs: { name: "World" },
+                validationMode: "text" as const,
+                expectedOutput: "Hello World",
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withValidationMode);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept test case with validationMode rules", () => {
+      const withValidationMode = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test case",
+                inputs: { name: "World" },
+                validationMode: "rules" as const,
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withValidationMode);
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject test case with invalid validationMode", () => {
+      const withInvalidMode = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test case",
+                inputs: { name: "World" },
+                validationMode: "invalid" as const,
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withInvalidMode);
+      expect(result.success).toBe(false);
+    });
+
+    it("should accept test case with per-case validation rules", () => {
+      const withPerCaseRules = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test case",
+                inputs: { name: "World" },
+                validationMode: "rules" as const,
+                validationRules: [
+                  { type: "contains", value: "hello", severity: "fail" as const },
+                  { type: "minLength", value: 10, severity: "warning" as const },
+                ],
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withPerCaseRules);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept test case with per-case judge validation rules", () => {
+      const withJudgeRules = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test case",
+                inputs: { name: "World" },
+                validationMode: "rules" as const,
+                judgeValidationRules: [
+                  {
+                    name: "Professional tone",
+                    description: "Output must have professional tone",
+                    severity: "fail" as const,
+                  },
+                  {
+                    name: "No jargon",
+                    description: "Output should avoid technical jargon",
+                    failureMessage: "Contains technical jargon",
+                    severity: "warning" as const,
+                  },
+                ],
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: true, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withJudgeRules);
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject judge validation rule with missing required fields", () => {
+      const withInvalidJudgeRule = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test case",
+                inputs: { name: "World" },
+                judgeValidationRules: [
+                  {
+                    name: "",  // Empty name should fail
+                    description: "Description",
+                    severity: "fail" as const,
+                  },
+                ],
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: true, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withInvalidJudgeRule);
+      expect(result.success).toBe(false);
+    });
+
+    it("should accept test case with isJson and containsJson validation rules", () => {
+      const withJsonRules = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "JSON test case",
+                inputs: {},
+                validationMode: "rules" as const,
+                validationRules: [
+                  { type: "isJson", value: "", severity: "fail" as const },
+                ],
+              },
+              {
+                name: "Contains JSON test case",
+                inputs: {},
+                validationMode: "rules" as const,
+                validationRules: [
+                  { type: "containsJson", value: "", severity: "fail" as const },
+                ],
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withJsonRules);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept test case without validationMode (defaults based on expectedOutput)", () => {
+      const withoutMode = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Legacy test case",
+                inputs: { name: "World" },
+                expectedOutput: "Hello World",
+                // No validationMode - should default based on expectedOutput
+              },
+            ],
+            validationRules: [],
+            llmJudgeConfig: { enabled: false, criteria: [], validationRules: [] },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withoutMode);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept combined suite-level and per-case validation rules", () => {
+      const withCombinedRules = {
+        ...validProjectExport,
+        testSuites: [
+          {
+            _exportId: "ts1",
+            name: "Test Suite",
+            targetType: "prompt" as const,
+            targetRef: "prompt-exp-1",
+            testCases: [
+              {
+                name: "Test with per-case rules",
+                inputs: {},
+                validationMode: "rules" as const,
+                validationRules: [
+                  { type: "contains", value: "specific", severity: "fail" as const },
+                ],
+                judgeValidationRules: [
+                  { name: "Case rule", description: "Per-case rule", severity: "warning" as const },
+                ],
+              },
+            ],
+            validationRules: [
+              { type: "minLength", value: 10, severity: "fail" as const },
+            ],
+            llmJudgeConfig: {
+              enabled: true,
+              criteria: [{ name: "Quality", description: "Output quality", weight: 100 }],
+              validationRules: [
+                { name: "Suite rule", description: "Suite-level rule", severity: "fail" as const },
+              ],
+            },
+          },
+        ],
+      };
+
+      const result = validateProjectExport(withCombinedRules);
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe("formatZodErrors", () => {
     it("should format Zod errors correctly", () => {
       const invalid = {
