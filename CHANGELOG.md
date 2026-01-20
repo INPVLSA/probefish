@@ -1,11 +1,12 @@
 ### v1.0.0
 - Going SaaS, plans and license implementation. Self-hosted free forever.
+- Added validation rules per test case
 - Added Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive
-- Fixed newly added test case has no selection checkbox until suite saved and page reloaded
-- Minor UI improvements
 - Added URL hash based tab persistence for testing suite, project
 - Added auto JSON support for fields in "Edit Test Case" modal
-- Added ability to duplicate static validation rule (for ones makes sense to duplicate) 
+- Added ability to duplicate static validation rule (for ones makes sense to duplicate)
+- Fixed newly added test case has no selection checkbox until suite saved and page reloaded
+- Minor UI improvements
 
 ### v0.9.2
 - Added healthcheck for containers

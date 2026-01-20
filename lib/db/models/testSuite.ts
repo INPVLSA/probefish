@@ -1,6 +1,9 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { LLMProvider } from "@/lib/llm/types";
 
+// Validation mode for test cases
+export type TestCaseValidationMode = "text" | "rules";
+
 // Test Case - a single test with variable inputs
 export interface ITestCase {
   _id: mongoose.Types.ObjectId;
@@ -10,6 +13,10 @@ export interface ITestCase {
   notes?: string;
   tags?: string[];
   enabled?: boolean; // Whether the test case is active (default: true)
+  // Per-case validation configuration
+  validationMode?: TestCaseValidationMode; // "text" (legacy) or "rules" (new default)
+  validationRules?: IValidationRule[]; // Only used when validationMode === "rules"
+  judgeValidationRules?: IJudgeValidationRule[]; // Additive to suite-level judge rules
 }
 
 // Validation Rule - static checks on output
@@ -135,32 +142,6 @@ export interface ITestSuite extends Document {
 
 type TestSuiteModel = Model<ITestSuite>;
 
-const testCaseSchema = new Schema<ITestCase>(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    inputs: {
-      type: Map,
-      of: String,
-      default: {},
-    },
-    expectedOutput: String,
-    notes: String,
-    tags: {
-      type: [String],
-      default: [],
-    },
-    enabled: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  { _id: true }
-);
-
 const validationRuleSchema = new Schema<IValidationRule>(
   {
     type: {
@@ -220,6 +201,46 @@ const judgeValidationRuleSchema = new Schema(
     },
   },
   { _id: false }
+);
+
+const testCaseSchema = new Schema<ITestCase>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    inputs: {
+      type: Map,
+      of: String,
+      default: {},
+    },
+    expectedOutput: String,
+    notes: String,
+    tags: {
+      type: [String],
+      default: [],
+    },
+    enabled: {
+      type: Boolean,
+      default: true,
+    },
+    // Per-case validation configuration
+    validationMode: {
+      type: String,
+      enum: ["text", "rules"],
+      default: undefined,
+    },
+    validationRules: {
+      type: [validationRuleSchema],
+      default: [],
+    },
+    judgeValidationRules: {
+      type: [judgeValidationRuleSchema],
+      default: [],
+    },
+  },
+  { _id: true }
 );
 
 const llmJudgeConfigSchema = new Schema<ILLMJudgeConfig>(

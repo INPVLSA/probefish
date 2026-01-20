@@ -139,6 +139,146 @@ describe('TestCaseEditor', () => {
     });
   });
 
+  describe('Validation mode', () => {
+    it('should render test cases with expected output (text mode)', () => {
+      const onChange = vi.fn();
+      const testCasesWithExpectedOutput: TestCase[] = [
+        {
+          _id: 'tc-1',
+          name: 'Test with expected output',
+          inputs: { var1: 'value1' },
+          tags: [],
+          expectedOutput: 'Expected result',
+        },
+      ];
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithExpectedOutput}
+          variables={mockVariables}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByText('Test with expected output')).toBeInTheDocument();
+      // Expected output is shown with "Expected: " prefix
+      expect(screen.getByText(/Expected: Expected result/)).toBeInTheDocument();
+    });
+
+    it('should render test cases with validation rules (rules mode)', () => {
+      const onChange = vi.fn();
+      const testCasesWithRules: TestCase[] = [
+        {
+          _id: 'tc-1',
+          name: 'Test with rules',
+          inputs: { var1: 'value1' },
+          tags: [],
+          validationMode: 'rules',
+          validationRules: [
+            { type: 'contains', value: 'hello', severity: 'fail' },
+            { type: 'minLength', value: 10, severity: 'warning' },
+          ],
+        },
+      ];
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithRules}
+          variables={mockVariables}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByText('Test with rules')).toBeInTheDocument();
+      // Test case name renders, rules are stored but not shown as badge in list view
+    });
+
+    it('should render test case in rules mode without expectedOutput display', () => {
+      const onChange = vi.fn();
+      const testCasesWithSingleRule: TestCase[] = [
+        {
+          _id: 'tc-1',
+          name: 'Test with single rule',
+          inputs: {},
+          tags: [],
+          validationMode: 'rules',
+          validationRules: [
+            { type: 'isJson', value: '', severity: 'fail' },
+          ],
+        },
+      ];
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithSingleRule}
+          variables={mockVariables}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByText('Test with single rule')).toBeInTheDocument();
+      // No "Expected:" text since it's in rules mode
+      expect(screen.queryByText(/Expected:/)).not.toBeInTheDocument();
+    });
+
+    it('should show expected output for legacy test cases without validationMode', () => {
+      const onChange = vi.fn();
+      const legacyTestCase: TestCase[] = [
+        {
+          _id: 'tc-1',
+          name: 'Legacy test',
+          inputs: {},
+          tags: [],
+          expectedOutput: 'Legacy expected output',
+          // No validationMode - should default to text mode based on expectedOutput
+        },
+      ];
+
+      render(
+        <TestCaseEditor
+          testCases={legacyTestCase}
+          variables={mockVariables}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByText(/Expected: Legacy expected output/)).toBeInTheDocument();
+    });
+
+    it('should handle test case with both validationRules and judgeValidationRules', () => {
+      const onChange = vi.fn();
+      const testCasesWithBothRules: TestCase[] = [
+        {
+          _id: 'tc-1',
+          name: 'Test with both rule types',
+          inputs: {},
+          tags: [],
+          validationMode: 'rules',
+          validationRules: [
+            { type: 'contains', value: 'hello', severity: 'fail' },
+          ],
+          judgeValidationRules: [
+            { name: 'Tone check', description: 'Must be professional', severity: 'warning' },
+            { name: 'Length check', description: 'Must be concise', severity: 'fail' },
+          ],
+        },
+      ];
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithBothRules}
+          variables={mockVariables}
+          onChange={onChange}
+        />
+      );
+
+      // Test case name renders correctly
+      expect(screen.getByText('Test with both rule types')).toBeInTheDocument();
+      // No "Expected:" since it's in rules mode
+      expect(screen.queryByText(/Expected:/)).not.toBeInTheDocument();
+    });
+  });
+
   describe('Selection', () => {
     it('should show checkboxes when onSelectionChange is provided', () => {
       const onChange = vi.fn();

@@ -67,15 +67,6 @@ export const EndpointExportSchema = z.object({
   variables: z.array(z.string()).default([]),
 });
 
-// Test case schema
-export const TestCaseSchema = z.object({
-  name: z.string().min(1, "Test case name is required"),
-  inputs: z.record(z.string(), z.string()).default({}),
-  expectedOutput: z.string().optional(),
-  notes: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-});
-
 // Validation rule schema
 export const ValidationRuleSchema = z.object({
   type: z.enum([
@@ -86,10 +77,33 @@ export const ValidationRuleSchema = z.object({
     "regex",
     "jsonSchema",
     "maxResponseTime",
+    "isJson",
+    "containsJson",
   ]),
   value: z.union([z.string(), z.number()]),
   message: z.string().optional(),
   severity: z.enum(["fail", "warning"]).default("fail"),
+});
+
+// Judge validation rule schema (moved before TestCaseSchema for reference)
+export const JudgeValidationRuleSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  failureMessage: z.string().optional(),
+  severity: z.enum(["fail", "warning"]),
+});
+
+// Test case schema
+export const TestCaseSchema = z.object({
+  name: z.string().min(1, "Test case name is required"),
+  inputs: z.record(z.string(), z.string()).default({}),
+  expectedOutput: z.string().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  // Per-case validation configuration
+  validationMode: z.enum(["text", "rules"]).optional(),
+  validationRules: z.array(ValidationRuleSchema).optional(),
+  judgeValidationRules: z.array(JudgeValidationRuleSchema).optional(),
 });
 
 // Judge criterion schema
@@ -97,14 +111,6 @@ export const JudgeCriterionSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
   weight: z.number().min(0).max(100),
-});
-
-// Judge validation rule schema
-export const JudgeValidationRuleSchema = z.object({
-  name: z.string().min(1),
-  description: z.string(),
-  failureMessage: z.string().optional(),
-  severity: z.enum(["fail", "warning"]),
 });
 
 // LLM Judge config schema

@@ -133,6 +133,20 @@ export async function collectTestSuiteData(
       expectedOutput: tc.expectedOutput,
       notes: tc.notes,
       tags: tc.tags || [],
+      // Per-case validation configuration
+      validationMode: tc.validationMode,
+      validationRules: tc.validationRules?.map((rule) => ({
+        type: rule.type,
+        value: rule.value,
+        message: rule.message,
+        severity: rule.severity || "fail",
+      })),
+      judgeValidationRules: tc.judgeValidationRules?.map((rule) => ({
+        name: rule.name,
+        description: rule.description,
+        failureMessage: rule.failureMessage,
+        severity: rule.severity,
+      })),
     })),
     validationRules: (suite.validationRules || []).map((rule) => ({
       type: rule.type,

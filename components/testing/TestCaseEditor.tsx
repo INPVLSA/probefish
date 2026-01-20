@@ -22,7 +22,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck } from "lucide-react";
+import { ValidationRule, ValidationRulesEditor } from "./ValidationRulesEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
@@ -48,6 +49,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+// Judge validation rule for per-case config
+interface JudgeValidationRule {
+  name: string;
+  description: string;
+  failureMessage?: string;
+  severity: "fail" | "warning";
+}
+
 export interface TestCase {
   _id?: string;
   name: string;
@@ -56,6 +65,19 @@ export interface TestCase {
   notes?: string;
   tags?: string[];
   enabled?: boolean;
+  // Per-case validation configuration
+  validationMode?: "text" | "rules";
+  validationRules?: ValidationRule[];
+  judgeValidationRules?: JudgeValidationRule[];
+}
+
+// Helper function to determine effective validation mode
+function getEffectiveMode(testCase: TestCase): "text" | "rules" {
+  if (testCase.validationMode) return testCase.validationMode;
+  // Legacy detection: if expectedOutput exists, use text mode
+  if (testCase.expectedOutput?.trim()) return "text";
+  // Default for new test cases: rules mode
+  return "rules";
 }
 
 // JSON helper functions
@@ -655,23 +677,72 @@ export function TestCaseEditor({
                     </p>
                   )}
 
+                  {/* Validation Mode Toggle */}
                   <div className="space-y-2">
-                    <Label htmlFor="expected-output">
-                      Expected Output (optional)
-                    </Label>
-                    <Textarea
-                      id="expected-output"
-                      value={editingCase.expectedOutput || ""}
-                      onChange={(e) =>
-                        setEditingCase({
-                          ...editingCase,
-                          expectedOutput: e.target.value,
-                        })
-                      }
-                      placeholder="What output do you expect? (used by LLM judge)"
-                      rows={3}
-                    />
+                    <Label>Validation</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={getEffectiveMode(editingCase) === "text" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditingCase({ ...editingCase, validationMode: "text" })}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Expected Output
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={getEffectiveMode(editingCase) === "rules" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditingCase({ ...editingCase, validationMode: "rules" })}
+                      >
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Validation Rules
+                      </Button>
+                    </div>
                   </div>
+
+                  {/* Conditional Content based on mode */}
+                  {getEffectiveMode(editingCase) === "text" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="expected-output">
+                        Expected Output (optional)
+                      </Label>
+                      <Textarea
+                        id="expected-output"
+                        value={editingCase.expectedOutput || ""}
+                        onChange={(e) =>
+                          setEditingCase({
+                            ...editingCase,
+                            expectedOutput: e.target.value,
+                          })
+                        }
+                        placeholder="What output do you expect? (used by LLM judge)"
+                        rows={3}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Per-Case Validation Rules</Label>
+                        {(editingCase.validationRules?.length || 0) > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {editingCase.validationRules?.length} rule{editingCase.validationRules?.length !== 1 ? "s" : ""}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Added to suite-level rules (both are checked)
+                      </p>
+                      <div className="border rounded-lg p-3 bg-muted/30">
+                        <ValidationRulesEditor
+                          rules={editingCase.validationRules || []}
+                          onChange={(rules) => setEditingCase({ ...editingCase, validationRules: rules })}
+                          compact
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes (optional)</Label>

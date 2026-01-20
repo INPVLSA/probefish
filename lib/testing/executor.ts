@@ -558,8 +558,14 @@ export async function executeTestCase(params: {
       result.responseTime = execution.responseTime;
     }
 
+    // Merge suite-level and per-case validation rules (per-case rules are ADDITIVE)
+    const effectiveValidationRules = [
+      ...validationRules,                    // Suite-level rules
+      ...(testCase.validationRules || []),   // Per-case rules
+    ];
+
     // Run validation rules (pass responseTime for maxResponseTime check)
-    const validation: ValidationResult = validate(result.output, validationRules, result.responseTime);
+    const validation: ValidationResult = validate(result.output, effectiveValidationRules, result.responseTime);
     result.validationPassed = validation.passed;
     result.validationErrors = validation.errors;
 
@@ -597,12 +603,18 @@ export async function executeTestCase(params: {
         }
       }
 
+      // Merge suite-level and per-case judge validation rules (ADDITIVE)
+      const effectiveJudgeValidationRules = [
+        ...(judgeConfig.validationRules || []),
+        ...(testCase.judgeValidationRules || []),
+      ];
+
       // Run validation rules (pass/fail gates and warnings)
-      if (judgeConfig.validationRules && judgeConfig.validationRules.length > 0) {
+      if (effectiveJudgeValidationRules.length > 0) {
         const validationResult = await validateWithJudge(
           inputSummary,
           result.output,
-          judgeConfig.validationRules,
+          effectiveJudgeValidationRules,
           judgeConfig,
           credentials
         );

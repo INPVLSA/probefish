@@ -491,6 +491,299 @@ describe('ModelOverride', () => {
   });
 });
 
+describe('Per-case validation rule merging', () => {
+  // Test the logic for merging suite-level and per-case validation rules
+
+  interface ValidationRule {
+    type: string;
+    value: string | number;
+    message?: string;
+    severity?: 'fail' | 'warning';
+  }
+
+  interface JudgeValidationRule {
+    name: string;
+    description: string;
+    failureMessage?: string;
+    severity: 'fail' | 'warning';
+  }
+
+  interface TestCase {
+    name: string;
+    inputs: Record<string, string>;
+    expectedOutput?: string;
+    validationMode?: 'text' | 'rules';
+    validationRules?: ValidationRule[];
+    judgeValidationRules?: JudgeValidationRule[];
+  }
+
+  interface JudgeConfig {
+    enabled: boolean;
+    validationRules?: JudgeValidationRule[];
+    criteria?: { name: string; description: string; weight: number }[];
+  }
+
+  describe('effective validation mode detection', () => {
+    function getEffectiveMode(testCase: TestCase): 'text' | 'rules' {
+      if (testCase.validationMode) return testCase.validationMode;
+      if (testCase.expectedOutput?.trim()) return 'text';
+      return 'rules';
+    }
+
+    it('should use explicit validationMode when set to text', () => {
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        validationMode: 'text',
+        expectedOutput: '',
+      };
+      expect(getEffectiveMode(testCase)).toBe('text');
+    });
+
+    it('should use explicit validationMode when set to rules', () => {
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        validationMode: 'rules',
+        expectedOutput: 'some output',
+      };
+      expect(getEffectiveMode(testCase)).toBe('rules');
+    });
+
+    it('should default to text mode for legacy cases with expectedOutput', () => {
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        expectedOutput: 'Expected response',
+      };
+      expect(getEffectiveMode(testCase)).toBe('text');
+    });
+
+    it('should default to rules mode for new cases without expectedOutput', () => {
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+      };
+      expect(getEffectiveMode(testCase)).toBe('rules');
+    });
+
+    it('should default to rules mode when expectedOutput is empty string', () => {
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        expectedOutput: '',
+      };
+      expect(getEffectiveMode(testCase)).toBe('rules');
+    });
+
+    it('should default to rules mode when expectedOutput is whitespace only', () => {
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        expectedOutput: '   ',
+      };
+      expect(getEffectiveMode(testCase)).toBe('rules');
+    });
+  });
+
+  describe('validation rules merging', () => {
+    it('should merge suite-level and per-case validation rules', () => {
+      const suiteRules: ValidationRule[] = [
+        { type: 'contains', value: 'hello' },
+        { type: 'minLength', value: 10 },
+      ];
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        validationRules: [
+          { type: 'excludes', value: 'error' },
+          { type: 'maxLength', value: 100 },
+        ],
+      };
+
+      const effectiveRules = [
+        ...suiteRules,
+        ...(testCase.validationRules || []),
+      ];
+
+      expect(effectiveRules).toHaveLength(4);
+      expect(effectiveRules[0].type).toBe('contains');
+      expect(effectiveRules[1].type).toBe('minLength');
+      expect(effectiveRules[2].type).toBe('excludes');
+      expect(effectiveRules[3].type).toBe('maxLength');
+    });
+
+    it('should use only suite rules when test case has no rules', () => {
+      const suiteRules: ValidationRule[] = [
+        { type: 'contains', value: 'hello' },
+      ];
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+      };
+
+      const effectiveRules = [
+        ...suiteRules,
+        ...(testCase.validationRules || []),
+      ];
+
+      expect(effectiveRules).toHaveLength(1);
+      expect(effectiveRules[0].type).toBe('contains');
+    });
+
+    it('should use only per-case rules when suite has no rules', () => {
+      const suiteRules: ValidationRule[] = [];
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        validationRules: [
+          { type: 'isJson', value: '' },
+        ],
+      };
+
+      const effectiveRules = [
+        ...suiteRules,
+        ...(testCase.validationRules || []),
+      ];
+
+      expect(effectiveRules).toHaveLength(1);
+      expect(effectiveRules[0].type).toBe('isJson');
+    });
+
+    it('should handle duplicate rule types from suite and per-case (both are applied)', () => {
+      const suiteRules: ValidationRule[] = [
+        { type: 'contains', value: 'hello' },
+      ];
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        validationRules: [
+          { type: 'contains', value: 'world' },
+        ],
+      };
+
+      const effectiveRules = [
+        ...suiteRules,
+        ...(testCase.validationRules || []),
+      ];
+
+      expect(effectiveRules).toHaveLength(2);
+      expect(effectiveRules[0].value).toBe('hello');
+      expect(effectiveRules[1].value).toBe('world');
+    });
+  });
+
+  describe('judge validation rules merging', () => {
+    it('should merge suite-level and per-case judge validation rules', () => {
+      const judgeConfig: JudgeConfig = {
+        enabled: true,
+        validationRules: [
+          { name: 'No harmful content', description: 'Output must not contain harmful content', severity: 'fail' },
+        ],
+      };
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        judgeValidationRules: [
+          { name: 'Must be professional', description: 'Output must be professional', severity: 'warning' },
+        ],
+      };
+
+      const effectiveJudgeRules = [
+        ...(judgeConfig.validationRules || []),
+        ...(testCase.judgeValidationRules || []),
+      ];
+
+      expect(effectiveJudgeRules).toHaveLength(2);
+      expect(effectiveJudgeRules[0].name).toBe('No harmful content');
+      expect(effectiveJudgeRules[1].name).toBe('Must be professional');
+    });
+
+    it('should use only suite judge rules when test case has no judge rules', () => {
+      const judgeConfig: JudgeConfig = {
+        enabled: true,
+        validationRules: [
+          { name: 'Suite rule', description: 'Suite level rule', severity: 'fail' },
+        ],
+      };
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+      };
+
+      const effectiveJudgeRules = [
+        ...(judgeConfig.validationRules || []),
+        ...(testCase.judgeValidationRules || []),
+      ];
+
+      expect(effectiveJudgeRules).toHaveLength(1);
+      expect(effectiveJudgeRules[0].name).toBe('Suite rule');
+    });
+
+    it('should use only per-case judge rules when suite has no judge rules', () => {
+      const judgeConfig: JudgeConfig = {
+        enabled: true,
+        validationRules: [],
+      };
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        judgeValidationRules: [
+          { name: 'Case-specific rule', description: 'Per-case rule', severity: 'fail' },
+        ],
+      };
+
+      const effectiveJudgeRules = [
+        ...(judgeConfig.validationRules || []),
+        ...(testCase.judgeValidationRules || []),
+      ];
+
+      expect(effectiveJudgeRules).toHaveLength(1);
+      expect(effectiveJudgeRules[0].name).toBe('Case-specific rule');
+    });
+
+    it('should preserve judge config properties when merging rules', () => {
+      const judgeConfig: JudgeConfig = {
+        enabled: true,
+        criteria: [
+          { name: 'Quality', description: 'Response quality', weight: 100 },
+        ],
+        validationRules: [
+          { name: 'Suite rule', description: 'Suite level', severity: 'fail' },
+        ],
+      };
+
+      const testCase: TestCase = {
+        name: 'Test',
+        inputs: {},
+        judgeValidationRules: [
+          { name: 'Case rule', description: 'Case level', severity: 'warning' },
+        ],
+      };
+
+      const effectiveJudgeConfig = {
+        ...judgeConfig,
+        validationRules: [
+          ...(judgeConfig.validationRules || []),
+          ...(testCase.judgeValidationRules || []),
+        ],
+      };
+
+      expect(effectiveJudgeConfig.enabled).toBe(true);
+      expect(effectiveJudgeConfig.criteria).toHaveLength(1);
+      expect(effectiveJudgeConfig.criteria![0].name).toBe('Quality');
+      expect(effectiveJudgeConfig.validationRules).toHaveLength(2);
+    });
+  });
+});
+
 describe('Multi-model comparison logic', () => {
   describe('model selection', () => {
     interface ModelSelection {
