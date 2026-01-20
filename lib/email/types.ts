@@ -52,3 +52,13 @@ export interface SendInvitationEmailParams {
   message?: string;
   expiresAt: Date;
 }
+
+// Magic link email params
+export interface SendMagicLinkEmailParams {
+  to: string;
+  recipientName: string;
+  magicLinkUrl: string;
+  isNewUser: boolean;
+  organizationName?: string;
+  expiresAt: Date;
+}

@@ -6,6 +6,7 @@
 - Added auto JSON support for fields in "Edit Test Case" modal
 - Added ability to duplicate static validation rule (for ones makes sense to duplicate)
 - Added full support of SMTP. Removed Resend.
+- Added Magic Links support
 - Fixed newly added test case has no selection checkbox until suite saved and page reloaded
 - Minor UI improvements
 

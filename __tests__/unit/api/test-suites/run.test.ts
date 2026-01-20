@@ -96,12 +96,13 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
     // Auth mock
     vi.mocked(requireProjectPermission).mockResolvedValue(
       overrides.authorized === false
-        ? { authorized: false, error: 'Unauthorized', status: 401 }
+        ? { authorized: false, error: { message: 'Unauthorized', status: 401 } }
         : {
             authorized: true,
             context: {
-              user: { id: mockUserId.toString() },
-              project: { id: mockProjectId.toString() },
+              authType: 'session' as const,
+              user: { id: mockUserId.toString(), email: 'test@example.com', name: 'Test User', isSuperAdmin: false },
+              project: { id: mockProjectId.toString(), name: 'Test Project', effectiveRole: 'admin' as const, accessSource: 'org_role' as const },
             },
           }
     );
@@ -125,7 +126,7 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
     });
 
     const testSuite = createMockTestSuite(mockSave, overrides.testSuite);
-    vi.mocked(TestSuite.findOne).mockResolvedValue(testSuite);
+    vi.mocked(TestSuite.findOne).mockResolvedValue(testSuite as any);
 
     // Prompt mock
     vi.mocked(Prompt.findById).mockResolvedValue({
@@ -155,7 +156,7 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
 
     // Execute test case mock - returns successful result
     vi.mocked(executeTestCase).mockResolvedValue({
-      testCaseId: mockTestCase1Id.toString(),
+      testCaseId: mockTestCase1Id,
       testCaseName: 'Test Case 1',
       inputs: { name: 'World' },
       output: 'Hello World!',
@@ -169,8 +170,8 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
 
   const createMockTestSuite = (
     mockSave: ReturnType<typeof vi.fn>,
-    overrides: Partial<ReturnType<typeof createMockTestSuite>> = {}
-  ) => ({
+    overrides: Record<string, unknown> = {}
+  ): Record<string, unknown> => ({
     _id: mockSuiteId,
     projectId: mockProjectId,
     organizationId: mockOrgId,
@@ -503,7 +504,7 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
 
       await callRoute();
 
-      expect(testSuite.runHistory.length).toBe(1);
+      expect((testSuite.runHistory as unknown[]).length).toBe(1);
       expect(testSuite.lastRun).toBeDefined();
     });
 
@@ -522,7 +523,7 @@ describe('Test Suite Run API - POST /api/projects/[projectId]/test-suites/[suite
 
       await callRoute();
 
-      expect(testSuite.runHistory.length).toBe(10);
+      expect((testSuite.runHistory as unknown[]).length).toBe(10);
     });
   });
 

@@ -4,9 +4,11 @@ import type {
   EmailMessage,
   EmailSendResult,
   SendInvitationEmailParams,
+  SendMagicLinkEmailParams,
 } from "./types";
 import { smtpProvider } from "./providers/smtp";
 import { invitationTemplate } from "./templates/invitation";
+import { magicLinkTemplate } from "./templates/magicLink";
 
 export class EmailService {
   private getProvider(provider: EmailProvider): EmailProviderInterface {
@@ -48,6 +50,19 @@ export class EmailService {
       subject: invitationTemplate.subject(params),
       html: invitationTemplate.html(params),
       text: invitationTemplate.text?.(params),
+    };
+
+    return this.send(message);
+  }
+
+  async sendMagicLinkEmail(
+    params: SendMagicLinkEmailParams
+  ): Promise<EmailSendResult> {
+    const message: EmailMessage = {
+      to: params.to,
+      subject: magicLinkTemplate.subject(params),
+      html: magicLinkTemplate.html(params),
+      text: magicLinkTemplate.text?.(params),
     };
 
     return this.send(message);

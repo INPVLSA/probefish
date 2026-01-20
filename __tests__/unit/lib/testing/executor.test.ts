@@ -468,7 +468,7 @@ describe('ModelOverride', () => {
     it('should use version config when no override', () => {
       const versionProvider = 'openai';
       const versionModel = DEFAULT_MODELS.openai;
-      const override: ModelOverride | undefined = undefined;
+      const override = undefined as ModelOverride | undefined;
 
       const effectiveProvider = override?.provider || versionProvider;
       const effectiveModel = override?.model || versionModel;
@@ -480,7 +480,7 @@ describe('ModelOverride', () => {
     it('should fall back to default when no version config and no override', () => {
       const versionProvider: string | undefined = undefined;
       const versionModel: string | undefined = undefined;
-      const override: ModelOverride | undefined = undefined;
+      const override = undefined as ModelOverride | undefined;
 
       const effectiveProvider = override?.provider || versionProvider || 'openai';
       const effectiveModel = override?.model || versionModel || 'gpt-4o-mini';

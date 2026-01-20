@@ -36,19 +36,21 @@ describe("validateLicense", () => {
       expect(result.error).toBe("malformed");
     });
 
-    it("should return malformed error for invalid base64 in payload", () => {
+    it("should return invalid_signature error for invalid base64 in payload", () => {
+      // Note: Buffer.from with 'base64' doesn't throw for invalid input,
+      // it just decodes what it can. Signature verification fails first.
       const result = validateLicense("!!!invalid-base64!!!.c2lnbmF0dXJl");
       expect(result.valid).toBe(false);
-      expect(result.error).toBe("malformed");
+      expect(result.error).toBe("invalid_signature");
     });
 
-    it("should return malformed error for non-JSON payload", () => {
-      // "not json" in base64
+    it("should return invalid_signature error for non-JSON payload", () => {
+      // Signature verification happens before JSON parsing (correct security behavior)
       const payload = Buffer.from("not json").toString("base64");
       const sig = Buffer.from("signature").toString("base64");
       const result = validateLicense(`${payload}.${sig}`);
       expect(result.valid).toBe(false);
-      expect(result.error).toBe("malformed");
+      expect(result.error).toBe("invalid_signature");
     });
   });
 
@@ -98,8 +100,10 @@ describe("validateLicenseCached", () => {
     const result2 = validateLicenseCached("key2.sig2");
 
     // Both are invalid but for different reasons
+    // key1 has no dot separator -> malformed
+    // key2.sig2 has valid format but invalid signature -> invalid_signature
     expect(result1.error).toBe("malformed");
-    expect(result2.error).toBe("malformed");
+    expect(result2.error).toBe("invalid_signature");
   });
 
   it("should cache results for repeated calls", () => {

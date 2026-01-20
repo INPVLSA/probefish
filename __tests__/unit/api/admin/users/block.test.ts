@@ -116,6 +116,7 @@ describe("User Block API Routes", () => {
         email: "user@example.com",
         name: "Test User",
         isBlocked: false,
+        blockedReason: undefined as string | undefined,
         save: mockUserSave,
       };
       mockUserFindById.mockResolvedValueOnce(mockUser);
