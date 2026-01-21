@@ -7,6 +7,7 @@ import {
   validateLicense,
   clearLicenseCache,
   getLicenseStatus,
+  isCloudMode,
 } from "@/lib/license";
 
 interface RouteParams {
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       plan: result.license!.plan,
       expiresAt: result.license!.expiresAt,
       organizationName: result.license!.organizationName,
+      deploymentMode: isCloudMode() ? "cloud" : "self-hosted",
     });
   } catch (error) {
     console.error("Error setting license key:", error);

@@ -85,7 +85,7 @@ export function LicenseStatus({ organizationId }: LicenseStatusProps) {
       const json = await res.json();
 
       if (res.ok) {
-        toast.success(`License activated: ${getPlanLabel(json.plan as PlanTier)} plan`);
+        toast.success(`License activated: ${getPlanLabel(json.plan as PlanTier, json.deploymentMode)} plan`);
         setLicenseKey("");
         setShowKeyInput(false);
         fetchLicenseStatus();

@@ -1,6 +1,7 @@
 {
   "name": "probefish",
-  "version": "1.0.1",
+  "version": "1.0.2",
+  "codename": "Marlin",
   "private": true,
   "type": "module",
   "bin": {
