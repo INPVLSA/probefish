@@ -1,6 +1,6 @@
-![probefish.png](_docs/probefish.png)
+<h1 align="center"><a href="https://probefish.app/">probefish.app</a></h1>
 
-# Website: [probefish.app](https://probefish.app/)
+[![probefish.png](_docs/probefish.png)](https://probefish.app)
 
 A web-based LLM prompt and endpoint testing platform. Organize, version, test, and validate Large Language Model prompts and HTTP endpoints through comprehensive test suites with static validation rules and LLM-based judge evaluation.
 

@@ -21,7 +21,7 @@ import { getToken, getBaseUrl } from '../lib/config.js';
 // Create MCP server (exported for use by HTTP transport)
 export const server = new McpServer({
   name: 'probefish',
-  version: '0.9.0',
+  version: '1.0.1',
 });
 
 // Helper to check auth

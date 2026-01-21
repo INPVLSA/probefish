@@ -217,7 +217,7 @@ export default function Sidebar() {
       </div>
 
       <div className="p-4 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">Probefish v0.9.0 (Swordfish)</p>
+        <p className="text-xs text-muted-foreground">Probefish v1.0.1 (Marlin)</p>
         <Link
           href="https://github.com/INPVLSA/probefish"
           target="_blank"
