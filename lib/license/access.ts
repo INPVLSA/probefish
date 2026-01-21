@@ -33,6 +33,14 @@ export interface OrganizationWithLicense {
  * Determine the effective plan for an organization
  */
 export function getOrganizationPlan(org: OrganizationWithLicense): PlanTier {
+  // License key takes priority (works in both cloud and self-hosted)
+  if (org.licenseKey) {
+    const result = validateLicenseCached(org.licenseKey);
+    if (result.valid && result.license) {
+      return result.license.plan;
+    }
+  }
+
   // Cloud mode: check Stripe subscription
   if (isCloudMode() && org.subscription) {
     if (
@@ -40,15 +48,6 @@ export function getOrganizationPlan(org: OrganizationWithLicense): PlanTier {
       org.subscription.status === "trialing"
     ) {
       return org.subscription.plan;
-    }
-    return "free"; // Lapsed subscription falls back to free
-  }
-
-  // Self-hosted mode: check license key
-  if (org.licenseKey) {
-    const result = validateLicenseCached(org.licenseKey);
-    if (result.valid && result.license) {
-      return result.license.plan;
     }
   }
 

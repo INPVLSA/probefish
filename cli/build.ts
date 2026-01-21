@@ -4,6 +4,10 @@ import { join } from 'path';
 
 const distDir = join(process.cwd(), 'dist', 'cli');
 
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8'));
+const version = packageJson.version;
+
 // Ensure dist directory exists
 if (!existsSync(distDir)) {
   mkdirSync(distDir, { recursive: true });
@@ -19,6 +23,7 @@ execSync(
     '--target=node18 ' +
     '--format=esm ' +
     '--outfile=dist/cli/index.js ' +
+    `--define:__CLI_VERSION__='"${version}"' ` +
     '--external:conf ' +
     '--external:chalk ' +
     '--external:ora ' +

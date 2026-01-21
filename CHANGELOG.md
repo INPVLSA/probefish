@@ -1,3 +1,7 @@
+### v1.0.2
+- Fixed issue with Cloud licensing
+- Fixed issues with versioning
+
 ### v1.0.1
 - Doc changes, version fixes
 - Fixed vulnerable packages
