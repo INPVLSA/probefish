@@ -1,4 +1,8 @@
-### v1.0.0
+### v1.0.1
+- Doc changes, version fixes
+- Fixed vulnerable packages
+
+# v1.0.0 (Marlin)
 - Going SaaS, plans and license implementation. Self-hosted free forever.
 - Added validation rules per test case
 - Added Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive

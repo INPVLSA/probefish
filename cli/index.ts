@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('probefish')
   .description('CLI for Probefish - LLM prompt testing platform')
-  .version('0.9.0');
+  .version('1.0.1');
 
 // Register commands
 program.addCommand(authCommand);
