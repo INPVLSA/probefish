@@ -53,6 +53,7 @@ interface Project {
 interface Prompt {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   currentVersion: number;
   tags: string[];
@@ -63,6 +64,7 @@ interface Prompt {
 interface Endpoint {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   config: {
     method: string;
@@ -78,6 +80,7 @@ interface Endpoint {
 interface TestSuite {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   targetType: "prompt" | "endpoint";
   targetId: string;
@@ -415,7 +418,7 @@ export default function ProjectDetailPage({
             prompts.map((prompt) => (
               <Link
                 key={prompt._id}
-                href={`/projects/${projectId}/prompts/${prompt._id}`}
+                href={`/projects/${projectId}/prompts/${prompt.slug}`}
                 className="block"
               >
                 <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
@@ -466,7 +469,7 @@ export default function ProjectDetailPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/projects/${projectId}/prompts/${prompt._id}`}
+                                href={`/projects/${projectId}/prompts/${prompt.slug}`}
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
@@ -515,7 +518,7 @@ export default function ProjectDetailPage({
             endpoints.map((endpoint) => (
               <Link
                 key={endpoint._id}
-                href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                href={`/projects/${projectId}/endpoints/${endpoint.slug}`}
                 className="block"
               >
                 <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
@@ -573,7 +576,7 @@ export default function ProjectDetailPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                                href={`/projects/${projectId}/endpoints/${endpoint.slug}`}
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
@@ -622,7 +625,7 @@ export default function ProjectDetailPage({
             testSuites.map((suite) => (
               <Link
                 key={suite._id}
-                href={`/projects/${projectId}/test-suites/${suite._id}`}
+                href={`/projects/${projectId}/test-suites/${suite.slug}`}
                 className="block"
               >
                 <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
@@ -694,7 +697,7 @@ export default function ProjectDetailPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/projects/${projectId}/test-suites/${suite._id}`}
+                                href={`/projects/${projectId}/test-suites/${suite.slug}`}
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit

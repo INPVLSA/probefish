@@ -23,6 +23,7 @@ import { formatDistanceToNow } from "date-fns";
 interface Project {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   isFolder: boolean;
   createdAt: string;
@@ -137,7 +138,7 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <Link key={project._id} href={`/projects/${project._id}`} className="block">
+            <Link key={project._id} href={`/projects/${project.slug}`} className="block">
               <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -164,7 +165,7 @@ export default function ProjectsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/projects/${project._id}/settings`}>
+                          <Link href={`/projects/${project.slug}/settings`}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </Link>

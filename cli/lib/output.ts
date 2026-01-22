@@ -68,15 +68,16 @@ export function outputProjects(projects: Project[], format?: 'table' | 'json'): 
   // Table header
   console.log(
     bold(
-      `${padRight('ID', 26)} ${padRight('NAME', 30)} ${padRight('VISIBILITY', 12)}`
+      `${padRight('ID', 26)} ${padRight('SLUG', 22)} ${padRight('NAME', 25)} ${padRight('VISIBILITY', 12)}`
     )
   );
-  console.log(dim('-'.repeat(70)));
+  console.log(dim('-'.repeat(88)));
 
   for (const project of projects) {
     const visibility = project.visibility === 'public' ? green('public') : dim('private');
+    const slug = project.slug || dim('(none)');
     console.log(
-      `${padRight(project._id, 26)} ${padRight(truncate(project.name, 28), 30)} ${visibility}`
+      `${padRight(project._id, 26)} ${padRight(truncate(slug, 20), 22)} ${padRight(truncate(project.name, 23), 25)} ${visibility}`
     );
   }
 }
@@ -96,15 +97,16 @@ export function outputTestSuites(suites: TestSuite[], format?: 'table' | 'json')
 
   console.log(
     bold(
-      `${padRight('ID', 26)} ${padRight('NAME', 30)} ${padRight('TYPE', 10)} ${padRight('CASES', 6)}`
+      `${padRight('ID', 26)} ${padRight('SLUG', 22)} ${padRight('NAME', 25)} ${padRight('TYPE', 10)} ${padRight('CASES', 6)}`
     )
   );
-  console.log(dim('-'.repeat(75)));
+  console.log(dim('-'.repeat(92)));
 
   for (const suite of suites) {
-    const enabledCases = suite.testCases.filter((tc) => tc.enabled !== false).length;
+    const enabledCases = suite.testCases?.filter((tc) => tc.enabled !== false).length ?? 0;
+    const slug = suite.slug || dim('(none)');
     console.log(
-      `${padRight(suite._id, 26)} ${padRight(truncate(suite.name, 28), 30)} ${padRight(suite.targetType, 10)} ${enabledCases}`
+      `${padRight(suite._id, 26)} ${padRight(truncate(slug, 20), 22)} ${padRight(truncate(suite.name, 23), 25)} ${padRight(suite.targetType, 10)} ${enabledCases}`
     );
   }
 }

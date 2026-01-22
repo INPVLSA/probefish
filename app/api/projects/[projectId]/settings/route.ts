@@ -6,6 +6,7 @@ import {
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import { connectDB } from "@/lib/db/mongodb";
 import Project, { ProjectVisibility } from "@/lib/db/models/project";
+import { isValidSlug, getSlugValidationError } from "@/lib/utils/slug";
 
 interface RouteParams {
   params: Promise<{ projectId: string }>;
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const project = await Project.findById(projectId)
-      .select("name description visibility inheritFromParent parentId")
+    const project = await Project.findById(auth.context.project?.id)
+      .select("name slug description visibility inheritFromParent parentId")
       .lean();
 
     if (!project) {
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       settings: {
         name: project.name,
+        slug: project.slug,
         description: project.description,
         visibility: project.visibility || "public",
         inheritFromParent: project.inheritFromParent ?? true,
@@ -74,11 +76,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-    const { visibility, inheritFromParent, name, description } = body;
+    const { visibility, inheritFromParent, name, slug, description } = body;
 
     await connectDB();
 
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(auth.context.project?.id);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
@@ -108,6 +110,30 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       project.name = name.trim();
     }
 
+    if (slug !== undefined) {
+      const trimmedSlug = slug.trim().toLowerCase();
+      if (!isValidSlug(trimmedSlug)) {
+        const validationError = getSlugValidationError(trimmedSlug);
+        return NextResponse.json(
+          { error: validationError || "Invalid slug format" },
+          { status: 400 }
+        );
+      }
+      // Check if slug is unique within the organization
+      const existingProject = await Project.findOne({
+        organizationId: project.organizationId,
+        slug: trimmedSlug,
+        _id: { $ne: project._id },
+      });
+      if (existingProject) {
+        return NextResponse.json(
+          { error: "This slug is already in use by another project" },
+          { status: 400 }
+        );
+      }
+      project.slug = trimmedSlug;
+    }
+
     if (description !== undefined) {
       project.description = description?.trim() || undefined;
     }
@@ -118,6 +144,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       success: true,
       settings: {
         name: project.name,
+        slug: project.slug,
         description: project.description,
         visibility: project.visibility,
         inheritFromParent: project.inheritFromParent,

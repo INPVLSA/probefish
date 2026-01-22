@@ -22,6 +22,7 @@ export interface IEndpointConfig {
 export interface IEndpoint extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
+  slug: string;
   description?: string;
   projectId: mongoose.Types.ObjectId;
   organizationId: mongoose.Types.ObjectId;
@@ -91,6 +92,15 @@ const endpointSchema = new Schema<IEndpoint>(
       minlength: [1, "Name must be at least 1 character"],
       maxlength: [200, "Name cannot exceed 200 characters"],
     },
+    slug: {
+      type: String,
+      required: [true, "Slug is required"],
+      lowercase: true,
+      trim: true,
+      minlength: [3, "Slug must be at least 3 characters"],
+      maxlength: [50, "Slug cannot exceed 50 characters"],
+      match: [/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number"],
+    },
     description: {
       type: String,
       trim: true,
@@ -135,6 +145,7 @@ const endpointSchema = new Schema<IEndpoint>(
 endpointSchema.index({ projectId: 1 });
 endpointSchema.index({ organizationId: 1 });
 endpointSchema.index({ name: "text", description: "text" });
+endpointSchema.index({ projectId: 1, slug: 1 }, { unique: true });
 
 // Helper to extract variables from body template
 endpointSchema.statics.extractVariables = function (content: string): string[] {

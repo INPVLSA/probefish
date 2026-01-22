@@ -16,10 +16,10 @@ interface RouteParams {
 
 // GET /api/projects/[projectId]/members - List project members
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.VIEW,
     request
   );
@@ -27,6 +27,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -74,10 +77,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/projects/[projectId]/members - Add a member to project
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.MANAGE_MEMBERS,
     request
   );
@@ -85,6 +88,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     const body = await request.json();

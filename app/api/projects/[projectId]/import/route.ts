@@ -16,10 +16,10 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // PUT /api/projects/[projectId]/import - Preview import (validate only)
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.EDIT,
     request
   );
@@ -27,6 +27,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     const contentType = request.headers.get("content-type") || "";
@@ -83,10 +86,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/projects/[projectId]/import - Execute import
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.EDIT,
     request
   );
@@ -94,6 +97,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();

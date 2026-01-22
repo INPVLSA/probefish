@@ -58,7 +58,7 @@ export default function NewProjectPage() {
       }
 
       toast.success(`${isFolder ? "Folder" : "Project"} created successfully!`);
-      router.push(`/projects/${data.project._id}`);
+      router.push(`/projects/${data.project.slug}`);
     } catch {
       setError("An unexpected error occurred");
     } finally {

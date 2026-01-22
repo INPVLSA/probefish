@@ -16,6 +16,7 @@ export interface ApiError {
 export interface Project {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   organizationId: string;
   visibility: 'public' | 'private';
@@ -26,6 +27,7 @@ export interface Project {
 export interface TestSuite {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   projectId: string;
   targetType: 'prompt' | 'endpoint';

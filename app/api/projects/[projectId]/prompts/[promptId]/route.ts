@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
-import Project from "@/lib/db/models/project";
 import Prompt from "@/lib/db/models/prompt";
 import User from "@/lib/db/models/user";
+import {
+  resolveProjectAcrossOrgs,
+  resolvePromptByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; promptId: string }>;
@@ -40,22 +43,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-
-    const prompt = await Prompt.findOne({ _id: promptId, projectId })
-      .populate("createdBy", "name email")
-      .populate("versions.createdBy", "name email");
-
-    if (!prompt) {
+    // Resolve prompt by ID or slug
+    const resolvedPrompt = await resolvePromptByIdentifier(promptId, project._id);
+    if (!resolvedPrompt) {
       return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
+
+    // Re-fetch with population
+    const prompt = await Prompt.findById(resolvedPrompt._id)
+      .populate("createdBy", "name email")
+      .populate("versions.createdBy", "name email");
 
     return NextResponse.json({ prompt });
   } catch (error) {
@@ -83,16 +86,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    // Resolve prompt by ID or slug
+    const resolvedPrompt = await resolvePromptByIdentifier(promptId, project._id);
+    if (!resolvedPrompt) {
+      return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
 
-    const prompt = await Prompt.findOne({ _id: promptId, projectId });
+    const prompt = await Prompt.findById(resolvedPrompt._id);
     if (!prompt) {
       return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
@@ -146,16 +152,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    // Resolve prompt by ID or slug
+    const resolvedPrompt = await resolvePromptByIdentifier(promptId, project._id);
+    if (!resolvedPrompt) {
+      return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
 
-    const prompt = await Prompt.findOne({ _id: promptId, projectId });
+    const prompt = await Prompt.findById(resolvedPrompt._id);
     if (!prompt) {
       return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
@@ -216,19 +225,19 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-
-    const prompt = await Prompt.findOneAndDelete({ _id: promptId, projectId });
-    if (!prompt) {
+    // Resolve prompt by ID or slug
+    const resolvedPrompt = await resolvePromptByIdentifier(promptId, project._id);
+    if (!resolvedPrompt) {
       return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
+
+    await Prompt.findByIdAndDelete(resolvedPrompt._id);
 
     return NextResponse.json({ message: "Prompt deleted successfully" });
   } catch (error) {

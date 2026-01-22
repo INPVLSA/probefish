@@ -1,3 +1,6 @@
+### v1.1.0
+- Added human-readable identifiers (slugs) for CLI and UI 
+
 ### v1.0.2
 - Fixed issue with Cloud licensing
 - Fixed issues with versioning

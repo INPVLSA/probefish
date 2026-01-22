@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
-import Project from "@/lib/db/models/project";
 import TestSuite from "@/lib/db/models/testSuite";
 import User from "@/lib/db/models/user";
+import { resolveProjectAcrossOrgs } from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string }>;
@@ -102,7 +102,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json(
         { error: "Project not found" },
@@ -110,16 +111,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (
-      !user.organizationIds.some(
-        (id) => id.toString() === project.organizationId.toString()
-      )
-    ) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-
     // Get all test suites with run history
-    const testSuites = await TestSuite.find({ projectId })
+    const testSuites = await TestSuite.find({ projectId: project._id })
       .select("_id name targetType targetId runHistory")
       .lean();
 

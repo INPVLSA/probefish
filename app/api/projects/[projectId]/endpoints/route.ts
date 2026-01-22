@@ -7,6 +7,7 @@ import {
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import Project from "@/lib/db/models/project";
 import Endpoint from "@/lib/db/models/endpoint";
+import { generateSlug, ensureUniqueSlug } from "@/lib/utils/slug";
 
 interface RouteParams {
   params: Promise<{ projectId: string }>;
@@ -29,10 +30,10 @@ function extractVariables(content: string): string[] {
 
 // GET /api/projects/[projectId]/endpoints - List endpoints in a project
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.VIEW,
     request
   );
@@ -40,6 +41,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -60,10 +64,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/projects/[projectId]/endpoints - Create a new endpoint
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.EDIT,
     request
   );
@@ -71,6 +75,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -106,8 +113,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const variables = extractVariables(config.bodyTemplate || "");
 
+    // Generate unique slug from name
+    const baseSlug = generateSlug(name.trim());
+    const slug = await ensureUniqueSlug(baseSlug, async (testSlug) => {
+      const existing = await Endpoint.findOne({ projectId, slug: testSlug });
+      return !!existing;
+    });
+
     const endpoint = await Endpoint.create({
       name: name.trim(),
+      slug,
       description: description?.trim(),
       projectId,
       organizationId: project.organizationId,
