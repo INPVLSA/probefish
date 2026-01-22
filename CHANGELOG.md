@@ -1,5 +1,6 @@
 ### v1.1.0
-- Added human-readable identifiers (slugs) for CLI and UI 
+- Added human-readable identifiers (slugs) for CLI and UI
+- Improved UI (Added skeleton preloaders for UI components)
 
 ### v1.0.2
 - Fixed issue with Cloud licensing
