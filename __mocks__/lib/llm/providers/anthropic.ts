@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { LLMCompletionResponse, LLMProvider } from '@/lib/llm/types';
+import type { LLMCompletionResponse, LLMProviderInterface } from '@/lib/llm/types';
 
 export const mockAnthropicResponse: LLMCompletionResponse = {
   content: 'This is a mocked Anthropic response.',
@@ -29,7 +29,7 @@ export const mockAnthropicJudgeResponse: LLMCompletionResponse = {
   finishReason: 'end_turn',
 };
 
-export const createMockAnthropicProvider = (): LLMProvider => ({
+export const createMockAnthropicProvider = (): LLMProviderInterface => ({
   name: 'anthropic',
   complete: vi.fn().mockResolvedValue(mockAnthropicResponse),
   listModels: vi.fn().mockReturnValue([

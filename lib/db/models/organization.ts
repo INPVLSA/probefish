@@ -13,6 +13,22 @@ export interface ILLMCredential {
   encryptedAt: Date;
 }
 
+export type SubscriptionPlan = "free" | "pro" | "enterprise";
+export type SubscriptionStatus = "active" | "past_due" | "canceled" | "trialing";
+
+export interface ISubscription {
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  currentPeriodEnd?: Date;
+}
+
+export interface IUsage {
+  testRunsThisMonth: number;
+  usageResetDate: Date;
+}
+
 export interface IOrganization extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
@@ -31,6 +47,12 @@ export interface IOrganization extends Document {
     defaultJudgeModel?: string;
     maxConcurrentTests?: number;
   };
+  // License key (for self-hosted)
+  licenseKey?: string;
+  // Subscription (for cloud mode - populated from Stripe)
+  subscription?: ISubscription;
+  // Usage tracking
+  usage?: IUsage;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +144,28 @@ const organizationSchema = new Schema<IOrganization>(
         min: 1,
         max: 50,
       },
+    },
+    licenseKey: {
+      type: String,
+    },
+    subscription: {
+      stripeCustomerId: String,
+      stripeSubscriptionId: String,
+      plan: {
+        type: String,
+        enum: ["free", "pro", "enterprise"],
+        default: "free",
+      },
+      status: {
+        type: String,
+        enum: ["active", "past_due", "canceled", "trialing"],
+        default: "active",
+      },
+      currentPeriodEnd: Date,
+    },
+    usage: {
+      testRunsThisMonth: { type: Number, default: 0 },
+      usageResetDate: { type: Date, default: Date.now },
     },
   },
   {

@@ -123,7 +123,7 @@ export default function NewTestSuitePage({
       }
 
       toast.success("Test suite created!");
-      router.push(`/projects/${projectId}/test-suites/${data.testSuite._id}`);
+      router.push(`/projects/${projectId}/test-suites/${data.testSuite.slug}`);
     } catch {
       setError("An unexpected error occurred");
     } finally {

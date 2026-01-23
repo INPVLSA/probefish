@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,17 @@ import {
   Shield,
   Activity,
   Webhook,
+  Search,
+  GitCompare,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +51,7 @@ import { formatDistanceToNow } from "date-fns";
 import { DeleteIcon } from "@/components/ui/delete";
 import { toast } from "sonner";
 import { ProjectTestsDashboard } from "@/components/testing";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Project {
   _id: string;
@@ -53,6 +64,7 @@ interface Project {
 interface Prompt {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   currentVersion: number;
   tags: string[];
@@ -63,6 +75,7 @@ interface Prompt {
 interface Endpoint {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   config: {
     method: string;
@@ -78,6 +91,7 @@ interface Endpoint {
 interface TestSuite {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   targetType: "prompt" | "endpoint";
   targetId: string;
@@ -101,6 +115,34 @@ export default function ProjectDetailPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = use(params);
+
+  // Tab state with URL hash sync
+  const validTabs = ["test-results", "prompts", "endpoints", "test-suites"];
+  const [activeTab, setActiveTab] = useState("test-results");
+
+  // Read hash on mount and handle hash changes
+  useEffect(() => {
+    const getTabFromHash = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      return validTabs.includes(hash) ? hash : "test-results";
+    };
+
+    setActiveTab(getTabFromHash());
+
+    const handleHashChange = () => {
+      setActiveTab(getTabFromHash());
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Update URL hash when tab changes
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    window.history.replaceState(null, "", `#${value}`);
+  }, []);
+
   const [project, setProject] = useState<Project | null>(null);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
@@ -223,8 +265,156 @@ export default function ProjectDetailPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
+      <div className="space-y-6">
+        {/* Header - real buttons, skeleton for data */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/projects">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-7 w-48" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <Skeleton className="h-5 w-64" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" asChild title="Webhooks">
+              <Link href={`/projects/${projectId}/settings/webhooks`}>
+                <Webhook className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="outline" size="icon" asChild title="CI/CD">
+              <Link href={`/projects/${projectId}/settings/cicd`}>
+                <GitBranch className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="outline" size="icon" asChild title="Settings">
+              <Link href={`/projects/${projectId}/settings`}>
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabs - real buttons, skeleton for counts and content */}
+        <div className="flex flex-col gap-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="inline-flex h-9 items-center gap-0.5 p-[3px] bg-muted rounded-lg">
+              <Skeleton className="h-[calc(100%-1px)] w-28 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link href={`/projects/${projectId}/endpoints/new`}>
+                  <Globe className="h-4 w-4" />
+                  New Endpoint
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href={`/projects/${projectId}/prompts/new`}>
+                  <FileText className="h-4 w-4" />
+                  New Prompt
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href={`/projects/${projectId}/test-suites/new`}>
+                  <FlaskConical className="h-4 w-4" />
+                  New Test Suite
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Content skeleton - matches Test Results tab (default) */}
+          <div className="space-y-6">
+            {/* Summary Cards Skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i}>
+                  <CardContent className="text-center">
+                    <Skeleton className="h-7 w-12 mx-auto mb-2" />
+                    <Skeleton className="h-3 w-16 mx-auto" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search suites..."
+                  value=""
+                  disabled
+                  readOnly
+                  className="pl-8"
+                />
+              </div>
+              <Select disabled>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="All Suites" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Suites</SelectItem>
+                  <SelectItem value="passing">Passing</SelectItem>
+                  <SelectItem value="failing">Failing</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" disabled>
+                <GitCompare className="h-4 w-4 mr-2" />
+                Compare Runs
+              </Button>
+            </div>
+
+            {/* Two Column Layout Skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Test Suites */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-40" />
+                </CardHeader>
+                <CardContent className="p-0 min-h-[280px]">
+                  <div className="space-y-3 p-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Right: Recent Runs */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-4 w-44" />
+                </CardHeader>
+                <CardContent className="p-0 min-h-[280px]">
+                  <div className="space-y-3 p-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 w-12" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -302,7 +492,7 @@ export default function ProjectDetailPage({
         </div>
       </div>
 
-      <Tabs defaultValue="test-results" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="test-results" className="gap-2">
@@ -387,7 +577,7 @@ export default function ProjectDetailPage({
             prompts.map((prompt) => (
               <Link
                 key={prompt._id}
-                href={`/projects/${projectId}/prompts/${prompt._id}`}
+                href={`/projects/${projectId}/prompts/${prompt.slug}`}
                 className="block"
               >
                 <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
@@ -438,7 +628,7 @@ export default function ProjectDetailPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/projects/${projectId}/prompts/${prompt._id}`}
+                                href={`/projects/${projectId}/prompts/${prompt.slug}`}
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
@@ -487,7 +677,7 @@ export default function ProjectDetailPage({
             endpoints.map((endpoint) => (
               <Link
                 key={endpoint._id}
-                href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                href={`/projects/${projectId}/endpoints/${endpoint.slug}`}
                 className="block"
               >
                 <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
@@ -545,7 +735,7 @@ export default function ProjectDetailPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/projects/${projectId}/endpoints/${endpoint._id}`}
+                                href={`/projects/${projectId}/endpoints/${endpoint.slug}`}
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
@@ -594,7 +784,7 @@ export default function ProjectDetailPage({
             testSuites.map((suite) => (
               <Link
                 key={suite._id}
-                href={`/projects/${projectId}/test-suites/${suite._id}`}
+                href={`/projects/${projectId}/test-suites/${suite.slug}`}
                 className="block"
               >
                 <Card className="group hover:border-primary/50 transition-colors cursor-pointer">
@@ -666,7 +856,7 @@ export default function ProjectDetailPage({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/projects/${projectId}/test-suites/${suite._id}`}
+                                href={`/projects/${projectId}/test-suites/${suite.slug}`}
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit

@@ -11,12 +11,16 @@ import { updateCommand } from './commands/update.js';
 import { deleteCommand } from './commands/delete.js';
 import { mcpCommand } from './commands/mcp.js';
 
+// Version injected at build time by esbuild
+declare const __CLI_VERSION__: string;
+const version = typeof __CLI_VERSION__ !== 'undefined' ? __CLI_VERSION__ : '0.0.0-dev';
+
 const program = new Command();
 
 program
   .name('probefish')
   .description('CLI for Probefish - LLM prompt testing platform')
-  .version('0.9.0');
+  .version(version);
 
 // Register commands
 program.addCommand(authCommand);

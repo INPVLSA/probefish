@@ -39,3 +39,8 @@ export {
   type IInvitation,
   type InvitationStatus,
 } from "./invitation";
+export {
+  default as MagicLinkToken,
+  type IMagicLinkToken,
+  type MagicLinkPurpose,
+} from "./magicLinkToken";

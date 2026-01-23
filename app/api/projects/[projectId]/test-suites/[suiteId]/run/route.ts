@@ -23,6 +23,7 @@ import {
 import { LLMProviderCredentials, LLMProvider } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatcher";
+import { resolveTestSuiteByIdentifier } from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -89,10 +90,10 @@ function checkProviderCredentials(
 // POST /api/projects/[projectId]/test-suites/[suiteId]/run - Execute test suite
 // Supports: Session auth OR Token auth with "test-runs:execute" scope
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId, suiteId } = await params;
+  const { projectId: projectIdentifier, suiteId: suiteIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.VIEW,
     request,
     ["test-runs:execute"] // Required scope for token auth
@@ -101,6 +102,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -113,10 +117,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    });
+    // Resolve test suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(suiteIdentifier, projectId);
 
     if (!testSuite) {
       return NextResponse.json(
@@ -124,6 +126,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 404 }
       );
     }
+
+    const suiteId = testSuite._id.toString();
 
     if (testSuite.testCases.length === 0) {
       return NextResponse.json(

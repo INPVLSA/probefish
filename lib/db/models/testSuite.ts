@@ -1,6 +1,9 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { LLMProvider } from "@/lib/llm/types";
 
+// Validation mode for test cases
+export type TestCaseValidationMode = "text" | "rules";
+
 // Test Case - a single test with variable inputs
 export interface ITestCase {
   _id: mongoose.Types.ObjectId;
@@ -10,6 +13,10 @@ export interface ITestCase {
   notes?: string;
   tags?: string[];
   enabled?: boolean; // Whether the test case is active (default: true)
+  // Per-case validation configuration
+  validationMode?: TestCaseValidationMode; // "text" (legacy) or "rules" (new default)
+  validationRules?: IValidationRule[]; // Only used when validationMode === "rules"
+  judgeValidationRules?: IJudgeValidationRule[]; // Additive to suite-level judge rules
 }
 
 // Validation Rule - static checks on output
@@ -111,6 +118,7 @@ export interface IComparisonSession {
 export interface ITestSuite extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
+  slug: string;
   description?: string;
   projectId: mongoose.Types.ObjectId;
   organizationId: mongoose.Types.ObjectId;
@@ -134,32 +142,6 @@ export interface ITestSuite extends Document {
 }
 
 type TestSuiteModel = Model<ITestSuite>;
-
-const testCaseSchema = new Schema<ITestCase>(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    inputs: {
-      type: Map,
-      of: String,
-      default: {},
-    },
-    expectedOutput: String,
-    notes: String,
-    tags: {
-      type: [String],
-      default: [],
-    },
-    enabled: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  { _id: true }
-);
 
 const validationRuleSchema = new Schema<IValidationRule>(
   {
@@ -220,6 +202,46 @@ const judgeValidationRuleSchema = new Schema(
     },
   },
   { _id: false }
+);
+
+const testCaseSchema = new Schema<ITestCase>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    inputs: {
+      type: Map,
+      of: String,
+      default: {},
+    },
+    expectedOutput: String,
+    notes: String,
+    tags: {
+      type: [String],
+      default: [],
+    },
+    enabled: {
+      type: Boolean,
+      default: true,
+    },
+    // Per-case validation configuration
+    validationMode: {
+      type: String,
+      enum: ["text", "rules"],
+      default: undefined,
+    },
+    validationRules: {
+      type: [validationRuleSchema],
+      default: [],
+    },
+    judgeValidationRules: {
+      type: [judgeValidationRuleSchema],
+      default: [],
+    },
+  },
+  { _id: true }
 );
 
 const llmJudgeConfigSchema = new Schema<ILLMJudgeConfig>(
@@ -335,6 +357,15 @@ const testSuiteSchema = new Schema<ITestSuite>(
       minlength: [1, "Name must be at least 1 character"],
       maxlength: [200, "Name cannot exceed 200 characters"],
     },
+    slug: {
+      type: String,
+      required: [true, "Slug is required"],
+      lowercase: true,
+      trim: true,
+      minlength: [3, "Slug must be at least 3 characters"],
+      maxlength: [50, "Slug cannot exceed 50 characters"],
+      match: [/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number"],
+    },
     description: {
       type: String,
       trim: true,
@@ -438,6 +469,7 @@ testSuiteSchema.index({ projectId: 1 });
 testSuiteSchema.index({ organizationId: 1 });
 testSuiteSchema.index({ targetType: 1, targetId: 1 });
 testSuiteSchema.index({ name: "text", description: "text" });
+testSuiteSchema.index({ projectId: 1, slug: 1 }, { unique: true });
 
 const TestSuite: TestSuiteModel =
   mongoose.models.TestSuite ||

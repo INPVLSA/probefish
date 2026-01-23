@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
-import Project from "@/lib/db/models/project";
 import Endpoint from "@/lib/db/models/endpoint";
 import User from "@/lib/db/models/user";
+import {
+  resolveProjectAcrossOrgs,
+  resolveEndpointByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; endpointId: string }>;
@@ -63,16 +66,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-
-    const endpoint = await Endpoint.findOne({ _id: endpointId, projectId });
+    // Resolve endpoint by ID or slug
+    const endpoint = await resolveEndpointByIdentifier(endpointId, project._id);
     if (!endpoint) {
       return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
     }

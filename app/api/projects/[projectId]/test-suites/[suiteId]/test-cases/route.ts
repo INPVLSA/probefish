@@ -3,7 +3,12 @@ import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
 import { authenticateToken, hasScope } from "@/lib/auth/tokenAuth";
 import TestSuite from "@/lib/db/models/testSuite";
+import User from "@/lib/db/models/user";
 import mongoose from "mongoose";
+import {
+  resolveProjectAcrossOrgs,
+  resolveTestSuiteByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -14,7 +19,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { projectId, suiteId } = await params;
 
-    let organizationId: string | undefined;
+    await connectDB();
+
+    let testSuite;
 
     // Check auth header to determine auth method
     const authHeader = request.headers.get("authorization");
@@ -37,27 +44,42 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      organizationId = tokenResult.organizationId;
+      // For token auth, use organization scoped query
+      const query: Record<string, unknown> = {
+        _id: suiteId,
+        projectId,
+      };
+      if (tokenResult.organizationId) {
+        query.organizationId = tokenResult.organizationId;
+      }
+      testSuite = await TestSuite.findOne(query);
     } else {
-      // Session auth
+      // Session auth - use resolver functions for slug support
       const session = await getSession();
       if (!session) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+
+      const user = await User.findById(session.userId);
+      if (!user || user.organizationIds.length === 0) {
+        return NextResponse.json(
+          { error: "No organization found" },
+          { status: 404 }
+        );
+      }
+
+      // Resolve project by ID or slug
+      const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
+      if (!project) {
+        return NextResponse.json(
+          { error: "Project not found" },
+          { status: 404 }
+        );
+      }
+
+      // Resolve test suite by ID or slug
+      testSuite = await resolveTestSuiteByIdentifier(suiteId, project._id);
     }
-
-    await connectDB();
-
-    // Find the test suite
-    const query: Record<string, unknown> = {
-      _id: suiteId,
-      projectId,
-    };
-    if (organizationId) {
-      query.organizationId = organizationId;
-    }
-
-    const testSuite = await TestSuite.findOne(query);
 
     if (!testSuite) {
       return NextResponse.json(
@@ -119,7 +141,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { projectId, suiteId } = await params;
 
-    let organizationId: string | undefined;
+    await connectDB();
+
+    let testSuiteId: string;
 
     // Check auth header to determine auth method
     const authHeader = request.headers.get("authorization");
@@ -142,27 +166,58 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      organizationId = tokenResult.organizationId;
+      // For token auth, use organization scoped query
+      const query: Record<string, unknown> = {
+        _id: suiteId,
+        projectId,
+      };
+      if (tokenResult.organizationId) {
+        query.organizationId = tokenResult.organizationId;
+      }
+      const suite = await TestSuite.findOne(query).select("_id");
+      if (!suite) {
+        return NextResponse.json(
+          { error: "Test suite not found" },
+          { status: 404 }
+        );
+      }
+      testSuiteId = suite._id.toString();
     } else {
-      // Session auth
+      // Session auth - use resolver functions for slug support
       const session = await getSession();
       if (!session) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+
+      const user = await User.findById(session.userId);
+      if (!user || user.organizationIds.length === 0) {
+        return NextResponse.json(
+          { error: "No organization found" },
+          { status: 404 }
+        );
+      }
+
+      // Resolve project by ID or slug
+      const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
+      if (!project) {
+        return NextResponse.json(
+          { error: "Project not found" },
+          { status: 404 }
+        );
+      }
+
+      // Resolve test suite by ID or slug
+      const resolvedSuite = await resolveTestSuiteByIdentifier(suiteId, project._id);
+      if (!resolvedSuite) {
+        return NextResponse.json(
+          { error: "Test suite not found" },
+          { status: 404 }
+        );
+      }
+      testSuiteId = resolvedSuite._id.toString();
     }
 
-    await connectDB();
-
-    // Find the test suite
-    const query: Record<string, unknown> = {
-      _id: suiteId,
-      projectId,
-    };
-    if (organizationId) {
-      query.organizationId = organizationId;
-    }
-
-    const testSuite = await TestSuite.findOne(query).select("testCases");
+    const testSuite = await TestSuite.findById(testSuiteId).select("testCases");
 
     if (!testSuite) {
       return NextResponse.json(

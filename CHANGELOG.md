@@ -1,8 +1,30 @@
-### v0.9.3
-- Implemented Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive
+### v1.1.0
+- Added human-readable identifiers (slugs) for CLI and UI
+- Improved UI (Added skeleton preloaders for UI components)
+
+### v1.0.2
+- Fixed issue with Cloud licensing
+- Fixed issues with versioning
+
+### v1.0.1
+- Doc changes, version fixes
+- Fixed vulnerable packages
+
+# v1.0.0 (Marlin)
+- Going SaaS, plans and license implementation. Self-hosted free forever.
+- Added validation rules per test case
+- Added Server-Sent Events (SSE) streaming that sends results as each test case completes, with heartbeats to keep the connection alive
+- Added URL hash based tab persistence for testing suite, project
+- Added auto JSON support for fields in "Edit Test Case" modal
+- Added ability to duplicate static validation rule (for ones makes sense to duplicate)
+- Added full support of SMTP. Removed Resend.
+- Added Magic Links support
+- Fixed newly added test case has no selection checkbox until suite saved and page reloaded
+- Minor UI improvements
 
 ### v0.9.2
-- Added healthcheck
+- Added healthcheck for containers
+- Added `container_name` to compose configuration
 
 ### v0.9.1
 - SSE transport support for remote MCP access

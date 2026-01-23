@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { LLMCompletionResponse, LLMProvider } from '@/lib/llm/types';
+import type { LLMCompletionResponse, LLMProviderInterface } from '@/lib/llm/types';
 
 export const mockOpenAIResponse: LLMCompletionResponse = {
   content: 'This is a mocked OpenAI response.',
@@ -30,7 +30,7 @@ export const mockOpenAIJudgeResponse: LLMCompletionResponse = {
   finishReason: 'stop',
 };
 
-export const createMockOpenAIProvider = (): LLMProvider => ({
+export const createMockOpenAIProvider = (): LLMProviderInterface => ({
   name: 'openai',
   complete: vi.fn().mockResolvedValue(mockOpenAIResponse),
   listModels: vi.fn().mockReturnValue([

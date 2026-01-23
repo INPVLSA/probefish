@@ -14,10 +14,10 @@ interface RouteParams {
 
 // PATCH /api/projects/[projectId]/members/[userId] - Update member role
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const { projectId, userId } = await params;
+  const { projectId: projectIdentifier, userId } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.MANAGE_MEMBERS,
     request
   );
@@ -25,6 +25,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     const body = await request.json();
@@ -101,10 +104,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/projects/[projectId]/members/[userId] - Remove member from project
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const { projectId, userId } = await params;
+  const { projectId: projectIdentifier, userId } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.MANAGE_MEMBERS,
     request
   );
@@ -112,6 +115,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();

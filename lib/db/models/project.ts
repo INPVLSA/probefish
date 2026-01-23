@@ -14,6 +14,7 @@ export interface IProjectMember {
 export interface IProject extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
+  slug: string;
   description?: string;
   organizationId: mongoose.Types.ObjectId;
   parentId?: mongoose.Types.ObjectId; // For folder hierarchy
@@ -38,6 +39,15 @@ const projectSchema = new Schema<IProject>(
       trim: true,
       minlength: [1, "Name must be at least 1 character"],
       maxlength: [100, "Name cannot exceed 100 characters"],
+    },
+    slug: {
+      type: String,
+      required: [true, "Slug is required"],
+      lowercase: true,
+      trim: true,
+      minlength: [3, "Slug must be at least 3 characters"],
+      maxlength: [50, "Slug cannot exceed 50 characters"],
+      match: [/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, "Slug must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number"],
     },
     description: {
       type: String,
@@ -112,6 +122,7 @@ const projectSchema = new Schema<IProject>(
 projectSchema.index({ organizationId: 1 });
 projectSchema.index({ parentId: 1 });
 projectSchema.index({ organizationId: 1, parentId: 1 });
+projectSchema.index({ organizationId: 1, slug: 1 }, { unique: true });
 
 const Project: ProjectModel =
   mongoose.models.Project ||

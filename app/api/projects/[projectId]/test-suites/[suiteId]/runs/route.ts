@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
-import Project from "@/lib/db/models/project";
 import TestSuite from "@/lib/db/models/testSuite";
 import User from "@/lib/db/models/user";
+import {
+  resolveProjectAcrossOrgs,
+  resolveTestSuiteByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -28,20 +31,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 }
       );
-    }
-
-    if (
-      !user.organizationIds.some(
-        (id) => id.toString() === project.organizationId.toString()
-      )
-    ) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     // Parse query params
@@ -53,10 +49,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const summary = searchParams.get("summary") === "true";
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    }).select("runHistory name");
+    // Resolve test suite by ID or slug
+    const resolvedSuite = await resolveTestSuiteByIdentifier(suiteId, project._id);
+    if (!resolvedSuite) {
+      return NextResponse.json(
+        { error: "Test suite not found" },
+        { status: 404 }
+      );
+    }
+
+    const testSuite = await TestSuite.findById(resolvedSuite._id)
+      .select("runHistory name");
 
     if (!testSuite) {
       return NextResponse.json(

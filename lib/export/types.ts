@@ -101,6 +101,10 @@ export interface TestCaseExport {
   expectedOutput?: string;
   notes?: string;
   tags?: string[];
+  // Per-case validation configuration
+  validationMode?: "text" | "rules";
+  validationRules?: ValidationRuleExport[];
+  judgeValidationRules?: JudgeValidationRuleExport[];
 }
 
 export interface ValidationRuleExport {

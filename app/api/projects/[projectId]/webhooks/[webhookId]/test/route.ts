@@ -15,10 +15,10 @@ interface RouteParams {
 
 // POST /api/projects/[projectId]/webhooks/[webhookId]/test - Test webhook delivery
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId, webhookId } = await params;
+  const { projectId: projectIdentifier, webhookId } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.EDIT,
     request
   );
@@ -26,6 +26,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();

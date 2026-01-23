@@ -45,6 +45,7 @@ import {
 
 interface ProjectSettings {
   name: string;
+  slug: string;
   description?: string;
   visibility: "public" | "private";
   inheritFromParent: boolean;
@@ -206,6 +207,21 @@ export default function ProjectSettingsPage({
                 }
                 disabled={!canManage}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">URL Slug</Label>
+              <Input
+                id="slug"
+                value={settings.slug}
+                onChange={(e) =>
+                  setSettings({ ...settings, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
+                }
+                placeholder="my-project"
+                disabled={!canManage}
+              />
+              <p className="text-sm text-muted-foreground">
+                Used in URLs: /projects/<span className="font-mono">{settings.slug || 'my-project'}</span>
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
