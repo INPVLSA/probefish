@@ -33,6 +33,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { DeleteIcon } from "@/components/ui/delete";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   TestCaseEditor,
@@ -463,8 +464,88 @@ export default function TestSuiteDetailPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading test suite...</div>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={`/projects/${projectId}`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          </div>
+          <Skeleton className="h-9 w-9 rounded-md" />
+          <Skeleton className="h-9 w-9 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+        </div>
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Tabs area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Tabs */}
+            <div className="inline-flex h-9 items-center gap-0.5 p-[3px] bg-muted rounded-lg">
+              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+            </div>
+
+            {/* Tab content placeholder */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4 min-h-[300px]">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
+                    <Skeleton className="h-4 w-4" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-64" />
+                    </div>
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right: Execution panel */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-4 w-40" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-3 min-h-[200px]">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
