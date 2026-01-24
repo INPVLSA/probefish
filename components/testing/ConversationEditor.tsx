@@ -23,7 +23,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { DeleteIcon } from "@/components/ui/delete";
 import {
   Plus,
   GripVertical,
@@ -33,6 +32,7 @@ import {
   ChevronRight,
   ShieldCheck,
   MessageSquare,
+  Trash2,
 } from "lucide-react";
 import {
   DndContext,
@@ -150,67 +150,63 @@ function SortableTurn({
       style={style}
       className={cn(
         "relative group flex gap-2 mb-3",
-        isUser ? "flex-row" : "flex-row-reverse"
+        isUser ? "flex-row mr-3" : "flex-row-reverse ml-3"
       )}
     >
-      {/* Drag handle */}
+      {/* Avatar / Drag handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute -left-6 top-2 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
-
-      {/* Avatar */}
-      <div
         className={cn(
-          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center cursor-grab transition-colors",
           isUser
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
+            ? "bg-primary/10 text-primary group-hover:bg-transparent group-hover:text-muted-foreground"
+            : "bg-muted text-muted-foreground group-hover:bg-transparent"
         )}
       >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        <span className="group-hover:hidden">
+          {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        </span>
+        <GripVertical className="h-4 w-4 hidden group-hover:block" />
       </div>
 
       {/* Message bubble */}
       <div
         className={cn(
-          "flex-1 max-w-[85%] rounded-lg p-3 border",
+          "relative flex-1 max-w-[85%] rounded-lg p-3 border",
           isUser ? "bg-primary/5 border-primary/20" : "bg-muted/50 border-muted"
         )}
       >
-        {/* Role label and actions */}
-        <div className="flex items-center justify-between mb-2">
+        {/* Delete button - absolute positioned */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => onDelete(index)}
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-destructive hover:text-destructive/80"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Delete turn</TooltipContent>
+        </Tooltip>
+
+        {/* Role label and validation indicator */}
+        <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-medium text-muted-foreground">
             {isUser ? "User" : "Assistant"}
             {!isUser && targetType === "prompt" && (
               <span className="ml-1 text-muted-foreground/60">(simulated)</span>
             )}
           </span>
-          <div className="flex items-center gap-1">
-            {hasAnyValidation && validationTiming === "per-turn" && (
-              <Tooltip>
-                <TooltipTrigger>
-                  <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>Has per-turn validation</TooltipContent>
-              </Tooltip>
-            )}
+          {hasAnyValidation && validationTiming === "per-turn" && (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => onDelete(index)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <DeleteIcon className="h-4 w-4" />
-                </button>
+              <TooltipTrigger>
+                <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
               </TooltipTrigger>
-              <TooltipContent>Delete turn</TooltipContent>
+              <TooltipContent>Has per-turn validation</TooltipContent>
             </Tooltip>
-          </div>
+          )}
         </div>
 
         {/* ENDPOINTS: User turns - show only variable inputs */}
@@ -219,22 +215,18 @@ function SortableTurn({
             {variables.length > 0 ? (
               <div className="space-y-2">
                 {variables.map((varName) => (
-                  <div key={varName} className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground w-28 flex-shrink-0 font-mono">
-                      {`{{${varName}}}`}
-                    </Label>
-                    <Input
-                      value={turn.inputs?.[varName] || ""}
-                      onChange={(e) =>
-                        onUpdate(index, {
-                          ...turn,
-                          inputs: { ...(turn.inputs || {}), [varName]: e.target.value },
-                        })
-                      }
-                      placeholder={`Value for ${varName}`}
-                      className="h-8 text-sm"
-                    />
-                  </div>
+                  <Input
+                    key={varName}
+                    value={turn.inputs?.[varName] || ""}
+                    onChange={(e) =>
+                      onUpdate(index, {
+                        ...turn,
+                        inputs: { ...(turn.inputs || {}), [varName]: e.target.value },
+                      })
+                    }
+                    placeholder={`{{${varName}}}`}
+                    className="h-9 text-sm"
+                  />
                 ))}
               </div>
             ) : (
@@ -279,24 +271,20 @@ function SortableTurn({
             {isUser && variables.length > 0 && (
               <div className="mt-3 space-y-2 p-2 bg-muted/30 rounded border">
                 <Label className="text-xs font-medium text-muted-foreground">Variable Values</Label>
-                <div className="grid gap-2">
+                <div className="space-y-2">
                   {variables.map((varName) => (
-                    <div key={varName} className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground w-24 flex-shrink-0 font-mono">
-                        {`{{${varName}}}`}
-                      </Label>
-                      <Input
-                        value={turn.inputs?.[varName] || ""}
-                        onChange={(e) =>
-                          onUpdate(index, {
-                            ...turn,
-                            inputs: { ...(turn.inputs || {}), [varName]: e.target.value },
-                          })
-                        }
-                        placeholder={`Value for ${varName}`}
-                        className="h-7 text-sm"
-                      />
-                    </div>
+                    <Input
+                      key={varName}
+                      value={turn.inputs?.[varName] || ""}
+                      onChange={(e) =>
+                        onUpdate(index, {
+                          ...turn,
+                          inputs: { ...(turn.inputs || {}), [varName]: e.target.value },
+                        })
+                      }
+                      placeholder={`{{${varName}}}`}
+                      className="h-8 text-sm"
+                    />
                   ))}
                 </div>
               </div>
@@ -435,7 +423,7 @@ export function ConversationEditor({
       </p>
 
       {/* Turns list */}
-      <div className="pl-6">
+      <div>
         {turns.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm border rounded-lg border-dashed">
             No conversation turns yet. Add a user message to start.

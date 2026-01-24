@@ -120,3 +120,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Light scrollbar utility */
+.scrollbar-light {
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.scrollbar-light::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-light::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-light::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}

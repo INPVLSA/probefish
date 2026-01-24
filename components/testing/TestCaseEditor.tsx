@@ -616,17 +616,17 @@ export function TestCaseEditor({
                 Add Test Case
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingIndex === null ? "Add Test Case" : "Edit Test Case"}
-                </DialogTitle>
-                <DialogDescription>
-                  Define inputs for this test case
-                </DialogDescription>
-              </DialogHeader>
+            <DialogContent className="max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
               {editingCase && (
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 overflow-y-auto flex-1 -mr-4 pr-4 scrollbar-light">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingIndex === null ? "Add Test Case" : "Edit Test Case"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Define inputs for this test case
+                    </DialogDescription>
+                  </DialogHeader>
                   <div className="space-y-2">
                     <Label htmlFor="case-name">Name</Label>
                     <Input
@@ -932,7 +932,7 @@ export function TestCaseEditor({
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 pb-2">
                     <Label>Tags (optional)</Label>
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {editingCase.tags?.map((tag) => (
@@ -970,7 +970,6 @@ export function TestCaseEditor({
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
                         onClick={() => handleAddTag(tagInput)}
                         disabled={!tagInput.trim()}
                       >
@@ -1007,7 +1006,7 @@ export function TestCaseEditor({
                   </div>
                 </div>
               )}
-              <DialogFooter className="flex-col sm:flex-row gap-2">
+              <DialogFooter className="flex-col sm:flex-row gap-2 border-t pt-4 -mt-2 flex-shrink-0">
                 {validationError && (
                   <div className="flex items-center gap-2 text-destructive text-sm mr-auto">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
