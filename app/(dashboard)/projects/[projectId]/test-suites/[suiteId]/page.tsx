@@ -472,8 +472,8 @@ export default function TestSuiteDetailPage({
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-7 w-48" />
+          <div className="flex-1">
+            <Skeleton className="h-8 w-48" />
             <div className="flex items-center gap-2">
               <Skeleton className="h-4 w-4" />
               <Skeleton className="h-4 w-32" />
@@ -489,14 +489,16 @@ export default function TestSuiteDetailPage({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Tabs area */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Tabs */}
-            <div className="inline-flex h-9 items-center gap-0.5 p-[3px] bg-muted rounded-lg">
-              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
-              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
-              <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
-              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
-              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
-              <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+            {/* Tabs skeleton - matches Tabs component structure */}
+            <div className="flex flex-col gap-2">
+              <div className="bg-muted inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]">
+                <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+                <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+                <Skeleton className="h-[calc(100%-1px)] w-24 rounded-md" />
+                <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+                <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+                <Skeleton className="h-[calc(100%-1px)] w-20 rounded-md" />
+              </div>
             </div>
 
             {/* Tab content placeholder */}
@@ -523,14 +525,14 @@ export default function TestSuiteDetailPage({
           {/* Right: Execution panel */}
           <div className="space-y-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-0">
                 <Skeleton className="h-5 w-28" />
                 <Skeleton className="h-4 w-40" />
               </CardHeader>
               <CardContent className="space-y-4">
                 <Skeleton className="h-9 w-full" />
                 <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-8 w-full" />
               </CardContent>
             </Card>
 
