@@ -23,6 +23,9 @@ import {
   ChevronRight,
   Brain,
   AlertCircle,
+  User,
+  Bot,
+  MessagesSquare,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { WindIcon, WindIconHandle } from "@/components/ui/wind";
@@ -67,6 +70,20 @@ function CollapsibleText({ value, threshold = INPUT_COLLAPSE_THRESHOLD }: { valu
   );
 }
 
+interface TurnResult {
+  turnIndex: number;
+  role: "user" | "assistant";
+  input: string;
+  output: string;
+  validationPassed?: boolean;
+  validationErrors?: string[];
+  judgeScore?: number;
+  judgeReasoning?: string;
+  responseTime: number;
+  error?: string;
+  extractedVariables?: Record<string, string>;
+}
+
 interface TestResult {
   testCaseId: string;
   testCaseName: string;
@@ -81,6 +98,10 @@ interface TestResult {
   responseTime: number;
   error?: string;
   iteration?: number;
+  // Conversation results
+  isConversation?: boolean;
+  turnResults?: TurnResult[];
+  totalTurns?: number;
 }
 
 interface TestRun {
@@ -99,6 +120,106 @@ interface TestRun {
 
 interface TestResultsProps {
   testRun: TestRun | null;
+}
+
+function ConversationTurnDisplay({ turn }: { turn: TurnResult }) {
+  const isUser = turn.role === "user";
+  const hasValidation = turn.validationPassed !== undefined;
+  const turnPassed = turn.validationPassed !== false && !turn.error;
+
+  return (
+    <div className={`flex gap-2 ${isUser ? "flex-row" : "flex-row-reverse"}`}>
+      {/* Avatar */}
+      <div
+        className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+          isUser ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {isUser ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
+      </div>
+
+      {/* Message bubble */}
+      <div
+        className={`flex-1 max-w-[85%] rounded-lg p-2 border ${
+          isUser ? "bg-primary/5 border-primary/20" : "bg-muted/50 border-muted"
+        }`}
+      >
+        {/* Header with role and validation status */}
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {isUser ? "User" : "Assistant"}
+            </span>
+            {hasValidation && (
+              turnPassed ? (
+                <CheckCircle2 className="h-3 w-3 text-green-500" />
+              ) : (
+                <XCircle className="h-3 w-3 text-red-500" />
+              )
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {turn.responseTime}ms
+          </span>
+        </div>
+
+        {/* User input */}
+        {isUser && turn.input && turn.input !== "(simulated)" && (
+          <div className="mb-2">
+            <div className="text-xs text-muted-foreground mb-0.5">Input:</div>
+            <div className="text-xs font-mono bg-background/50 rounded p-1.5">
+              <CollapsibleText value={turn.input} threshold={100} />
+            </div>
+          </div>
+        )}
+
+        {/* Output */}
+        <div>
+          <div className="text-xs text-muted-foreground mb-0.5">
+            {isUser ? "Response:" : "Content:"}
+          </div>
+          <div className="text-xs font-mono bg-background/50 rounded p-1.5 max-h-32 overflow-auto">
+            <PreformattedText content={turn.output} fallback="(empty)" className="text-xs" />
+          </div>
+        </div>
+
+        {/* Turn validation errors */}
+        {turn.validationErrors && turn.validationErrors.length > 0 && (
+          <div className="mt-2">
+            <div className="text-xs text-red-500 space-y-0.5">
+              {turn.validationErrors.map((error, i) => (
+                <div key={i} className="bg-red-500/10 rounded px-1.5 py-0.5">
+                  {error}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Turn error */}
+        {turn.error && (
+          <div className="mt-2 text-xs text-red-500 bg-red-500/10 rounded px-1.5 py-0.5">
+            {turn.error}
+          </div>
+        )}
+
+        {/* Extracted variables */}
+        {turn.extractedVariables && Object.keys(turn.extractedVariables).length > 0 && (
+          <div className="mt-2">
+            <div className="text-xs text-muted-foreground mb-0.5">Extracted:</div>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(turn.extractedVariables).map(([key, value]) => (
+                <Badge key={key} variant="outline" className="text-xs font-mono">
+                  {key}={value.length > 20 ? `${value.slice(0, 20)}...` : value}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function EmptyResults() {
@@ -200,6 +321,7 @@ export function TestResults({ testRun }: TestResultsProps) {
 
 function TestResultItem({ result }: { result: TestResult }) {
   const passed = result.validationPassed && !result.error;
+  const isConversation = result.isConversation && result.turnResults && result.turnResults.length > 0;
 
   return (
     <Collapsible>
@@ -211,7 +333,15 @@ function TestResultItem({ result }: { result: TestResult }) {
             <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
           )}
           <div className="flex-1 text-left min-w-0">
-            <div className="font-medium truncate">{result.testCaseName}</div>
+            <div className="font-medium truncate flex items-center gap-2">
+              {result.testCaseName}
+              {isConversation && (
+                <Badge variant="outline" className="text-xs">
+                  <MessagesSquare className="h-3 w-3 mr-1" />
+                  {result.totalTurns} turns
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -251,15 +381,28 @@ function TestResultItem({ result }: { result: TestResult }) {
             </div>
           </div>
 
-          {/* Output */}
-          <div>
-            <div className="text-xs font-medium text-muted-foreground mb-1">
-              Output
+          {/* Conversation Turns or Single Output */}
+          {isConversation ? (
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-2">
+                Conversation ({result.totalTurns} turns)
+              </div>
+              <div className="space-y-2">
+                {result.turnResults!.map((turn, idx) => (
+                  <ConversationTurnDisplay key={idx} turn={turn} />
+                ))}
+              </div>
             </div>
-            <div className="bg-muted rounded p-2 text-sm max-h-40 overflow-auto">
-              <PreformattedText content={result.output} fallback="(empty)" className="text-xs" />
+          ) : (
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">
+                Output
+              </div>
+              <div className="bg-muted rounded p-2 text-sm max-h-40 overflow-auto">
+                <PreformattedText content={result.output} fallback="(empty)" className="text-xs" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Error */}
           {result.error && (

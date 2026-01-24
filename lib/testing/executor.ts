@@ -10,6 +10,11 @@ import {
 } from "@/lib/db/models/testSuite";
 import { llmService, LLMProviderCredentials, LLMProvider } from "@/lib/llm";
 import { validate, ValidationResult } from "./validator";
+import {
+  executeConversationPrompt,
+  executeConversationEndpoint,
+  ConversationExecutionResult,
+} from "./conversationExecutor";
 import mongoose from "mongoose";
 
 // Execution result for a single test case
@@ -519,6 +524,49 @@ export async function executeTestCase(params: {
     modelOverride,
   } = params;
 
+  // Check if this is a conversation test and delegate to conversation executor
+  if (testCase.isConversation && testCase.conversation && testCase.conversation.length > 0) {
+    if (targetType === "prompt") {
+      const prompt = target as IPrompt;
+      const version =
+        prompt.versions.find((v) => v.version === (targetVersion || prompt.currentVersion)) ||
+        prompt.versions[prompt.versions.length - 1];
+
+      if (!version) {
+        return {
+          testCaseId: testCase._id,
+          testCaseName: testCase.name,
+          inputs: testCase.inputs,
+          output: "",
+          validationPassed: false,
+          validationErrors: ["No prompt version found"],
+          responseTime: 0,
+          error: "No prompt version found",
+        };
+      }
+
+      return executeConversationPrompt({
+        testCase,
+        prompt,
+        version,
+        credentials,
+        validationRules,
+        judgeConfig,
+        modelOverride,
+      });
+    } else {
+      const endpoint = target as IEndpoint;
+      return executeConversationEndpoint({
+        testCase,
+        endpoint,
+        validationRules,
+        judgeConfig,
+        credentials,
+      });
+    }
+  }
+
+  // Single-turn execution (existing behavior)
   const result: TestCaseExecutionResult = {
     testCaseId: testCase._id,
     testCaseName: testCase.name,
@@ -656,7 +704,7 @@ export async function executeTestCase(params: {
 
 // Convert execution result to ITestResult format
 export function toTestResult(result: TestCaseExecutionResult): ITestResult {
-  return {
+  const testResult: ITestResult = {
     testCaseId: result.testCaseId,
     testCaseName: result.testCaseName,
     inputs: result.inputs,
@@ -674,4 +722,14 @@ export function toTestResult(result: TestCaseExecutionResult): ITestResult {
     responseTime: result.responseTime,
     error: result.error,
   };
+
+  // Add conversation-specific fields if present
+  const conversationResult = result as ConversationExecutionResult;
+  if (conversationResult.isConversation) {
+    testResult.isConversation = true;
+    testResult.turnResults = conversationResult.turnResults;
+    testResult.totalTurns = conversationResult.totalTurns;
+  }
+
+  return testResult;
 }

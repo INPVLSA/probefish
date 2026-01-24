@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { getColorEnabled, getOutputFormat } from './config.js';
-import type { Project, TestSuite, TestRun, TestResult } from '../types.js';
+import type { Project, TestSuite, TestRun } from '../types.js';
 
 // Check if output is TTY
 const isTTY = process.stdout.isTTY ?? false;
@@ -221,8 +221,27 @@ export function outputTestRunResult(run: TestRun, format?: 'table' | 'json' | 'j
   for (const result of run.results) {
     const status = result.validationPassed ? green('PASS') : red('FAIL');
     const score = result.judgeScore !== undefined ? `${result.judgeScore.toFixed(1)}` : '-';
+    const conversationIndicator = result.isConversation ? cyan(`[${result.totalTurns} turns] `) : '';
 
-    console.log(`${status} ${truncate(result.testCaseName, 40).padEnd(42)} Score: ${score.padStart(5)} Time: ${String(result.responseTime).padStart(5)}ms`);
+    console.log(`${status} ${conversationIndicator}${truncate(result.testCaseName, result.isConversation ? 30 : 40).padEnd(result.isConversation ? 32 : 42)} Score: ${score.padStart(5)} Time: ${String(result.responseTime).padStart(5)}ms`);
+
+    // Show conversation turn details for failed conversation tests
+    if (result.isConversation && result.turnResults && !result.validationPassed) {
+      for (const turn of result.turnResults) {
+        if (turn.role === 'user' && (turn.error || (turn.validationErrors && turn.validationErrors.length > 0))) {
+          const turnStatus = turn.validationPassed === false ? red('FAIL') : dim('----');
+          console.log(`     ${dim(`Turn ${turn.turnIndex + 1}:`)} ${turnStatus} ${dim(`(${turn.responseTime}ms)`)}`);
+          if (turn.validationErrors) {
+            for (const error of turn.validationErrors) {
+              console.log(`       ${red('>')} ${error}`);
+            }
+          }
+          if (turn.error) {
+            console.log(`       ${red('>')} ${turn.error}`);
+          }
+        }
+      }
+    }
 
     if (!result.validationPassed && result.validationErrors.length > 0) {
       for (const error of result.validationErrors) {
@@ -256,12 +275,32 @@ function generateJUnitXML(run: TestRun): string {
 
   for (const result of run.results) {
     const testTime = result.responseTime / 1000;
-    xml += `    <testcase name="${escapeXML(result.testCaseName)}" time="${testTime.toFixed(3)}"`;
+    const testName = result.isConversation
+      ? `${result.testCaseName} (${result.totalTurns} turns)`
+      : result.testCaseName;
+
+    xml += `    <testcase name="${escapeXML(testName)}" time="${testTime.toFixed(3)}"`;
 
     if (!result.validationPassed) {
       xml += `>\n`;
-      const message = result.validationErrors.join('; ') || result.error || 'Test failed';
-      xml += `      <failure message="${escapeXML(message)}">${escapeXML(message)}</failure>\n`;
+
+      // Build detailed failure message for conversation tests
+      let message = '';
+      if (result.isConversation && result.turnResults) {
+        const failedTurns = result.turnResults.filter(
+          (t) => t.role === 'user' && (t.error || (t.validationErrors && t.validationErrors.length > 0))
+        );
+        if (failedTurns.length > 0) {
+          message = failedTurns
+            .map((t) => `Turn ${t.turnIndex + 1}: ${t.validationErrors?.join('; ') || t.error || 'Failed'}`)
+            .join('\n');
+        }
+      }
+      if (!message) {
+        message = result.validationErrors.join('; ') || result.error || 'Test failed';
+      }
+
+      xml += `      <failure message="${escapeXML(message.split('\n')[0])}">${escapeXML(message)}</failure>\n`;
       xml += `    </testcase>\n`;
     } else {
       xml += ` />\n`;

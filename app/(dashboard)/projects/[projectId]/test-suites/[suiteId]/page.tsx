@@ -576,15 +576,27 @@ export default function TestSuiteDetailPage({
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{testSuite?.name}</h1>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            {testSuite?.targetType === "prompt" ? (
-              <FileText className="h-4 w-4" />
-            ) : (
-              <Globe className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Testing:</span>
+            {target && (
+              <Link
+                href={`/projects/${projectId}/${testSuite?.targetType === "prompt" ? "prompts" : "endpoints"}/${target._id}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-colors ${
+                  testSuite?.targetType === "prompt"
+                    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25"
+                    : "bg-green-500/15 text-green-600 dark:text-green-400 hover:bg-green-500/25"
+                }`}
+              >
+                {testSuite?.targetType === "prompt" ? (
+                  <FileText className="h-3 w-3" />
+                ) : (
+                  <Globe className="h-3 w-3" />
+                )}
+                {target.name}
+              </Link>
             )}
-            <span>Testing: {target?.name}</span>
             {testSuite?.targetType === "prompt" && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 {targetVersion ? `v${targetVersion}` : "Latest"}
               </Badge>
             )}
@@ -727,6 +739,7 @@ export default function TestSuiteDetailPage({
               <TestCaseEditor
                 testCases={testCases}
                 variables={target?.variables || []}
+                targetType={testSuite?.targetType}
                 onChange={(cases) => {
                   setTestCases(cases);
                   setHasChanges(true);

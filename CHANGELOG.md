@@ -1,5 +1,9 @@
-### v1.1.0
+# v1.1.0 (Cichlid)
+- Added multi-turn conversations support
 - Added human-readable identifiers (slugs) for CLI and UI
+- Added related endpoint or prompt link to test suite
+- Added full payload preview for endpoint testing test cases
+- Added project folders
 - Improved UI (Added skeleton preloaders for UI components)
 
 ### v1.0.2

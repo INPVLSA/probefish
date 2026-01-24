@@ -22,8 +22,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck, MessageSquare, MessagesSquare } from "lucide-react";
 import { ValidationRule, ValidationRulesEditor } from "./ValidationRulesEditor";
+import { ConversationEditor, ConversationTurn, ValidationTimingMode } from "./ConversationEditor";
+import { SessionConfigEditor, SessionConfig } from "./SessionConfigEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
@@ -69,6 +71,11 @@ export interface TestCase {
   validationMode?: "text" | "rules";
   validationRules?: ValidationRule[];
   judgeValidationRules?: JudgeValidationRule[];
+  // Multi-message conversation support
+  isConversation?: boolean;
+  conversation?: ConversationTurn[];
+  validationTiming?: ValidationTimingMode;
+  sessionConfig?: SessionConfig;
 }
 
 // Helper function to determine effective validation mode
@@ -112,6 +119,8 @@ interface TestCaseEditorProps {
   onRunSelectedCases?: () => void;
   running?: boolean;
   runningCaseId?: string | null;
+  // Target type for conversation mode
+  targetType?: "prompt" | "endpoint";
 }
 
 // Sortable row component
@@ -241,7 +250,7 @@ function SortableTestCaseRow({
           </div>
         )}
       </div>
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -351,11 +360,13 @@ export function TestCaseEditor({
   onRunSelectedCases,
   running = false,
   runningCaseId = null,
+  targetType = "prompt",
 }: TestCaseEditorProps) {
   const [editingCase, setEditingCase] = useState<TestCase | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Collect all unique tags from existing test cases for autocomplete
   const allTags = useMemo(() => {
@@ -395,6 +406,7 @@ export function TestCaseEditor({
     setEditingCase(newCase);
     setEditingIndex(null);
     setTagInput("");
+    setValidationError(null);
     setDialogOpen(true);
   };
 
@@ -409,6 +421,7 @@ export function TestCaseEditor({
     setEditingCase({ ...testCase, inputs, tags: testCase.tags || [] });
     setEditingIndex(index);
     setTagInput("");
+    setValidationError(null);
     setDialogOpen(true);
   };
 
@@ -439,11 +452,53 @@ export function TestCaseEditor({
   const handleSaveCase = () => {
     if (!editingCase) return;
 
+    let caseToSave = editingCase;
+
+    // Process conversation turns if in conversation mode
+    if (editingCase.isConversation && editingCase.conversation?.length) {
+      // For prompts: validate content is not empty
+      // For endpoints: auto-generate content from inputs if empty
+      if (targetType === "prompt") {
+        const emptyTurns = editingCase.conversation
+          .map((turn, index) => ({ turn, index }))
+          .filter(({ turn }) => !turn.content.trim());
+
+        if (emptyTurns.length > 0) {
+          const turnNumbers = emptyTurns.map(({ index }) => index + 1).join(", ");
+          setValidationError(
+            `Turn${emptyTurns.length > 1 ? "s" : ""} ${turnNumbers} ${emptyTurns.length > 1 ? "have" : "has"} empty content. All conversation turns require content.`
+          );
+          return;
+        }
+      } else {
+        // Endpoint: auto-generate content from inputs for user turns with empty content
+        const processedConversation = editingCase.conversation.map((turn, index) => {
+          if (turn.role === "user" && !turn.content.trim()) {
+            // Generate content from inputs
+            const inputValues = Object.entries(turn.inputs || {})
+              .filter(([, value]) => value.trim())
+              .map(([, value]) => value.trim());
+
+            const generatedContent = inputValues.length > 0
+              ? inputValues[0] // Use first non-empty input value
+              : `Turn ${index + 1}`; // Fallback label
+
+            return { ...turn, content: generatedContent };
+          }
+          return turn;
+        });
+
+        caseToSave = { ...editingCase, conversation: processedConversation };
+      }
+    }
+
+    setValidationError(null);
+
     if (editingIndex === null) {
-      onChange([...testCases, editingCase]);
+      onChange([...testCases, caseToSave]);
     } else {
       const updated = [...testCases];
-      updated[editingIndex] = editingCase;
+      updated[editingIndex] = caseToSave;
       onChange(updated);
     }
     setDialogOpen(false);
@@ -584,6 +639,121 @@ export function TestCaseEditor({
                     />
                   </div>
 
+                  {/* Test Mode Toggle */}
+                  <div className="space-y-2">
+                    <Label>Test Mode</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={!editingCase.isConversation ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditingCase({ ...editingCase, isConversation: false })}
+                      >
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Single Turn
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={editingCase.isConversation ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEditingCase({
+                          ...editingCase,
+                          isConversation: true,
+                          conversation: editingCase.conversation || [{ role: "user", content: "" }],
+                          validationTiming: editingCase.validationTiming || "final-only",
+                        })}
+                      >
+                        <MessagesSquare className="mr-2 h-4 w-4" />
+                        Conversation
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Conversation Editor (when in conversation mode) */}
+                  {editingCase.isConversation ? (
+                    <div className="space-y-4">
+                      {/* Variables section for conversation mode */}
+                      {variables.length > 0 && (
+                        <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
+                          <Label className="text-sm font-medium">Default Variable Values</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Set default values for variables. These can be overridden per-turn below.
+                          </p>
+                          <div className="grid gap-3">
+                            {variables.map((varName) => {
+                              const value = editingCase.inputs[varName] || "";
+                              const looksLikeJson = isLikelyJson(value);
+                              const jsonStatus = looksLikeJson ? tryParseJson(value) : null;
+                              const useTextarea = value.length > 80 || value.includes("\n") || looksLikeJson;
+
+                              return (
+                                <div key={varName} className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <Label
+                                      htmlFor={`conv-var-${varName}`}
+                                      className="text-sm text-muted-foreground"
+                                    >
+                                      {`{{${varName}}}`}
+                                    </Label>
+                                    {looksLikeJson && jsonStatus && (
+                                      <div className="flex items-center gap-1.5">
+                                        {jsonStatus.valid ? (
+                                          <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 text-green-600 border-green-300">
+                                            <Check className="h-3 w-3" />
+                                            JSON
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 text-amber-600 border-amber-300">
+                                            <AlertCircle className="h-3 w-3" />
+                                            JSON
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {useTextarea ? (
+                                    <Textarea
+                                      id={`conv-var-${varName}`}
+                                      value={value}
+                                      onChange={(e) => updateEditingInput(varName, e.target.value)}
+                                      placeholder={`Value for ${varName}`}
+                                      rows={looksLikeJson ? 4 : 2}
+                                      className={`max-h-40 resize-y ${looksLikeJson ? "font-mono text-sm" : ""}`}
+                                    />
+                                  ) : (
+                                    <Input
+                                      id={`conv-var-${varName}`}
+                                      value={value}
+                                      onChange={(e) => updateEditingInput(varName, e.target.value)}
+                                      placeholder={`Value for ${varName}`}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <ConversationEditor
+                        turns={editingCase.conversation || []}
+                        variables={variables}
+                        onChange={(turns) => setEditingCase({ ...editingCase, conversation: turns })}
+                        validationTiming={editingCase.validationTiming || "final-only"}
+                        onValidationTimingChange={(timing) => setEditingCase({ ...editingCase, validationTiming: timing })}
+                        targetType={targetType}
+                      />
+
+                      {/* Session Config for endpoints */}
+                      {targetType === "endpoint" && (
+                        <SessionConfigEditor
+                          config={editingCase.sessionConfig}
+                          onChange={(config) => setEditingCase({ ...editingCase, sessionConfig: config })}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <>
                   {variables.length > 0 ? (
                     <div className="space-y-3">
                       <Label>Variables</Label>
@@ -743,6 +913,8 @@ export function TestCaseEditor({
                       </div>
                     </div>
                   )}
+                    </>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes (optional)</Label>
@@ -835,13 +1007,21 @@ export function TestCaseEditor({
                   </div>
                 </div>
               )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveCase}>
-                  {editingIndex === null ? "Add" : "Save"}
-                </Button>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                {validationError && (
+                  <div className="flex items-center gap-2 text-destructive text-sm mr-auto">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>{validationError}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveCase}>
+                    {editingIndex === null ? "Add" : "Save"}
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>

@@ -4,6 +4,71 @@ import { LLMProvider } from "@/lib/llm/types";
 // Validation mode for test cases
 export type TestCaseValidationMode = "text" | "rules";
 
+// Validation timing mode for conversation tests
+export type ValidationTimingMode = "per-turn" | "final-only";
+
+// Conversation turn for multi-message testing
+export interface IConversationTurn {
+  role: "user" | "assistant";
+  content: string; // Display label or template override
+
+  // Per-turn variable values (substituted into endpoint bodyTemplate or prompt)
+  inputs?: Record<string, string>;
+
+  // Optional simulated response (for setting up context without LLM call)
+  simulatedResponse?: string;
+
+  // Per-turn validation (when validationTiming === "per-turn")
+  expectedOutput?: string;
+  validationRules?: IValidationRule[];
+  judgeValidationRules?: IJudgeValidationRule[];
+}
+
+// Session configuration for endpoint multi-turn testing
+export interface ISessionConfig {
+  enabled: boolean;
+
+  // Cookie-based session management
+  persistCookies?: boolean;
+
+  // Token extraction from response
+  tokenExtraction?: {
+    enabled: boolean;
+    responsePath: string; // JSON path to extract token (e.g., "data.accessToken")
+    injection: {
+      type: "header" | "body" | "query";
+      target: string; // Header name, body path, or query param name
+      prefix?: string; // Optional prefix (e.g., "Bearer ")
+    };
+  };
+
+  // Variable extraction from responses for subsequent turns
+  variableExtraction?: {
+    name: string; // Variable name to create
+    responsePath: string; // JSON path to extract value
+  }[];
+}
+
+// Result for a single conversation turn
+export interface ITurnResult {
+  turnIndex: number;
+  role: "user" | "assistant";
+  input: string; // The input sent (user content with variables substituted)
+  output: string; // LLM/endpoint response
+
+  // Per-turn validation (if validationTiming === "per-turn")
+  validationPassed?: boolean;
+  validationErrors?: string[];
+  judgeScore?: number;
+  judgeReasoning?: string;
+
+  responseTime: number;
+  error?: string;
+
+  // Session data extracted (for endpoint tests)
+  extractedVariables?: Record<string, string>;
+}
+
 // Test Case - a single test with variable inputs
 export interface ITestCase {
   _id: mongoose.Types.ObjectId;
@@ -17,6 +82,12 @@ export interface ITestCase {
   validationMode?: TestCaseValidationMode; // "text" (legacy) or "rules" (new default)
   validationRules?: IValidationRule[]; // Only used when validationMode === "rules"
   judgeValidationRules?: IJudgeValidationRule[]; // Additive to suite-level judge rules
+
+  // Multi-message conversation support
+  isConversation?: boolean; // Flag to indicate multi-turn test
+  conversation?: IConversationTurn[]; // Ordered list of conversation turns
+  validationTiming?: ValidationTimingMode; // "per-turn" or "final-only" (default: "final-only")
+  sessionConfig?: ISessionConfig; // Session management for endpoint tests
 }
 
 // Validation Rule - static checks on output
@@ -81,6 +152,11 @@ export interface ITestResult {
   responseTime: number;
   error?: string;
   iteration?: number; // Iteration number when running multiple iterations
+
+  // Conversation results
+  isConversation?: boolean; // Whether this is a multi-turn test result
+  turnResults?: ITurnResult[]; // Results for each conversation turn
+  totalTurns?: number; // Total number of turns in the conversation
 }
 
 // Test Run - a complete execution of all test cases
@@ -204,6 +280,110 @@ const judgeValidationRuleSchema = new Schema(
   { _id: false }
 );
 
+// Schema for conversation turns
+const conversationTurnSchema = new Schema<IConversationTurn>(
+  {
+    role: {
+      type: String,
+      enum: ["user", "assistant"],
+      required: true,
+    },
+    content: {
+      type: String,
+      default: "",  // Not required - auto-generated for endpoints
+    },
+    inputs: {
+      type: Map,
+      of: String,
+      default: undefined,
+    },
+    simulatedResponse: String,
+    expectedOutput: String,
+    validationRules: {
+      type: [validationRuleSchema],
+      default: [],
+    },
+    judgeValidationRules: {
+      type: [judgeValidationRuleSchema],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+
+// Schema for session configuration (endpoint multi-turn testing)
+const sessionConfigSchema = new Schema<ISessionConfig>(
+  {
+    enabled: {
+      type: Boolean,
+      default: false,
+    },
+    persistCookies: {
+      type: Boolean,
+      default: false,
+    },
+    tokenExtraction: {
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
+      responsePath: String,
+      injection: {
+        type: {
+          type: String,
+          enum: ["header", "body", "query"],
+        },
+        target: String,
+        prefix: String,
+      },
+    },
+    variableExtraction: [
+      {
+        name: String,
+        responsePath: String,
+      },
+    ],
+  },
+  { _id: false }
+);
+
+// Schema for turn results
+const turnResultSchema = new Schema<ITurnResult>(
+  {
+    turnIndex: {
+      type: Number,
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["user", "assistant"],
+      required: true,
+    },
+    input: {
+      type: String,
+      required: true,
+    },
+    output: {
+      type: String,
+      required: true,
+    },
+    validationPassed: Boolean,
+    validationErrors: [String],
+    judgeScore: Number,
+    judgeReasoning: String,
+    responseTime: {
+      type: Number,
+      required: true,
+    },
+    error: String,
+    extractedVariables: {
+      type: Map,
+      of: String,
+    },
+  },
+  { _id: false }
+);
+
 const testCaseSchema = new Schema<ITestCase>(
   {
     name: {
@@ -239,6 +419,24 @@ const testCaseSchema = new Schema<ITestCase>(
     judgeValidationRules: {
       type: [judgeValidationRuleSchema],
       default: [],
+    },
+    // Multi-message conversation support
+    isConversation: {
+      type: Boolean,
+      default: false,
+    },
+    conversation: {
+      type: [conversationTurnSchema],
+      default: [],
+    },
+    validationTiming: {
+      type: String,
+      enum: ["per-turn", "final-only"],
+      default: "final-only",
+    },
+    sessionConfig: {
+      type: sessionConfigSchema,
+      default: undefined,
     },
   },
   { _id: true }
@@ -306,6 +504,13 @@ const testResultSchema = new Schema<ITestResult>(
     },
     error: String,
     iteration: Number,
+    // Conversation results
+    isConversation: Boolean,
+    turnResults: {
+      type: [turnResultSchema],
+      default: undefined,
+    },
+    totalTurns: Number,
   },
   { _id: false }
 );
