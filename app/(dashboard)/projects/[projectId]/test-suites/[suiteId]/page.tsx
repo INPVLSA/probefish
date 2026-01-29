@@ -23,7 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, FileText, Globe, Download, Eye } from "lucide-react";
+import { ArrowLeft, Save, FileText, Globe, Download, Eye, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,7 @@ interface TestSuite {
   validationRules: ValidationRule[];
   llmJudgeConfig: LLMJudgeConfig;
   comparisonModels?: ModelSelection[];
+  parallelExecution?: boolean;
   lastRun?: TestRun;
   runHistory?: TestRun[];
 }
@@ -159,6 +161,7 @@ export default function TestSuiteDetailPage({
     criteria: [],
     validationRules: [],
   });
+  const [parallelExecution, setParallelExecution] = useState(false);
   const [lastRun, setLastRun] = useState<TestRun | null>(null);
   const [runHistory, setRunHistory] = useState<TestRun[]>([]);
 
@@ -211,6 +214,7 @@ export default function TestSuiteDetailPage({
       setLlmJudgeConfig(
         suite.llmJudgeConfig || { enabled: false, criteria: [], validationRules: [] }
       );
+      setParallelExecution(suite.parallelExecution || false);
       setLastRun(suite.lastRun || null);
       setRunHistory(suite.runHistory || []);
 
@@ -318,6 +322,7 @@ export default function TestSuiteDetailPage({
             testCases,
             validationRules,
             llmJudgeConfig,
+            parallelExecution,
           }),
         }
       );
@@ -602,6 +607,12 @@ export default function TestSuiteDetailPage({
                 {targetVersion ? `v${targetVersion}` : "Latest"}
               </Badge>
             )}
+            {parallelExecution && (
+              <Badge variant="outline" className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                <Zap className="h-3 w-3 mr-1" />
+                Parallel
+              </Badge>
+            )}
             {testSuite?.targetType === "prompt" && target?.content && (
               <Dialog>
                 <DialogTrigger asChild>
@@ -808,6 +819,28 @@ export default function TestSuiteDetailPage({
                       rows={3}
                     />
                   </div>
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-amber-500" />
+                        <Label htmlFor="parallel-execution" className="font-medium">
+                          Parallel Execution
+                        </Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Run test cases concurrently for faster execution. Concurrency is
+                        limited by your organization&apos;s settings.
+                      </p>
+                    </div>
+                    <Switch
+                      id="parallel-execution"
+                      checked={parallelExecution}
+                      onCheckedChange={(checked) => {
+                        setParallelExecution(checked);
+                        setHasChanges(true);
+                      }}
+                    />
+                  </div>
                   {testSuite?.targetType === "prompt" && target?.versions && (
                     <div className="space-y-2">
                       <Label>Prompt Version</Label>
@@ -881,7 +914,7 @@ export default function TestSuiteDetailPage({
           </Tabs>
         </div>
 
-        <div className="space-y-6 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+        <div className="space-y-6 lg:sticky lg:top-0 lg:self-start">
           <TestExecutionPanel
             projectId={projectId}
             suiteId={suiteId}
@@ -891,6 +924,7 @@ export default function TestSuiteDetailPage({
             savedComparisonModels={testSuite?.comparisonModels}
             availableTags={availableTags}
             selectedTestCaseIds={selectedTestCaseIds}
+            parallelExecution={parallelExecution}
             onRunComplete={handleRunComplete}
           />
 

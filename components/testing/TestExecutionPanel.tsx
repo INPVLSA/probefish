@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2, Tag } from "lucide-react";
+import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2, Tag, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RefreshCWIcon, RefreshCCWIconWIcon } from "@/components/ui/refresh-cw";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
@@ -85,6 +85,7 @@ interface TestExecutionPanelProps {
   savedComparisonModels?: ModelSelection[];
   availableTags?: string[];
   selectedTestCaseIds?: string[];
+  parallelExecution?: boolean;
   onRunComplete: (result: TestRunResult | MultiModelRunResult) => void;
 }
 
@@ -97,6 +98,7 @@ export function TestExecutionPanel({
   savedComparisonModels,
   availableTags = [],
   selectedTestCaseIds = [],
+  parallelExecution = false,
   onRunComplete,
 }: TestExecutionPanelProps) {
   const [selectedModels, setSelectedModels] = useState<ModelSelection[]>(
@@ -490,6 +492,12 @@ export function TestExecutionPanel({
           <CardTitle className="text-lg flex items-center gap-2">
             <Play className="h-5 w-5" />
             Run Tests
+            {parallelExecution && (
+              <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-normal">
+                <Zap className="h-3 w-3 mr-1" />
+                Parallel
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             {testCaseCount > 0
@@ -672,6 +680,12 @@ export function TestExecutionPanel({
         <CardTitle className="text-lg flex items-center gap-2">
           <Play className="h-5 w-5" />
           Run Tests
+          {parallelExecution && (
+            <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-normal">
+              <Zap className="h-3 w-3 mr-1" />
+              Parallel
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
           {testCaseCount > 0

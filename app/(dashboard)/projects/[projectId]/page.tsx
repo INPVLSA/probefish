@@ -32,6 +32,7 @@ import {
   Webhook,
   Search,
   GitCompare,
+  Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -96,6 +97,7 @@ interface TestSuite {
   targetType: "prompt" | "endpoint";
   targetId: string;
   testCases: unknown[];
+  parallelExecution?: boolean;
   lastRun?: {
     status: string;
     runAt: string;
@@ -817,6 +819,15 @@ export default function ProjectDetailPage({
                                 </>
                               )}
                             </Badge>
+                            {suite.parallelExecution && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                              >
+                                <Zap className="h-3 w-3 mr-1" />
+                                Parallel
+                              </Badge>
+                            )}
                           </div>
                           <CardDescription className="mt-0.5">
                             {suite.testCases.length} test case
