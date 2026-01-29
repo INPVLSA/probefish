@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useCallback, useMemo } from "react";
+import { useHotkeyContext, useAppHotkey } from "@/lib/hotkeys";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -189,6 +190,22 @@ export default function TestSuiteDetailPage({
     return Array.from(tags).sort();
   }, [testCases]);
 
+  // Hotkey scope management
+  const { addScope, removeScope } = useHotkeyContext();
+
+  useEffect(() => {
+    addScope("test-suite");
+    return () => removeScope("test-suite");
+  }, [addScope, removeScope]);
+
+  // Register tab navigation hotkeys
+  useAppHotkey("nav-tab-1", useCallback(() => handleTabChange("test-cases"), [handleTabChange]));
+  useAppHotkey("nav-tab-2", useCallback(() => handleTabChange("validation"), [handleTabChange]));
+  useAppHotkey("nav-tab-3", useCallback(() => handleTabChange("judge"), [handleTabChange]));
+  useAppHotkey("nav-tab-4", useCallback(() => handleTabChange("settings"), [handleTabChange]));
+  useAppHotkey("nav-tab-5", useCallback(() => handleTabChange("history"), [handleTabChange]));
+  useAppHotkey("nav-tab-6", useCallback(() => handleTabChange("compare"), [handleTabChange]));
+
   const fetchTestSuite = useCallback(async () => {
     try {
       const response = await fetch(
@@ -338,6 +355,15 @@ export default function TestSuiteDetailPage({
       setSaving(false);
     }
   };
+
+  // Register save hotkey (must be after handleSave is defined)
+  const saveAction = useCallback(() => {
+    if (hasChanges && !saving) {
+      handleSave();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasChanges, saving]);
+  useAppHotkey("save-item", saveAction);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this test suite?")) {
