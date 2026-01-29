@@ -207,6 +207,7 @@ export interface ITestSuite extends Document {
   validationRules: IValidationRule[];
   llmJudgeConfig: ILLMJudgeConfig;
   comparisonModels?: IModelSelection[]; // Saved models for multi-model comparison
+  parallelExecution?: boolean; // Enable parallel test execution (default: false)
 
   lastRun?: ITestRun;
   runHistory: ITestRun[];
@@ -620,6 +621,10 @@ const testSuiteSchema = new Schema<ITestSuite>(
         },
       },
     ],
+    parallelExecution: {
+      type: Boolean,
+      default: false,
+    },
     lastRun: testRunSchema,
     runHistory: {
       type: [testRunSchema],

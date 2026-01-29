@@ -13,6 +13,7 @@ import Prompt from "@/lib/db/models/prompt";
 import Endpoint from "@/lib/db/models/endpoint";
 import { executeTestCase, toTestResult } from "@/lib/testing";
 import { executeTestSuiteWithStreaming } from "@/lib/testing/streamingExecutor";
+import { executeTestsInParallel } from "@/lib/testing/parallelExecutor";
 import {
   createSSEStream,
   sendSSEEvent,
@@ -261,6 +262,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (streamMode) {
       // STREAMING MODE: Return SSE stream with real-time results
+      const maxConcurrency = organization.settings?.maxConcurrentTests || 5;
       return handleStreamingRun({
         request,
         projectId,
@@ -273,6 +275,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         runNote,
         iterations,
         userId: auth.context.user.id,
+        parallelExecution: testSuite.parallelExecution === true,
+        maxConcurrency,
       });
     }
 
@@ -304,41 +308,89 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let totalJudgeScore = 0;
     let judgeScoreCount = 0;
 
+    // Get concurrency limit from organization settings
+    const maxConcurrency = organization.settings?.maxConcurrentTests || 5;
+    const useParallel = testSuite.parallelExecution === true;
+
     for (let iteration = 1; iteration <= iterations; iteration++) {
-      for (const testCase of testCasesToRun) {
-        const result = await executeTestCase({
-          testCase,
-          targetType: testSuite.targetType,
-          target,
-          targetVersion: testSuite.targetVersion,
-          validationRules: testSuite.validationRules,
-          judgeConfig: testSuite.llmJudgeConfig,
-          credentials,
-          modelOverride: modelOverride ? {
-            provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
-            model: modelOverride.model,
-          } : undefined,
-        });
+      if (useParallel) {
+        // Parallel execution
+        const { results } = await executeTestsInParallel(
+          testCasesToRun,
+          (testCase) => executeTestCase({
+            testCase,
+            targetType: testSuite.targetType,
+            target,
+            targetVersion: testSuite.targetVersion,
+            validationRules: testSuite.validationRules,
+            judgeConfig: testSuite.llmJudgeConfig,
+            credentials,
+            modelOverride: modelOverride ? {
+              provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+              model: modelOverride.model,
+            } : undefined,
+          }),
+          { maxConcurrency }
+        );
 
-        const testResult = toTestResult(result);
-        // Add iteration number to result if running multiple iterations
-        if (iterations > 1) {
-          testResult.iteration = iteration;
+        // Process parallel results
+        for (const result of results) {
+          const testResult = toTestResult(result);
+          if (iterations > 1) {
+            testResult.iteration = iteration;
+          }
+          testRun.results.push(testResult);
+
+          if (result.validationPassed && !result.error) {
+            testRun.summary.passed++;
+          } else {
+            testRun.summary.failed++;
+          }
+
+          totalResponseTime += result.responseTime;
+
+          if (typeof result.judgeScore === "number") {
+            totalJudgeScore += result.judgeScore;
+            judgeScoreCount++;
+          }
         }
-        testRun.results.push(testResult);
+      } else {
+        // Sequential execution (default)
+        for (const testCase of testCasesToRun) {
+          const result = await executeTestCase({
+            testCase,
+            targetType: testSuite.targetType,
+            target,
+            targetVersion: testSuite.targetVersion,
+            validationRules: testSuite.validationRules,
+            judgeConfig: testSuite.llmJudgeConfig,
+            credentials,
+            modelOverride: modelOverride ? {
+              provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+              model: modelOverride.model,
+            } : undefined,
+          });
 
-        // Update stats
-        if (result.validationPassed && !result.error) {
-          testRun.summary.passed++;
-        } else {
-          testRun.summary.failed++;
-        }
+          const testResult = toTestResult(result);
+          // Add iteration number to result if running multiple iterations
+          if (iterations > 1) {
+            testResult.iteration = iteration;
+          }
+          testRun.results.push(testResult);
 
-        totalResponseTime += result.responseTime;
+          // Update stats
+          if (result.validationPassed && !result.error) {
+            testRun.summary.passed++;
+          } else {
+            testRun.summary.failed++;
+          }
 
-        if (typeof result.judgeScore === "number") {
-          totalJudgeScore += result.judgeScore;
-          judgeScoreCount++;
+          totalResponseTime += result.responseTime;
+
+          if (typeof result.judgeScore === "number") {
+            totalJudgeScore += result.judgeScore;
+            judgeScoreCount++;
+          }
         }
       }
     }
@@ -426,6 +478,8 @@ interface StreamingRunParams {
   runNote?: string;
   iterations: number;
   userId: string;
+  parallelExecution: boolean;
+  maxConcurrency: number;
 }
 
 async function handleStreamingRun({
@@ -440,6 +494,8 @@ async function handleStreamingRun({
   runNote,
   iterations,
   userId,
+  parallelExecution,
+  maxConcurrency,
 }: StreamingRunParams): Promise<Response> {
   const sse = createSSEStream();
   const stopHeartbeat = startHeartbeat(sse, 15000);
@@ -475,6 +531,8 @@ async function handleStreamingRun({
           runId,
           runBy: new mongoose.Types.ObjectId(userId),
           note: runNote,
+          parallelExecution,
+          maxConcurrency,
         },
         {
           onProgress: async (progress) => {

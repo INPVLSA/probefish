@@ -9,6 +9,7 @@ import { IPrompt } from "@/lib/db/models/prompt";
 import { IEndpoint } from "@/lib/db/models/endpoint";
 import { LLMProviderCredentials } from "@/lib/llm";
 import { executeTestCase, toTestResult, ModelOverride, TestCaseExecutionResult } from "./executor";
+import { executeTestsInParallel } from "./parallelExecutor";
 
 export interface StreamingProgress {
   current: number;
@@ -37,6 +38,8 @@ export interface StreamingExecuteParams {
   runId: mongoose.Types.ObjectId;
   runBy: mongoose.Types.ObjectId;
   note?: string;
+  parallelExecution?: boolean;
+  maxConcurrency?: number;
 }
 
 export interface StreamingExecuteResult {
@@ -66,6 +69,8 @@ export async function executeTestSuiteWithStreaming(
     runId,
     runBy,
     note,
+    parallelExecution = false,
+    maxConcurrency = 5,
   } = params;
 
   const totalTestCount = testCases.length * iterations;
@@ -98,96 +103,171 @@ export async function executeTestSuiteWithStreaming(
     },
   };
 
-  let currentIndex = 0;
+  let completedCount = 0;
 
   for (let iteration = 1; iteration <= iterations; iteration++) {
-    for (const testCase of testCases) {
-      // Check for abort signal
-      if (abortSignal?.aborted) {
+    if (abortSignal?.aborted) {
+      aborted = true;
+      break;
+    }
+
+    if (parallelExecution) {
+      // Parallel execution with streaming callbacks
+      const { results: iterationResults, aborted: iterationAborted } = await executeTestsInParallel(
+        testCases,
+        async (testCase) => {
+          return executeTestCase({
+            testCase,
+            targetType,
+            target,
+            targetVersion,
+            validationRules,
+            judgeConfig,
+            credentials,
+            modelOverride,
+          });
+        },
+        {
+          maxConcurrency,
+          abortSignal,
+          onProgress: async (index, testCase) => {
+            completedCount++;
+            try {
+              await callbacks.onProgress({
+                current: completedCount,
+                total: totalTestCount,
+                iteration,
+                testCaseId: testCase._id.toString(),
+                testCaseName: testCase.name,
+              });
+            } catch {
+              // Stream may be closed
+            }
+          },
+          onResult: async (result, _index) => {
+            const testResult = toTestResult(result);
+            if (iterations > 1) {
+              testResult.iteration = iteration;
+            }
+            results.push(testResult);
+
+            // Update running stats
+            if (result.validationPassed && !result.error) {
+              passed++;
+            } else {
+              failed++;
+            }
+
+            totalResponseTime += result.responseTime;
+
+            if (typeof result.judgeScore === "number") {
+              totalJudgeScore += result.judgeScore;
+              judgeScoreCount++;
+            }
+
+            try {
+              await callbacks.onResult(testResult);
+            } catch {
+              // Stream may be closed
+            }
+          },
+        }
+      );
+
+      if (iterationAborted) {
         aborted = true;
         break;
       }
+    } else {
+      // Sequential execution (default)
+      for (const testCase of testCases) {
+        // Check for abort signal
+        if (abortSignal?.aborted) {
+          aborted = true;
+          break;
+        }
 
-      currentIndex++;
+        completedCount++;
 
-      // Send progress event
-      try {
-        await callbacks.onProgress({
-          current: currentIndex,
-          total: totalTestCount,
-          iteration,
-          testCaseId: testCase._id.toString(),
-          testCaseName: testCase.name,
-        });
-      } catch {
-        // Stream may be closed
-      }
-
-      // Execute the test case
-      let result: TestCaseExecutionResult;
-      try {
-        result = await executeTestCase({
-          testCase,
-          targetType,
-          target,
-          targetVersion,
-          validationRules,
-          judgeConfig,
-          credentials,
-          modelOverride,
-        });
-      } catch (error) {
-        // If execution itself throws, create an error result
-        const errorResult: TestCaseExecutionResult = {
-          testCaseId: testCase._id,
-          testCaseName: testCase.name,
-          inputs: testCase.inputs,
-          output: "",
-          validationPassed: false,
-          validationErrors: [error instanceof Error ? error.message : "Unknown error"],
-          responseTime: 0,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-        result = errorResult;
-
+        // Send progress event
         try {
-          await callbacks.onError(error instanceof Error ? error : new Error("Unknown error"), testCase._id.toString());
+          await callbacks.onProgress({
+            current: completedCount,
+            total: totalTestCount,
+            iteration,
+            testCaseId: testCase._id.toString(),
+            testCaseName: testCase.name,
+          });
+        } catch {
+          // Stream may be closed
+        }
+
+        // Execute the test case
+        let result: TestCaseExecutionResult;
+        try {
+          result = await executeTestCase({
+            testCase,
+            targetType,
+            target,
+            targetVersion,
+            validationRules,
+            judgeConfig,
+            credentials,
+            modelOverride,
+          });
+        } catch (error) {
+          // If execution itself throws, create an error result
+          const errorResult: TestCaseExecutionResult = {
+            testCaseId: testCase._id,
+            testCaseName: testCase.name,
+            inputs: testCase.inputs,
+            output: "",
+            validationPassed: false,
+            validationErrors: [error instanceof Error ? error.message : "Unknown error"],
+            responseTime: 0,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+          result = errorResult;
+
+          try {
+            await callbacks.onError(error instanceof Error ? error : new Error("Unknown error"), testCase._id.toString());
+          } catch {
+            // Stream may be closed
+          }
+        }
+
+        // Convert to test result and track stats
+        const testResult = toTestResult(result);
+        if (iterations > 1) {
+          testResult.iteration = iteration;
+        }
+
+        results.push(testResult);
+
+        // Update running stats
+        if (result.validationPassed && !result.error) {
+          passed++;
+        } else {
+          failed++;
+        }
+
+        totalResponseTime += result.responseTime;
+
+        if (typeof result.judgeScore === "number") {
+          totalJudgeScore += result.judgeScore;
+          judgeScoreCount++;
+        }
+
+        // Send result event
+        try {
+          await callbacks.onResult(testResult);
         } catch {
           // Stream may be closed
         }
       }
 
-      // Convert to test result and track stats
-      const testResult = toTestResult(result);
-      if (iterations > 1) {
-        testResult.iteration = iteration;
-      }
-
-      results.push(testResult);
-
-      // Update running stats
-      if (result.validationPassed && !result.error) {
-        passed++;
-      } else {
-        failed++;
-      }
-
-      totalResponseTime += result.responseTime;
-
-      if (typeof result.judgeScore === "number") {
-        totalJudgeScore += result.judgeScore;
-        judgeScoreCount++;
-      }
-
-      // Send result event
-      try {
-        await callbacks.onResult(testResult);
-      } catch {
-        // Stream may be closed
-      }
+      if (aborted) break;
     }
-
-    if (aborted) break;
   }
 
   // Calculate final stats

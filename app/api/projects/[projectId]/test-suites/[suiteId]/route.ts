@@ -153,6 +153,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       "validationRules",
       "llmJudgeConfig",
       "comparisonModels",
+      "parallelExecution",
     ];
 
     for (const key of allowedUpdates) {
