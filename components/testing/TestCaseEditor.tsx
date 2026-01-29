@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck, MessageSquare, MessagesSquare } from "lucide-react";
+import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck, MessageSquare, MessagesSquare, Search, Tag, ChevronDown } from "lucide-react";
 import { ValidationRule, ValidationRulesEditor } from "./ValidationRulesEditor";
 import { ConversationEditor, ConversationTurn, ValidationTimingMode } from "./ConversationEditor";
 import { SessionConfigEditor, SessionConfig } from "./SessionConfigEditor";
@@ -32,6 +32,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DeleteIcon } from "@/components/ui/delete";
 import {
   DndContext,
@@ -368,12 +380,61 @@ export function TestCaseEditor({
   const [tagInput, setTagInput] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "suspended">("all");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
   // Collect all unique tags from existing test cases for autocomplete
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     testCases.forEach((tc) => tc.tags?.forEach((t) => tags.add(t)));
     return Array.from(tags).sort();
   }, [testCases]);
+
+  // Filter test cases based on search query, status, and tags
+  const filteredTestCases = useMemo(() => {
+    let filtered = [...testCases];
+
+    // Apply status filter
+    if (statusFilter === "enabled") {
+      filtered = filtered.filter((tc) => tc.enabled !== false);
+    } else if (statusFilter === "suspended") {
+      filtered = filtered.filter((tc) => tc.enabled === false);
+    }
+
+    // Apply tag filter (show cases with ANY selected tag)
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((tc) =>
+        tc.tags?.some((tag) => selectedTags.includes(tag))
+      );
+    }
+
+    // Apply text search across all fields
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((tc) => {
+        if (tc.name.toLowerCase().includes(query)) return true;
+        if (tc.tags?.some((tag) => tag.toLowerCase().includes(query))) return true;
+        if (Object.values(tc.inputs).join(" ").toLowerCase().includes(query)) return true;
+        if (tc.expectedOutput?.toLowerCase().includes(query)) return true;
+        if (tc.notes?.toLowerCase().includes(query)) return true;
+        return false;
+      });
+    }
+
+    return filtered;
+  }, [testCases, searchQuery, statusFilter, selectedTags]);
+
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || selectedTags.length > 0;
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setSelectedTags([]);
+  };
 
   const handleAddTag = (tag: string) => {
     const normalizedTag = tag.trim().toLowerCase();
@@ -514,8 +575,8 @@ export function TestCaseEditor({
     });
   };
 
-  // Selection helpers
-  const selectableCases = testCases.filter((tc) => tc._id);
+  // Selection helpers - use filtered cases when filters are active
+  const selectableCases = filteredTestCases.filter((tc) => tc._id && tc.enabled !== false);
   const allSelected = selectableCases.length > 0 && selectableCases.every((tc) => selectedCaseIds.includes(tc._id!));
   const someSelected = selectedCaseIds.length > 0;
 
@@ -530,10 +591,14 @@ export function TestCaseEditor({
 
   const handleSelectAll = () => {
     if (!onSelectionChange) return;
+    const visibleIds = selectableCases.map((tc) => tc._id!);
     if (allSelected) {
-      onSelectionChange([]);
+      // Deselect all visible cases (keep selections from other filters)
+      onSelectionChange(selectedCaseIds.filter((id) => !visibleIds.includes(id)));
     } else {
-      onSelectionChange(selectableCases.map((tc) => tc._id!));
+      // Select all visible cases (add to existing selections)
+      const newSelection = new Set([...selectedCaseIds, ...visibleIds]);
+      onSelectionChange(Array.from(newSelection));
     }
   };
 
@@ -1026,12 +1091,140 @@ export function TestCaseEditor({
           </Dialog>
           </div>
         </div>
+
+        {/* Filter Controls */}
+        {testCases.length > 0 && (
+          <div className="flex flex-col gap-2 mt-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* Text search input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search test cases..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+
+              {/* Status filter dropdown */}
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger className="w-full sm:w-36">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Tag filter - multi-select with popover */}
+              {allTags.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto justify-between">
+                      <Tag className="mr-2 h-4 w-4" />
+                      {selectedTags.length > 0 ? (
+                        <span>{selectedTags.length} tag{selectedTags.length !== 1 ? "s" : ""}</span>
+                      ) : (
+                        <span>Filter by tags</span>
+                      )}
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="space-y-2">
+                      {allTags.map((tag) => (
+                        <div key={tag} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filter-tag-${tag}`}
+                            checked={selectedTags.includes(tag)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedTags([...selectedTags, tag]);
+                              } else {
+                                setSelectedTags(selectedTags.filter((t) => t !== tag));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`filter-tag-${tag}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {tag}
+                          </label>
+                        </div>
+                      ))}
+                      {selectedTags.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => setSelectedTags([])}
+                        >
+                          Clear tags
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+
+            {/* Results count indicator */}
+            {hasActiveFilters && (
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredTestCases.length} of {testCases.length} test case{testCases.length !== 1 ? "s" : ""}
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-xs px-1 h-auto"
+                  onClick={clearFilters}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {testCases.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>No test cases yet.</p>
             <p className="text-sm">Add test cases to run tests.</p>
+          </div>
+        ) : filteredTestCases.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No test cases match the current filters.</p>
+            <p className="text-sm">Try adjusting your search or filters.</p>
+          </div>
+        ) : hasActiveFilters ? (
+          // Render without drag-and-drop when filters are active
+          <div className="space-y-2">
+            {filteredTestCases.map((testCase) => {
+              const originalIndex = testCases.findIndex(tc =>
+                tc._id === testCase._id || (tc._id === undefined && tc.name === testCase.name && JSON.stringify(tc.inputs) === JSON.stringify(testCase.inputs))
+              );
+              return (
+                <SortableTestCaseRow
+                  key={testCase._id || `temp-${originalIndex}`}
+                  testCase={testCase}
+                  index={originalIndex}
+                  selectedCaseIds={selectedCaseIds}
+                  onSelectionChange={onSelectionChange}
+                  onRunSingleCase={onRunSingleCase}
+                  running={running}
+                  runningCaseId={runningCaseId}
+                  onEdit={handleEditCase}
+                  onDuplicate={handleDuplicateCase}
+                  onDelete={handleDeleteCase}
+                  onToggle={handleToggleCase}
+                  onToggleEnabled={handleToggleEnabled}
+                />
+              );
+            })}
           </div>
         ) : (
           <DndContext
