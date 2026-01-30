@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, FileText, Globe, Download, Eye, Zap } from "lucide-react";
+import { ArrowLeft, Save, FileText, Globe, Download, ExternalLink, Zap } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -612,41 +612,16 @@ export default function TestSuiteDetailPage({
           <h1 className="text-2xl font-bold">{testSuite?.name}</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Testing:</span>
-            {target && (
-              <Link
-                href={`/projects/${projectId}/${testSuite?.targetType === "prompt" ? "prompts" : "endpoints"}/${target._id}`}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-colors ${
-                  testSuite?.targetType === "prompt"
-                    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25"
-                    : "bg-green-500/15 text-green-600 dark:text-green-400 hover:bg-green-500/25"
-                }`}
-              >
-                {testSuite?.targetType === "prompt" ? (
-                  <FileText className="h-3 w-3" />
-                ) : (
-                  <Globe className="h-3 w-3" />
-                )}
-                {target.name}
-              </Link>
-            )}
-            {testSuite?.targetType === "prompt" && (
-              <Badge variant="outline" className="text-xs">
-                {targetVersion ? `v${targetVersion}` : "Latest"}
-              </Badge>
-            )}
-            {parallelExecution && (
-              <Badge variant="outline" className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                <Zap className="h-3 w-3 mr-1" />
-                Parallel
-              </Badge>
-            )}
-            {testSuite?.targetType === "prompt" && target?.content && (
+            {target && testSuite?.targetType === "prompt" && target?.content ? (
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                    <Eye className="h-3 w-3 mr-1" />
-                    Preview
-                  </Button>
+                  <button
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-colors bg-blue-500/15 hover:bg-blue-500/25 cursor-pointer"
+                  >
+                    <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <span className="text-blue-600 dark:text-blue-400">{target.name}</span>
+                    <span className="text-muted-foreground">, {targetVersion ? `v${targetVersion}` : "Latest"}</span>
+                  </button>
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                   <DialogHeader>
@@ -660,6 +635,13 @@ export default function TestSuiteDetailPage({
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex-1 overflow-y-auto space-y-4">
+                    <Link
+                      href={`/projects/${projectId}/prompts/${target._id}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Open Prompt
+                    </Link>
                     {target.systemPrompt && (
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">System Prompt</Label>
@@ -689,6 +671,20 @@ export default function TestSuiteDetailPage({
                   </div>
                 </DialogContent>
               </Dialog>
+            ) : target && (
+              <Link
+                href={`/projects/${projectId}/endpoints/${target._id}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium transition-colors bg-green-500/15 text-green-600 dark:text-green-400 hover:bg-green-500/25"
+              >
+                <Globe className="h-3 w-3" />
+                {target.name}
+              </Link>
+            )}
+            {parallelExecution && (
+              <Badge variant="outline" className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                <Zap className="h-3 w-3 mr-1" />
+                Parallel
+              </Badge>
             )}
           </div>
         </div>
