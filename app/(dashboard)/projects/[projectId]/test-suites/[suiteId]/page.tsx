@@ -52,6 +52,7 @@ import { toast } from "sonner";
 import {
   TestCaseEditor,
   TestCase,
+  TestCaseEditorHandle,
   ValidationRulesEditor,
   ValidationRule,
   JudgeConfigEditor,
@@ -146,6 +147,9 @@ export default function TestSuiteDetailPage({
   const settingsIconRef = useRef<SettingsIconHandle>(null);
   const historyIconRef = useRef<HistoryIconHandle>(null);
   const gitCompareIconRef = useRef<GitCompareIconHandle>(null);
+
+  // Test case editor ref
+  const testCaseEditorRef = useRef<TestCaseEditorHandle>(null);
 
   // Read hash on mount and handle hash changes
   useEffect(() => {
@@ -243,6 +247,10 @@ export default function TestSuiteDetailPage({
   useAppHotkey("nav-tab-4", useCallback(() => handleTabChange("settings"), [handleTabChange]));
   useAppHotkey("nav-tab-5", useCallback(() => handleTabChange("history"), [handleTabChange]));
   useAppHotkey("nav-tab-6", useCallback(() => handleTabChange("compare"), [handleTabChange]));
+  useAppHotkey("add-test-case", useCallback(() => {
+    if (activeTab !== "test-cases") return;
+    testCaseEditorRef.current?.openAddDialog();
+  }, [activeTab]));
 
   const fetchTestSuite = useCallback(async () => {
     try {
@@ -833,6 +841,7 @@ export default function TestSuiteDetailPage({
 
             <TabsContent value="test-cases" className="mt-4">
               <TestCaseEditor
+                ref={testCaseEditorRef}
                 testCases={testCases}
                 variables={target?.variables || []}
                 targetType={testSuite?.targetType}

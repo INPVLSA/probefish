@@ -32,6 +32,13 @@ export const hotkeyDefinitions: HotkeyDefinition[] = [
     scope: "test-suite",
     category: "Testing",
   },
+  {
+    id: "add-test-case",
+    keys: "a",
+    description: "Add new test case",
+    scope: "test-suite",
+    category: "Testing",
+  },
 
   // Navigation (test suite tabs)
   {

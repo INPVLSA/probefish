@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, GripVertical, Copy, X, Play, Loader2, Pause, CirclePlay, Braces, Check, AlertCircle, FileText, ShieldCheck, MessageSquare, MessagesSquare, Search, Tag, ChevronDown } from "lucide-react";
 import { ValidationRule, ValidationRulesEditor } from "./ValidationRulesEditor";
+import { ShortcutHint } from "@/components/hotkeys";
 import { ConversationEditor, ConversationTurn, ValidationTimingMode } from "./ConversationEditor";
 import { SessionConfigEditor, SessionConfig } from "./SessionConfigEditor";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -133,6 +134,10 @@ interface TestCaseEditorProps {
   runningCaseId?: string | null;
   // Target type for conversation mode
   targetType?: "prompt" | "endpoint";
+}
+
+export interface TestCaseEditorHandle {
+  openAddDialog: () => void;
 }
 
 // Sortable row component
@@ -365,7 +370,7 @@ function SortableTestCaseRow({
   );
 }
 
-export function TestCaseEditor({
+export const TestCaseEditor = forwardRef<TestCaseEditorHandle, TestCaseEditorProps>(({
   testCases,
   variables,
   onChange,
@@ -376,12 +381,30 @@ export function TestCaseEditor({
   running = false,
   runningCaseId = null,
   targetType = "prompt",
-}: TestCaseEditorProps) {
+}, ref) => {
   const [editingCase, setEditingCase] = useState<TestCase | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    openAddDialog: () => {
+      const newCase: TestCase = {
+        name: `Test Case ${testCases.length + 1}`,
+        inputs: variables.reduce((acc, v) => ({ ...acc, [v]: "" }), {}),
+        expectedOutput: "",
+        notes: "",
+        tags: [],
+      };
+      setEditingCase(newCase);
+      setEditingIndex(null);
+      setTagInput("");
+      setValidationError(null);
+      setDialogOpen(true);
+    },
+  }), [testCases.length, variables]);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -682,6 +705,7 @@ export function TestCaseEditor({
               <Button size="sm" onClick={handleAddCase}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Test Case
+                <ShortcutHint keys="a" className="aspect-square px-1.5" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
@@ -1261,4 +1285,6 @@ export function TestCaseEditor({
       </CardContent>
     </Card>
   );
-}
+});
+
+TestCaseEditor.displayName = "TestCaseEditor";

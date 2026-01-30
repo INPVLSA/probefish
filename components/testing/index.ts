@@ -1,4 +1,4 @@
-export { TestCaseEditor, type TestCase } from "./TestCaseEditor";
+export { TestCaseEditor, type TestCase, type TestCaseEditorHandle } from "./TestCaseEditor";
 export { ValidationRulesEditor, type ValidationRule } from "./ValidationRulesEditor";
 export {
   JudgeConfigEditor,

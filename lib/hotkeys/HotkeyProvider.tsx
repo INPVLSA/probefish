@@ -195,6 +195,17 @@ export function HotkeyProvider({ children }: HotkeyProviderProps) {
     hotkeyOptions
   );
 
+  // Add test case hotkey
+  useHotkeys(
+    "a",
+    (e) => {
+      if (isInsideMonaco(e.target)) return;
+      if (!isScopeActive("test-suite")) return;
+      executeAction("add-test-case");
+    },
+    hotkeyOptions
+  );
+
   const value: HotkeyContextValue = {
     registerAction,
     unregisterAction,
