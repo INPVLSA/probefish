@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, FileText, Globe, Download, ExternalLink, Zap } from "lucide-react";
+import { ArrowLeft, Save, FileText, Globe, Download, ExternalLink, Zap, Command } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -36,6 +36,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { DeleteIcon } from "@/components/ui/delete";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
@@ -772,11 +777,21 @@ export default function TestSuiteDetailPage({
                   Compare
                 </TabsTrigger>
               </TabsList>
-              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <kbd className="font-mono text-primary-foreground bg-primary px-1 py-0.5 rounded">⌘1</kbd>
-                <span>–</span>
-                <kbd className="font-mono text-primary-foreground bg-primary px-1 py-0.5 rounded">⌘6</kbd>
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <kbd className="font-mono text-[11px] text-primary-foreground bg-primary px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 cursor-help"><Command className="h-[11px] w-[11px] -mt-px" />1-6</kbd>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  <div className="space-y-1">
+                    <div><kbd className="font-mono">⌘1</kbd> Test Cases</div>
+                    <div><kbd className="font-mono">⌘2</kbd> Validation</div>
+                    <div><kbd className="font-mono">⌘3</kbd> LLM Judge</div>
+                    <div><kbd className="font-mono">⌘4</kbd> Settings</div>
+                    <div><kbd className="font-mono">⌘5</kbd> History</div>
+                    <div><kbd className="font-mono">⌘6</kbd> Compare</div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <TabsContent value="test-cases" className="mt-4">
