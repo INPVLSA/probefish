@@ -55,6 +55,7 @@ import {
   TestCaseEditorHandle,
   ValidationRulesEditor,
   ValidationRule,
+  ValidationRulesEditorHandle,
   JudgeConfigEditor,
   LLMJudgeConfig,
   TestExecutionPanel,
@@ -148,8 +149,9 @@ export default function TestSuiteDetailPage({
   const historyIconRef = useRef<HistoryIconHandle>(null);
   const gitCompareIconRef = useRef<GitCompareIconHandle>(null);
 
-  // Test case editor ref
+  // Editor refs
   const testCaseEditorRef = useRef<TestCaseEditorHandle>(null);
+  const validationRulesEditorRef = useRef<ValidationRulesEditorHandle>(null);
 
   // Read hash on mount and handle hash changes
   useEffect(() => {
@@ -248,8 +250,11 @@ export default function TestSuiteDetailPage({
   useAppHotkey("nav-tab-5", useCallback(() => handleTabChange("history"), [handleTabChange]));
   useAppHotkey("nav-tab-6", useCallback(() => handleTabChange("compare"), [handleTabChange]));
   useAppHotkey("add-test-case", useCallback(() => {
-    if (activeTab !== "test-cases") return;
-    testCaseEditorRef.current?.openAddDialog();
+    if (activeTab === "test-cases") {
+      testCaseEditorRef.current?.openAddDialog();
+    } else if (activeTab === "validation") {
+      validationRulesEditorRef.current?.openAddDialog();
+    }
   }, [activeTab]));
 
   const fetchTestSuite = useCallback(async () => {
@@ -860,6 +865,7 @@ export default function TestSuiteDetailPage({
 
             <TabsContent value="validation" className="mt-4">
               <ValidationRulesEditor
+                ref={validationRulesEditorRef}
                 rules={validationRules}
                 onChange={(rules) => {
                   setValidationRules(rules);

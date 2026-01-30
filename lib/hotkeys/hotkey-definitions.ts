@@ -35,7 +35,7 @@ export const hotkeyDefinitions: HotkeyDefinition[] = [
   {
     id: "add-test-case",
     keys: "a",
-    description: "Add new test case",
+    description: "Add new item (test case or rule)",
     scope: "test-suite",
     category: "Testing",
   },
