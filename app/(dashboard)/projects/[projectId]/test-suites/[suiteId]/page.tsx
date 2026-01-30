@@ -257,6 +257,10 @@ export default function TestSuiteDetailPage({
     }
   }, [activeTab]));
 
+  useAppHotkey("go-back", useCallback(() => {
+    router.push(`/projects/${projectId}#test-suites`);
+  }, [router, projectId]));
+
   const fetchTestSuite = useCallback(async () => {
     try {
       const response = await fetch(

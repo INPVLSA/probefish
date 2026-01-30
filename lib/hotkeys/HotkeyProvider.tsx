@@ -206,6 +206,17 @@ export function HotkeyProvider({ children }: HotkeyProviderProps) {
     hotkeyOptions
   );
 
+  // Go back hotkey
+  useHotkeys(
+    "escape",
+    (e) => {
+      if (isInsideMonaco(e.target)) return;
+      if (!isScopeActive("test-suite")) return;
+      executeAction("go-back");
+    },
+    hotkeyOptions
+  );
+
   const value: HotkeyContextValue = {
     registerAction,
     unregisterAction,

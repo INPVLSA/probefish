@@ -39,6 +39,13 @@ export const hotkeyDefinitions: HotkeyDefinition[] = [
     scope: "test-suite",
     category: "Testing",
   },
+  {
+    id: "go-back",
+    keys: "escape",
+    description: "Go back to project",
+    scope: "test-suite",
+    category: "Navigation",
+  },
 
   // Navigation (test suite tabs)
   {
