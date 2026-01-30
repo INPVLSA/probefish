@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useCallback, useMemo } from "react";
+import { useState, useEffect, use, useCallback, useMemo, useRef } from "react";
 import { useHotkeyContext, useAppHotkey } from "@/lib/hotkeys";
 import { ShortcutHint } from "@/components/hotkeys";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Save, FileText, Globe, Download, ExternalLink, Zap, Command } from "lucide-react";
+import { FlaskIcon, FlaskIconHandle } from "@/components/ui/flask";
+import { ShieldCheckIcon, ShieldCheckIconHandle } from "@/components/ui/shield-check";
+import { BotIcon, BotIconHandle } from "@/components/ui/bot";
+import { SettingsIcon, SettingsIconHandle } from "@/components/ui/settings";
+import { HistoryIcon, HistoryIconHandle } from "@/components/ui/history";
+import { GitCompareIcon, GitCompareIconHandle } from "@/components/ui/git-compare";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -133,6 +139,14 @@ export default function TestSuiteDetailPage({
   const validTabs = ["test-cases", "validation", "judge", "settings", "history", "compare"];
   const [activeTab, setActiveTab] = useState("test-cases");
 
+  // Animated icon refs
+  const flaskIconRef = useRef<FlaskIconHandle>(null);
+  const shieldCheckIconRef = useRef<ShieldCheckIconHandle>(null);
+  const botIconRef = useRef<BotIconHandle>(null);
+  const settingsIconRef = useRef<SettingsIconHandle>(null);
+  const historyIconRef = useRef<HistoryIconHandle>(null);
+  const gitCompareIconRef = useRef<GitCompareIconHandle>(null);
+
   // Read hash on mount and handle hash changes
   useEffect(() => {
     const getTabFromHash = () => {
@@ -154,6 +168,21 @@ export default function TestSuiteDetailPage({
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
     window.history.replaceState(null, "", `#${value}`);
+
+    // Trigger tab icon animation (reset first, then play)
+    const iconRef = {
+      "test-cases": flaskIconRef,
+      "validation": shieldCheckIconRef,
+      "judge": botIconRef,
+      "settings": settingsIconRef,
+      "history": historyIconRef,
+      "compare": gitCompareIconRef,
+    }[value];
+
+    if (iconRef?.current) {
+      iconRef.current.stopAnimation();
+      setTimeout(() => iconRef.current?.startAnimation(), 300);
+    }
   }, []);
 
   const [testSuite, setTestSuite] = useState<TestSuite | null>(null);
@@ -741,6 +770,7 @@ export default function TestSuiteDetailPage({
             <div className="flex items-center gap-3">
               <TabsList>
                 <TabsTrigger value="test-cases">
+                  <FlaskIcon ref={flaskIconRef} size={14} />
                   Test Cases
                   {testCases.length > 0 && (
                     <Badge variant="secondary">
@@ -749,6 +779,7 @@ export default function TestSuiteDetailPage({
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="validation">
+                  <ShieldCheckIcon ref={shieldCheckIconRef} size={14} />
                   Validation
                   {validationRules.length > 0 && (
                     <Badge variant="secondary">
@@ -757,6 +788,7 @@ export default function TestSuiteDetailPage({
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="judge">
+                  <BotIcon ref={botIconRef} size={14} />
                   LLM Judge
                   <Badge
                     variant={llmJudgeConfig.enabled ? "default" : "destructive"}
@@ -764,8 +796,12 @@ export default function TestSuiteDetailPage({
                     {llmJudgeConfig.enabled ? "On" : "Off"}
                   </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="settings">
+                  <SettingsIcon ref={settingsIconRef} size={14} />
+                  Settings
+                </TabsTrigger>
                 <TabsTrigger value="history">
+                  <HistoryIcon ref={historyIconRef} size={14} />
                   History
                   {runHistory.length > 0 && (
                     <Badge variant="secondary">
@@ -774,6 +810,7 @@ export default function TestSuiteDetailPage({
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="compare">
+                  <GitCompareIcon ref={gitCompareIconRef} size={14} />
                   Compare
                 </TabsTrigger>
               </TabsList>
