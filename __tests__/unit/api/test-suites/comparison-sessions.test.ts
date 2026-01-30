@@ -12,6 +12,10 @@ vi.mock('@/lib/auth/authorization', () => ({
   authError: vi.fn((auth) => new Response(JSON.stringify({ error: auth.error }), { status: 401 })),
 }));
 
+vi.mock('@/lib/utils/resolve-identifier', () => ({
+  resolveTestSuiteByIdentifier: vi.fn(),
+}));
+
 vi.mock('@/lib/db/models/testSuite', () => {
   const mockSave = vi.fn().mockResolvedValue(undefined);
   const mockMarkModified = vi.fn();
@@ -27,6 +31,7 @@ vi.mock('@/lib/db/models/testSuite', () => {
 
 import { GET, POST } from '@/app/api/projects/[projectId]/test-suites/[suiteId]/comparison-sessions/route';
 import { requireProjectPermission } from '@/lib/auth/authorization';
+import { resolveTestSuiteByIdentifier } from '@/lib/utils/resolve-identifier';
 import TestSuite from '@/lib/db/models/testSuite';
 
 describe('Comparison Sessions API', () => {
@@ -41,6 +46,12 @@ describe('Comparison Sessions API', () => {
     email: 'test@example.com',
     name: 'Test User',
     isSuperAdmin: false,
+  };
+  const mockProject = {
+    id: mockProjectId,
+    name: 'Test Project',
+    effectiveRole: 'editor' as const,
+    accessSource: 'project_member' as const,
   };
 
   beforeEach(() => {
@@ -63,9 +74,9 @@ describe('Comparison Sessions API', () => {
     it('should return 404 if test suite not found', async () => {
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue(null);
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost/api/projects/test/test-suites/test/comparison-sessions');
       const response = await GET(request, { params: Promise.resolve({ projectId: mockProjectId, suiteId: mockSuiteId }) });
@@ -78,9 +89,9 @@ describe('Comparison Sessions API', () => {
     it('should return empty sessions array if no sessions exist', async () => {
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue({
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue({
         _id: mockSuiteObjectId,
         comparisonSessions: [],
       } as any);
@@ -106,9 +117,9 @@ describe('Comparison Sessions API', () => {
 
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue({
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue({
         _id: mockSuiteObjectId,
         comparisonSessions: mockSessions,
       } as any);
@@ -126,9 +137,9 @@ describe('Comparison Sessions API', () => {
     it('should return 400 if models array is missing', async () => {
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue({
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue({
         _id: mockSuiteObjectId,
         comparisonSessions: [],
         save: vi.fn(),
@@ -149,9 +160,9 @@ describe('Comparison Sessions API', () => {
     it('should return 400 if runs array is missing', async () => {
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue({
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue({
         _id: mockSuiteObjectId,
         comparisonSessions: [],
         save: vi.fn(),
@@ -175,9 +186,9 @@ describe('Comparison Sessions API', () => {
 
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue({
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue({
         _id: mockSuiteObjectId,
         comparisonSessions: [],
         save: mockSave,
@@ -243,9 +254,9 @@ describe('Comparison Sessions API', () => {
 
       vi.mocked(requireProjectPermission).mockResolvedValue({
         authorized: true,
-        context: { authType: 'session' as const, user: mockUser },
+        context: { authType: 'session' as const, user: mockUser, project: mockProject },
       });
-      vi.mocked(TestSuite.findOne).mockResolvedValue(testSuite as any);
+      vi.mocked(resolveTestSuiteByIdentifier).mockResolvedValue(testSuite as any);
 
       const requestBody = {
         models: [{ provider: 'openai', model: 'gpt-4o' }],
