@@ -73,7 +73,7 @@ export default function NewPromptPage({
       }
 
       toast.success("Prompt created successfully!");
-      router.push(`/projects/${projectId}/prompts/${data.prompt._id}`);
+      router.push(`/projects/${projectId}/prompts/${data.prompt.slug}`);
     } catch {
       setError("An unexpected error occurred");
     } finally {

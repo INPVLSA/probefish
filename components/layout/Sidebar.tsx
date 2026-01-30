@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 interface Project {
   _id: string;
   name: string;
+  slug: string;
 }
 
 export default function Sidebar() {
@@ -76,8 +77,8 @@ export default function Sidebar() {
     return pathname.startsWith(href);
   };
 
-  const isProjectActive = (projectId: string) => {
-    return pathname.startsWith(`/projects/${projectId}`);
+  const isProjectActive = (projectSlug: string) => {
+    return pathname.startsWith(`/projects/${projectSlug}`);
   };
 
   return (
@@ -151,15 +152,15 @@ export default function Sidebar() {
                   {projects.map((project) => (
                     <li key={project._id}>
                       <Button
-                        variant={isProjectActive(project._id) ? "secondary" : "ghost"}
+                        variant={isProjectActive(project.slug) ? "secondary" : "ghost"}
                         size="sm"
                         className={cn(
                           "w-full justify-start truncate",
-                          isProjectActive(project._id) && "bg-sidebar-accent text-sidebar-accent-foreground"
+                          isProjectActive(project.slug) && "bg-sidebar-accent text-sidebar-accent-foreground"
                         )}
                         asChild
                       >
-                        <Link href={`/projects/${project._id}`}>
+                        <Link href={`/projects/${project.slug}`}>
                           <FileText className="mr-2 h-3 w-3 flex-shrink-0" />
                           <span className="truncate">{project.name}</span>
                         </Link>

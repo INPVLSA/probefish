@@ -46,12 +46,13 @@ async function getDashboardStats() {
     Project.find({ organizationId: { $in: orgIds }, isFolder: false })
       .sort({ updatedAt: -1 })
       .limit(3)
-      .select("_id name")
+      .select("_id name slug")
       .lean(),
     TestSuite.find({ organizationId: { $in: orgIds } })
       .sort({ updatedAt: -1 })
       .limit(3)
-      .select("_id name projectId testCases")
+      .select("_id name slug projectId testCases")
+      .populate("projectId", "slug")
       .lean(),
   ]);
 
@@ -98,11 +99,12 @@ async function getDashboardStats() {
     totalRuns,
     avgPassRate,
     recentActivity,
-    recentProjects: recentProjects.map((p) => ({ _id: p._id.toString(), name: p.name })),
+    recentProjects: recentProjects.map((p) => ({ _id: p._id.toString(), name: p.name, slug: p.slug })),
     recentTestSuites: recentTestSuites.map((s) => ({
       _id: s._id.toString(),
       name: s.name,
-      projectId: s.projectId.toString(),
+      slug: s.slug,
+      projectSlug: (s.projectId as { slug?: string })?.slug || s.projectId.toString(),
       testCaseCount: s.testCases?.length || 0,
     })),
   };
@@ -157,7 +159,7 @@ export default async function DashboardPage() {
               <>
                 {stats.recentTestSuites.slice(0, 2).map((suite) => (
                   <Button key={suite._id} variant="secondary" asChild className="justify-start">
-                    <Link href={`/projects/${suite.projectId}/test-suites/${suite._id}`}>
+                    <Link href={`/projects/${suite.projectSlug}/test-suites/${suite.slug}`}>
                       <Play className="mr-2 h-4 w-4" />
                       Run: {suite.name} ({suite.testCaseCount} tests)
                     </Link>
@@ -165,7 +167,7 @@ export default async function DashboardPage() {
                 ))}
                 {stats.recentProjects && stats.recentProjects.length > 0 && (
                   <Button variant="outline" asChild className="justify-start">
-                    <Link href={`/projects/${stats.recentProjects[0]._id}/test-suites/new`}>
+                    <Link href={`/projects/${stats.recentProjects[0].slug}/test-suites/new`}>
                       <FlaskConical className="mr-2 h-4 w-4" />
                       New Test Suite in {stats.recentProjects[0].name}
                     </Link>
@@ -175,13 +177,13 @@ export default async function DashboardPage() {
             ) : stats?.recentProjects && stats.recentProjects.length > 0 ? (
               <>
                 <Button asChild className="justify-start">
-                  <Link href={`/projects/${stats.recentProjects[0]._id}/prompts/new`}>
+                  <Link href={`/projects/${stats.recentProjects[0].slug}/prompts/new`}>
                     <FileText className="mr-2 h-4 w-4" />
                     Create Prompt in {stats.recentProjects[0].name}
                   </Link>
                 </Button>
                 <Button variant="secondary" asChild className="justify-start">
-                  <Link href={`/projects/${stats.recentProjects[0]._id}/test-suites/new`}>
+                  <Link href={`/projects/${stats.recentProjects[0].slug}/test-suites/new`}>
                     <FlaskConical className="mr-2 h-4 w-4" />
                     Create Test Suite
                   </Link>

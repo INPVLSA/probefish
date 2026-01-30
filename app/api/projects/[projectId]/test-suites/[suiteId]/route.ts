@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
-import Project from "@/lib/db/models/project";
 import TestSuite from "@/lib/db/models/testSuite";
 import User from "@/lib/db/models/user";
+import {
+  resolveProjectAcrossOrgs,
+  resolveTestSuiteByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -28,7 +31,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json(
         { error: "Project not found" },
@@ -47,10 +51,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { searchParams } = new URL(request.url);
     const summary = searchParams.get("summary") === "true";
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    }).select("-comparisonSessions");
+    // Resolve test suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      project._id.toString()
+    );
 
     if (!testSuite) {
       return NextResponse.json(
@@ -59,19 +64,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Re-fetch with select to exclude comparisonSessions
+    const fullSuite = await TestSuite.findById(testSuite._id).select("-comparisonSessions");
+    if (!fullSuite) {
+      return NextResponse.json(
+        { error: "Test suite not found" },
+        { status: 404 }
+      );
+    }
+
     // When summary=true, strip results from lastRun to reduce payload
-    if (summary && testSuite.lastRun) {
-      const suiteObj = testSuite.toObject();
+    if (summary && fullSuite.lastRun) {
+      const suiteObj = fullSuite.toObject();
       suiteObj.lastRun = {
-        _id: testSuite.lastRun._id,
-        runAt: testSuite.lastRun.runAt,
-        status: testSuite.lastRun.status,
-        summary: testSuite.lastRun.summary,
+        _id: fullSuite.lastRun._id,
+        runAt: fullSuite.lastRun.runAt,
+        status: fullSuite.lastRun.status,
+        summary: fullSuite.lastRun.summary,
       } as typeof suiteObj.lastRun;
       return NextResponse.json({ testSuite: suiteObj });
     }
 
-    return NextResponse.json({ testSuite });
+    return NextResponse.json({ testSuite: fullSuite });
   } catch (error) {
     console.error("Error fetching test suite:", error);
     return NextResponse.json(
@@ -100,7 +114,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json(
         { error: "Project not found" },
@@ -116,10 +131,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    });
+    // Resolve test suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      project._id.toString()
+    );
 
     if (!testSuite) {
       return NextResponse.json(
@@ -137,6 +153,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       "validationRules",
       "llmJudgeConfig",
       "comparisonModels",
+      "parallelExecution",
     ];
 
     for (const key of allowedUpdates) {
@@ -210,7 +227,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json(
         { error: "Project not found" },
@@ -226,10 +244,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const testSuite = await TestSuite.findOneAndDelete({
-      _id: suiteId,
-      projectId,
-    });
+    // Resolve test suite by ID or slug, then delete
+    const testSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      project._id.toString()
+    );
 
     if (!testSuite) {
       return NextResponse.json(
@@ -237,6 +256,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         { status: 404 }
       );
     }
+
+    await TestSuite.findByIdAndDelete(testSuite._id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

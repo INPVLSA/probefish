@@ -28,7 +28,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const project = await Project.findById(projectId).populate(
+    // Use resolved project ID from auth context (handles both ObjectId and slug)
+    const resolvedProjectId = auth.context.project?.id;
+    const project = await Project.findById(resolvedProjectId).populate(
       "createdBy",
       "name email"
     );
@@ -68,7 +70,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const project = await Project.findById(projectId);
+    // Use resolved project ID from auth context (handles both ObjectId and slug)
+    const resolvedProjectId = auth.context.project?.id;
+    const project = await Project.findById(resolvedProjectId);
 
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
@@ -92,7 +96,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     if (parentId !== undefined) {
-      if (parentId === projectId) {
+      if (parentId === resolvedProjectId) {
         return NextResponse.json(
           { error: "Project cannot be its own parent" },
           { status: 400 }
@@ -151,7 +155,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const project = await Project.findById(projectId);
+    // Use resolved project ID from auth context (handles both ObjectId and slug)
+    const resolvedProjectId = auth.context.project?.id;
+    const project = await Project.findById(resolvedProjectId);
 
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
@@ -159,7 +165,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Check if folder has children
     if (project.isFolder) {
-      const childCount = await Project.countDocuments({ parentId: projectId });
+      const childCount = await Project.countDocuments({ parentId: resolvedProjectId });
       if (childCount > 0) {
         return NextResponse.json(
           {
@@ -171,7 +177,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    await Project.findByIdAndDelete(projectId);
+    await Project.findByIdAndDelete(resolvedProjectId);
 
     return NextResponse.json({ message: "Project deleted successfully" });
   } catch (error) {

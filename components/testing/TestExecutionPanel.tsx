@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useAppHotkey } from "@/lib/hotkeys";
+import { ShortcutHint } from "@/components/hotkeys";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2, Tag } from "lucide-react";
+import { Loader2, Play, PlayCircle, StickyNote, Minus, Plus, ChevronDown, Settings2, Tag, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RefreshCWIcon, RefreshCCWIconWIcon } from "@/components/ui/refresh-cw";
 import { AirplaneIcon, AirplaneIconHandle } from "@/components/ui/airplane";
@@ -21,6 +23,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  parseSSEEvents,
+  isConnectedEvent,
+  isProgressEvent,
+  isResultEvent,
+  isCompleteEvent,
+  isErrorEvent,
+  ResultEvent,
+} from "@/lib/utils/sseParser";
 
 export interface TestRunResult {
   success: boolean;
@@ -76,6 +87,7 @@ interface TestExecutionPanelProps {
   savedComparisonModels?: ModelSelection[];
   availableTags?: string[];
   selectedTestCaseIds?: string[];
+  parallelExecution?: boolean;
   onRunComplete: (result: TestRunResult | MultiModelRunResult) => void;
 }
 
@@ -88,6 +100,7 @@ export function TestExecutionPanel({
   savedComparisonModels,
   availableTags = [],
   selectedTestCaseIds = [],
+  parallelExecution = false,
   onRunComplete,
 }: TestExecutionPanelProps) {
   const [selectedModels, setSelectedModels] = useState<ModelSelection[]>(
@@ -102,7 +115,10 @@ export function TestExecutionPanel({
     current: number;
     total: number;
     currentModel?: string;
+    currentTestCase?: string;
   } | null>(null);
+  const [streamingResults, setStreamingResults] = useState<ResultEvent[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const refreshIconRef = useRef<RefreshCCWIconWIcon>(null);
   const airplaneRef = useRef<AirplaneIconHandle>(null);
 
@@ -136,11 +152,24 @@ export function TestExecutionPanel({
 
   const primaryModel = selectedModels.find((m) => m.isPrimary) || selectedModels[0];
 
+  // Register run-tests hotkey action
+  useAppHotkey(
+    "run-tests",
+    useCallback(() => {
+      if (!running && primaryModel && testCaseCount > 0) {
+        // Trigger click on primary model button - will be handled by runSingleModel
+        const runButton = document.querySelector('[data-hotkey-run-tests]') as HTMLButtonElement;
+        runButton?.click();
+      }
+    }, [running, primaryModel, testCaseCount])
+  );
+
   const runSingleModel = async (model: ModelSelection) => {
     if (!model) return;
 
     setRunning(true);
     setError("");
+    setStreamingResults([]);
 
     // Check for missing API key
     if (!availableProviders[model.provider]) {
@@ -151,9 +180,12 @@ export function TestExecutionPanel({
       return;
     }
 
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await fetch(
-        `/api/projects/${projectId}/test-suites/${suiteId}/run`,
+        `/api/projects/${projectId}/test-suites/${suiteId}/run?stream=true`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -167,23 +199,101 @@ export function TestExecutionPanel({
             tags: selectedTags.length > 0 ? selectedTags : undefined,
             testCaseIds: selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
           }),
+          signal: abortControllerRef.current.signal,
         }
       );
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json();
         setError(data.error || "Failed to run tests");
         onRunComplete({ success: false, error: data.error });
+        return;
+      }
+
+      // Check if streaming response
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("text/event-stream")) {
+        // Handle SSE streaming
+        await handleStreamingResponse(response, model.model);
       } else {
+        // Fallback to JSON response
+        const data = await response.json();
         onRunComplete({ success: true, testRun: data.testRun });
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
-      setError(errorMessage);
-      onRunComplete({ success: false, error: errorMessage });
+      if (err instanceof Error && err.name === "AbortError") {
+        // User cancelled
+        setError("Test run cancelled");
+        onRunComplete({ success: false, error: "Test run cancelled" });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
+        setError(errorMessage);
+        onRunComplete({ success: false, error: errorMessage });
+      }
     } finally {
       setRunning(false);
+      setProgress(null);
+      abortControllerRef.current = null;
+    }
+  };
+
+  // Handle SSE streaming response
+  const handleStreamingResponse = async (response: Response, modelName?: string) => {
+    if (!response.body) {
+      throw new Error("No response body");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const results: ResultEvent[] = [];
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete events from buffer
+        const events = parseSSEEvents(buffer);
+
+        // Keep any incomplete event in buffer
+        const lastNewline = buffer.lastIndexOf("\n\n");
+        if (lastNewline !== -1) {
+          buffer = buffer.slice(lastNewline + 2);
+        }
+
+        for (const event of events) {
+          if (isConnectedEvent(event)) {
+            setProgress({
+              current: 0,
+              total: event.data.total,
+              currentModel: modelName,
+            });
+          } else if (isProgressEvent(event)) {
+            setProgress(prev => ({
+              ...prev,
+              current: event.data.current,
+              total: event.data.total,
+              currentTestCase: event.data.testCaseName,
+            }));
+          } else if (isResultEvent(event)) {
+            results.push(event.data);
+            setStreamingResults([...results]);
+          } else if (isCompleteEvent(event)) {
+            onRunComplete({ success: true, testRun: event.data.testRun });
+            return;
+          } else if (isErrorEvent(event)) {
+            if (event.data.code === "EXECUTION_ERROR") {
+              throw new Error(event.data.message);
+            }
+            // Individual test case errors are captured in results
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
   };
 
@@ -192,6 +302,7 @@ export function TestExecutionPanel({
 
     setRunning(true);
     setError("");
+    setStreamingResults([]);
 
     // Check for missing API keys
     const missingKeys = selectedModels.filter(
@@ -206,8 +317,7 @@ export function TestExecutionPanel({
       return;
     }
 
-    // Multi-model run
-    setProgress({ current: 0, total: selectedModels.length });
+    // Multi-model run - use streaming for each model
     const results: MultiModelRunResult["results"] = [];
 
     for (let i = 0; i < selectedModels.length; i++) {
@@ -220,7 +330,7 @@ export function TestExecutionPanel({
 
       try {
         const response = await fetch(
-          `/api/projects/${projectId}/test-suites/${suiteId}/run`,
+          `/api/projects/${projectId}/test-suites/${suiteId}/run?stream=true`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -234,11 +344,24 @@ export function TestExecutionPanel({
           }
         );
 
-        const data = await response.json();
-
         if (!response.ok) {
+          const data = await response.json();
           results.push({ model, error: data.error || "Failed to run tests" });
+          continue;
+        }
+
+        // Handle streaming or JSON response
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("text/event-stream")) {
+          // Consume streaming response and get final result
+          const testRun = await consumeStreamingForMultiModel(response, model.model);
+          if (testRun) {
+            results.push({ model, testRun });
+          } else {
+            results.push({ model, error: "Failed to get test run results" });
+          }
         } else {
+          const data = await response.json();
           results.push({ model, testRun: data.testRun });
         }
       } catch (err) {
@@ -275,6 +398,48 @@ export function TestExecutionPanel({
     onRunComplete({ success: true, results });
   };
 
+  // Consume streaming response for multi-model run (doesn't call onRunComplete)
+  const consumeStreamingForMultiModel = async (response: Response, modelName?: string): Promise<TestRunResult["testRun"] | null> => {
+    if (!response.body) return null;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result: TestRunResult["testRun"] | null = null;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = parseSSEEvents(buffer);
+
+        const lastNewline = buffer.lastIndexOf("\n\n");
+        if (lastNewline !== -1) {
+          buffer = buffer.slice(lastNewline + 2);
+        }
+
+        for (const event of events) {
+          if (isProgressEvent(event)) {
+            setProgress(prev => prev ? ({
+              ...prev,
+              currentTestCase: event.data.testCaseName,
+            }) : prev);
+          } else if (isCompleteEvent(event)) {
+            result = event.data.testRun;
+          } else if (isErrorEvent(event) && event.data.code === "EXECUTION_ERROR") {
+            throw new Error(event.data.message);
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    return result;
+  };
+
   const canRunPrimary = primaryModel && testCaseCount > 0 && !running;
   const canRunAll = selectedModels.length > 1 && testCaseCount > 0 && !running;
 
@@ -283,10 +448,14 @@ export function TestExecutionPanel({
     const runEndpointTests = async () => {
       setRunning(true);
       setError("");
+      setStreamingResults([]);
+
+      // Create abort controller for cancellation
+      abortControllerRef.current = new AbortController();
 
       try {
         const response = await fetch(
-          `/api/projects/${projectId}/test-suites/${suiteId}/run`,
+          `/api/projects/${projectId}/test-suites/${suiteId}/run?stream=true`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -296,23 +465,38 @@ export function TestExecutionPanel({
               tags: selectedTags.length > 0 ? selectedTags : undefined,
               testCaseIds: selectedTestCaseIds.length > 0 ? selectedTestCaseIds : undefined,
             }),
+            signal: abortControllerRef.current.signal,
           }
         );
 
-        const data = await response.json();
-
         if (!response.ok) {
+          const data = await response.json();
           setError(data.error || "Failed to run tests");
           onRunComplete({ success: false, error: data.error });
+          return;
+        }
+
+        // Check if streaming response
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("text/event-stream")) {
+          await handleStreamingResponse(response);
         } else {
+          const data = await response.json();
           onRunComplete({ success: true, testRun: data.testRun });
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
-        setError(errorMessage);
-        onRunComplete({ success: false, error: errorMessage });
+        if (err instanceof Error && err.name === "AbortError") {
+          setError("Test run cancelled");
+          onRunComplete({ success: false, error: "Test run cancelled" });
+        } else {
+          const errorMessage = err instanceof Error ? err.message : "Failed to run tests";
+          setError(errorMessage);
+          onRunComplete({ success: false, error: errorMessage });
+        }
       } finally {
         setRunning(false);
+        setProgress(null);
+        abortControllerRef.current = null;
       }
     };
 
@@ -322,6 +506,12 @@ export function TestExecutionPanel({
           <CardTitle className="text-lg flex items-center gap-2">
             <Play className="h-5 w-5" />
             Run Tests
+            {parallelExecution && (
+              <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-normal">
+                <Zap className="h-3 w-3 mr-1" />
+                Parallel
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             {testCaseCount > 0
@@ -504,6 +694,12 @@ export function TestExecutionPanel({
         <CardTitle className="text-lg flex items-center gap-2">
           <Play className="h-5 w-5" />
           Run Tests
+          {parallelExecution && (
+            <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-normal">
+              <Zap className="h-3 w-3 mr-1" />
+              Parallel
+            </Badge>
+          )}
         </CardTitle>
         <CardDescription>
           {testCaseCount > 0
@@ -541,9 +737,15 @@ export function TestExecutionPanel({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Running model {progress.current}/{progress.total}
+                {progress.currentModel ? (
+                  <>Running model {progress.current}/{progress.total}</>
+                ) : (
+                  <>Running test {progress.current}/{progress.total}</>
+                )}
               </span>
-              <span className="font-mono text-xs">{progress.currentModel}</span>
+              <span className="font-mono text-xs truncate max-w-[150px]">
+                {progress.currentTestCase || progress.currentModel}
+              </span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
@@ -557,7 +759,8 @@ export function TestExecutionPanel({
         <Button
           onClick={() => primaryModel && runSingleModel(primaryModel)}
           disabled={!canRunPrimary}
-          className="w-full"
+          className="w-full relative"
+          data-hotkey-run-tests
           onMouseEnter={() => airplaneRef.current?.startAnimation()}
           onMouseLeave={() => airplaneRef.current?.stopAnimation()}
         >
@@ -575,6 +778,7 @@ export function TestExecutionPanel({
             <>
               <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
               Run tests
+              <ShortcutHint keys="mod+enter" absolute />
             </>
           )}
         </Button>

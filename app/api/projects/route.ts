@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { authenticateToken, hasScope } from "@/lib/auth/tokenAuth";
 import Project from "@/lib/db/models/project";
 import User from "@/lib/db/models/user";
+import { generateSlug, ensureUniqueSlug } from "@/lib/utils/slug";
 
 // GET /api/projects - List all projects for user's organization
 export async function GET(request: NextRequest) {
@@ -121,8 +122,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Generate unique slug from name
+    const baseSlug = generateSlug(name.trim());
+    const slug = await ensureUniqueSlug(baseSlug, async (testSlug) => {
+      const existing = await Project.findOne({ organizationId, slug: testSlug });
+      return !!existing;
+    });
+
     const project = await Project.create({
       name: name.trim(),
+      slug,
       description: description?.trim(),
       organizationId,
       parentId: parentId || null,

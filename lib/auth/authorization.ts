@@ -7,7 +7,7 @@ import Organization, {
   IOrganization,
   IMember,
 } from "@/lib/db/models/organization";
-import Project from "@/lib/db/models/project";
+import Project, { IProject } from "@/lib/db/models/project";
 import { Permission, roleHasPermission, MemberRole } from "./permissions";
 import {
   ProjectPermission,
@@ -17,6 +17,7 @@ import {
 } from "./projectPermissions";
 import { ProjectRole } from "@/lib/db/models/project";
 import { IAccessToken, TokenScope } from "@/lib/db/models/accessToken";
+import { isObjectIdFormat } from "@/lib/utils/slug";
 
 export interface AuthorizationContext {
   session?: SessionPayload;
@@ -290,14 +291,49 @@ export async function isOrgMember(
 }
 
 /**
+ * Resolve a project by identifier (ObjectId or slug)
+ * @param identifier - Project ObjectId or slug
+ * @param userId - User ID to get organization context for slug lookup
+ * @returns Project document or null
+ */
+async function resolveProjectIdentifier(
+  identifier: string,
+  userId: string
+): Promise<IProject | null> {
+  // Try ObjectId first if it looks like one
+  if (isObjectIdFormat(identifier)) {
+    const project = await Project.findById(identifier);
+    if (project) {
+      return project;
+    }
+  }
+
+  // Try slug lookup - search across all organizations user has access to
+  const orgs = await Organization.find({ "members.userId": userId });
+  const orgIds = orgs.map((org) => org._id);
+
+  if (orgIds.length > 0) {
+    const project = await Project.findOne({
+      slug: identifier.toLowerCase(),
+      organizationId: { $in: orgIds },
+    });
+    if (project) {
+      return project;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if user has permission on a project
- * @param projectId - The project ID
+ * @param projectIdentifier - The project ID or slug
  * @param permission - The required project permission
  * @param request - The request object
  * @param requiredScopes - Token scopes required (only checked for token auth)
  */
 export async function requireProjectPermission(
-  projectId: string,
+  projectIdentifier: string,
   permission: ProjectPermission,
   request?: NextRequest,
   requiredScopes?: TokenScope[]
@@ -311,7 +347,10 @@ export async function requireProjectPermission(
   const { context } = authResult;
 
   await connectDB();
-  const project = await Project.findById(projectId);
+  const project = await resolveProjectIdentifier(
+    projectIdentifier,
+    context.user.id
+  );
 
   if (!project) {
     return {
@@ -319,6 +358,8 @@ export async function requireProjectPermission(
       error: { message: "Project not found", status: 404 },
     };
   }
+
+  const projectId = project._id.toString();
 
   // Get project access
   const access = await getProjectAccess(

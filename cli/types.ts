@@ -16,6 +16,7 @@ export interface ApiError {
 export interface Project {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   organizationId: string;
   visibility: 'public' | 'private';
@@ -26,6 +27,7 @@ export interface Project {
 export interface TestSuite {
   _id: string;
   name: string;
+  slug: string;
   description?: string;
   projectId: string;
   targetType: 'prompt' | 'endpoint';
@@ -44,6 +46,16 @@ export interface TestCase {
   notes?: string;
   tags?: string[];
   enabled?: boolean;
+  // Multi-message conversation support
+  isConversation?: boolean;
+  conversation?: ConversationTurn[];
+  validationTiming?: 'per-turn' | 'final-only';
+}
+
+export interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+  simulatedResponse?: string;
 }
 
 export interface TestRun {
@@ -66,6 +78,17 @@ export interface TestRun {
   };
 }
 
+export interface TurnResult {
+  turnIndex: number;
+  role: 'user' | 'assistant';
+  input: string;
+  output: string;
+  validationPassed?: boolean;
+  validationErrors?: string[];
+  responseTime: number;
+  error?: string;
+}
+
 export interface TestResult {
   testCaseId: string;
   testCaseName: string;
@@ -78,6 +101,10 @@ export interface TestResult {
   responseTime: number;
   error?: string;
   iteration?: number;
+  // Conversation results
+  isConversation?: boolean;
+  turnResults?: TurnResult[];
+  totalTurns?: number;
 }
 
 // API Response wrappers

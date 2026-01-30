@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
-import Project from "@/lib/db/models/project";
 import Endpoint from "@/lib/db/models/endpoint";
 import User from "@/lib/db/models/user";
+import {
+  resolveProjectAcrossOrgs,
+  resolveEndpointByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; endpointId: string }>;
@@ -40,21 +43,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-
-    const endpoint = await Endpoint.findOne({ _id: endpointId, projectId })
-      .populate("createdBy", "name email");
-
-    if (!endpoint) {
+    // Resolve endpoint by ID or slug
+    const resolvedEndpoint = await resolveEndpointByIdentifier(endpointId, project._id);
+    if (!resolvedEndpoint) {
       return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
     }
+
+    // Re-fetch with population
+    const endpoint = await Endpoint.findById(resolvedEndpoint._id)
+      .populate("createdBy", "name email");
 
     return NextResponse.json({ endpoint });
   } catch (error) {
@@ -82,16 +85,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    // Resolve endpoint by ID or slug
+    const resolvedEndpoint = await resolveEndpointByIdentifier(endpointId, project._id);
+    if (!resolvedEndpoint) {
+      return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
     }
 
-    const endpoint = await Endpoint.findOne({ _id: endpointId, projectId });
+    const endpoint = await Endpoint.findById(resolvedEndpoint._id);
     if (!endpoint) {
       return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
     }
@@ -162,19 +168,19 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    const project = await Project.findById(projectId);
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (!user.organizationIds.some(id => id.toString() === project.organizationId.toString())) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-
-    const endpoint = await Endpoint.findOneAndDelete({ _id: endpointId, projectId });
-    if (!endpoint) {
+    // Resolve endpoint by ID or slug
+    const resolvedEndpoint = await resolveEndpointByIdentifier(endpointId, project._id);
+    if (!resolvedEndpoint) {
       return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
     }
+
+    await Endpoint.findByIdAndDelete(resolvedEndpoint._id);
 
     return NextResponse.json({ message: "Endpoint deleted successfully" });
   } catch (error) {

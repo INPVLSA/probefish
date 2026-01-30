@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DeleteIcon } from "@/components/ui/delete";
+import { ShortcutHint } from "@/components/hotkeys";
 
 export interface ValidationRule {
   type:
@@ -58,6 +59,10 @@ interface ValidationRulesEditorProps {
   compact?: boolean; // For embedding in test case dialog (no Card wrapper)
 }
 
+export interface ValidationRulesEditorHandle {
+  openAddDialog: () => void;
+}
+
 const RULE_TYPES = [
   { value: "contains", label: "Contains", icon: Check, valueType: "string" },
   { value: "excludes", label: "Excludes", icon: X, valueType: "string" },
@@ -70,14 +75,28 @@ const RULE_TYPES = [
   { value: "containsJson", label: "Contains JSON", icon: FileJson, valueType: "none" },
 ] as const;
 
-export function ValidationRulesEditor({
+export const ValidationRulesEditor = forwardRef<ValidationRulesEditorHandle, ValidationRulesEditorProps>(({
   rules,
   onChange,
   compact = false,
-}: ValidationRulesEditorProps) {
+}, ref) => {
   const [editingRule, setEditingRule] = useState<ValidationRule | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    openAddDialog: () => {
+      setEditingRule({
+        type: "contains",
+        value: "",
+        message: "",
+        severity: "fail",
+      });
+      setEditingIndex(null);
+      setDialogOpen(true);
+    },
+  }), []);
 
   const handleAddRule = () => {
     setEditingRule({
@@ -174,6 +193,7 @@ export function ValidationRulesEditor({
         <Button size="sm" variant={compact ? "ghost" : "outline"} onClick={handleAddRule} className={compact ? "h-7 text-xs" : ""}>
           <Plus className={compact ? "mr-1 h-3 w-3" : "mr-2 h-4 w-4"} />
           {compact ? "Add Rule" : "Add Rule"}
+          {!compact && <ShortcutHint keys="a" className="aspect-square px-1.5" />}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -471,4 +491,6 @@ export function ValidationRulesEditor({
       </CardContent>
     </Card>
   );
-}
+});
+
+ValidationRulesEditor.displayName = "ValidationRulesEditor";

@@ -1,3 +1,13 @@
+# v1.1.0 (Cichlid)
+- Added multi-turn conversations support
+- Added hotkeys support
+- Added search by testcases
+- Added parallel run support
+- Added human-readable identifiers (slugs) for CLI and UI
+- Added related endpoint or prompt link to test suite
+- Added full payload preview for endpoint testing test cases
+- Improved UI (Added skeleton preloaders for UI components and more)
+
 ### v1.0.2
 - Fixed issue with Cloud licensing
 - Fixed issues with versioning

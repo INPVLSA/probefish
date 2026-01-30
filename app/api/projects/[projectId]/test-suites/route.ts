@@ -7,6 +7,7 @@ import {
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import Project from "@/lib/db/models/project";
 import TestSuite from "@/lib/db/models/testSuite";
+import { generateSlug, ensureUniqueSlug } from "@/lib/utils/slug";
 
 interface RouteParams {
   params: Promise<{ projectId: string }>;
@@ -14,10 +15,10 @@ interface RouteParams {
 
 // GET /api/projects/[projectId]/test-suites - List test suites
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.VIEW,
     request
   );
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -83,10 +87,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/projects/[projectId]/test-suites - Create test suite
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId } = await params;
+  const { projectId: projectIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.EDIT,
     request
   );
@@ -94,6 +98,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -139,8 +146,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Generate unique slug from name
+    const baseSlug = generateSlug(name.trim());
+    const slug = await ensureUniqueSlug(baseSlug, async (testSlug) => {
+      const existing = await TestSuite.findOne({ projectId, slug: testSlug });
+      return !!existing;
+    });
+
     const testSuite = new TestSuite({
       name: name.trim(),
+      slug,
       description: description?.trim(),
       projectId,
       organizationId: project.organizationId,

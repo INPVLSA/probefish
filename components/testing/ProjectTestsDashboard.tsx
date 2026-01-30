@@ -28,6 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircle2,
   XCircle,
@@ -263,11 +264,89 @@ export function ProjectTestsDashboard({ projectId }: ProjectTestsDashboardProps)
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-muted-foreground">Loading test data...</div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        {/* Summary Cards Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i}>
+              <CardContent className="text-center">
+                <Skeleton className="h-7 w-12 mx-auto mb-2" />
+                <Skeleton className="h-3 w-16 mx-auto" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search suites..."
+              value=""
+              disabled
+              readOnly
+              className="pl-8"
+            />
+          </div>
+          <Select disabled>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All Suites" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Suites</SelectItem>
+              <SelectItem value="passing">Passing</SelectItem>
+              <SelectItem value="failing">Failing</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" disabled>
+            <GitCompare className="h-4 w-4 mr-2" />
+            Compare Runs
+          </Button>
+        </div>
+
+        {/* Two Column Layout Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Test Suites */}
+          <Card>
+            <CardHeader className="pb-3">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-40" />
+            </CardHeader>
+            <CardContent className="p-0 min-h-[280px]">
+              <div className="space-y-3 p-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Right: Recent Runs */}
+          <Card>
+            <CardHeader className="pb-3">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-44" />
+            </CardHeader>
+            <CardContent className="p-0 min-h-[280px]">
+              <div className="space-y-3 p-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     );
   }
 

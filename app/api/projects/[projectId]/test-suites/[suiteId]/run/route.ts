@@ -8,13 +8,23 @@ import {
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import Project from "@/lib/db/models/project";
 import Organization from "@/lib/db/models/organization";
-import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
+import TestSuite, { ITestRun, ITestCase } from "@/lib/db/models/testSuite";
 import Prompt from "@/lib/db/models/prompt";
 import Endpoint from "@/lib/db/models/endpoint";
 import { executeTestCase, toTestResult } from "@/lib/testing";
+import { executeTestSuiteWithStreaming } from "@/lib/testing/streamingExecutor";
+import { executeTestsInParallel } from "@/lib/testing/parallelExecutor";
+import {
+  createSSEStream,
+  sendSSEEvent,
+  createSSEResponse,
+  startHeartbeat,
+  closeSSEStream,
+} from "@/lib/testing/sseHelpers";
 import { LLMProviderCredentials, LLMProvider } from "@/lib/llm";
 import { decrypt } from "@/lib/utils/encryption";
 import { dispatchWebhooks } from "@/lib/webhooks/dispatcher";
+import { resolveTestSuiteByIdentifier } from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -81,10 +91,10 @@ function checkProviderCredentials(
 // POST /api/projects/[projectId]/test-suites/[suiteId]/run - Execute test suite
 // Supports: Session auth OR Token auth with "test-runs:execute" scope
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { projectId, suiteId } = await params;
+  const { projectId: projectIdentifier, suiteId: suiteIdentifier } = await params;
 
   const auth = await requireProjectPermission(
-    projectId,
+    projectIdentifier,
     PROJECT_PERMISSIONS.VIEW,
     request,
     ["test-runs:execute"] // Required scope for token auth
@@ -93,6 +103,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!auth.authorized || !auth.context) {
     return authError(auth);
   }
+
+  // Use the resolved project ID from auth context
+  const projectId = auth.context.project!.id;
 
   try {
     await connectDB();
@@ -105,10 +118,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    });
+    // Resolve test suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(suiteIdentifier, projectId);
 
     if (!testSuite) {
       return NextResponse.json(
@@ -116,6 +127,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 404 }
       );
     }
+
+    const suiteId = testSuite._id.toString();
 
     if (testSuite.testCases.length === 0) {
       return NextResponse.json(
@@ -243,6 +256,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Check for streaming mode
+    const url = new URL(request.url);
+    const streamMode = url.searchParams.get("stream") === "true";
+
+    if (streamMode) {
+      // STREAMING MODE: Return SSE stream with real-time results
+      const maxConcurrency = organization.settings?.maxConcurrentTests || 5;
+      return handleStreamingRun({
+        request,
+        projectId,
+        testSuite,
+        project,
+        target,
+        testCasesToRun,
+        credentials,
+        modelOverride,
+        runNote,
+        iterations,
+        userId: auth.context.user.id,
+        parallelExecution: testSuite.parallelExecution === true,
+        maxConcurrency,
+      });
+    }
+
+    // NON-STREAMING MODE: Original synchronous execution
     // Create test run
     const totalTestCount = testCasesToRun.length * iterations;
     const testRun: ITestRun = {
@@ -270,41 +308,89 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let totalJudgeScore = 0;
     let judgeScoreCount = 0;
 
+    // Get concurrency limit from organization settings
+    const maxConcurrency = organization.settings?.maxConcurrentTests || 5;
+    const useParallel = testSuite.parallelExecution === true;
+
     for (let iteration = 1; iteration <= iterations; iteration++) {
-      for (const testCase of testCasesToRun) {
-        const result = await executeTestCase({
-          testCase,
-          targetType: testSuite.targetType,
-          target,
-          targetVersion: testSuite.targetVersion,
-          validationRules: testSuite.validationRules,
-          judgeConfig: testSuite.llmJudgeConfig,
-          credentials,
-          modelOverride: modelOverride ? {
-            provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
-            model: modelOverride.model,
-          } : undefined,
-        });
+      if (useParallel) {
+        // Parallel execution
+        const { results } = await executeTestsInParallel(
+          testCasesToRun,
+          (testCase) => executeTestCase({
+            testCase,
+            targetType: testSuite.targetType,
+            target,
+            targetVersion: testSuite.targetVersion,
+            validationRules: testSuite.validationRules,
+            judgeConfig: testSuite.llmJudgeConfig,
+            credentials,
+            modelOverride: modelOverride ? {
+              provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+              model: modelOverride.model,
+            } : undefined,
+          }),
+          { maxConcurrency }
+        );
 
-        const testResult = toTestResult(result);
-        // Add iteration number to result if running multiple iterations
-        if (iterations > 1) {
-          testResult.iteration = iteration;
+        // Process parallel results
+        for (const result of results) {
+          const testResult = toTestResult(result);
+          if (iterations > 1) {
+            testResult.iteration = iteration;
+          }
+          testRun.results.push(testResult);
+
+          if (result.validationPassed && !result.error) {
+            testRun.summary.passed++;
+          } else {
+            testRun.summary.failed++;
+          }
+
+          totalResponseTime += result.responseTime;
+
+          if (typeof result.judgeScore === "number") {
+            totalJudgeScore += result.judgeScore;
+            judgeScoreCount++;
+          }
         }
-        testRun.results.push(testResult);
+      } else {
+        // Sequential execution (default)
+        for (const testCase of testCasesToRun) {
+          const result = await executeTestCase({
+            testCase,
+            targetType: testSuite.targetType,
+            target,
+            targetVersion: testSuite.targetVersion,
+            validationRules: testSuite.validationRules,
+            judgeConfig: testSuite.llmJudgeConfig,
+            credentials,
+            modelOverride: modelOverride ? {
+              provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+              model: modelOverride.model,
+            } : undefined,
+          });
 
-        // Update stats
-        if (result.validationPassed && !result.error) {
-          testRun.summary.passed++;
-        } else {
-          testRun.summary.failed++;
-        }
+          const testResult = toTestResult(result);
+          // Add iteration number to result if running multiple iterations
+          if (iterations > 1) {
+            testResult.iteration = iteration;
+          }
+          testRun.results.push(testResult);
 
-        totalResponseTime += result.responseTime;
+          // Update stats
+          if (result.validationPassed && !result.error) {
+            testRun.summary.passed++;
+          } else {
+            testRun.summary.failed++;
+          }
 
-        if (typeof result.judgeScore === "number") {
-          totalJudgeScore += result.judgeScore;
-          judgeScoreCount++;
+          totalResponseTime += result.responseTime;
+
+          if (typeof result.judgeScore === "number") {
+            totalJudgeScore += result.judgeScore;
+            judgeScoreCount++;
+          }
         }
       }
     }
@@ -374,4 +460,152 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
+}
+
+// Handle streaming test run with SSE
+interface StreamingRunParams {
+  request: NextRequest;
+  projectId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  testSuite: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  project: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  target: any;
+  testCasesToRun: ITestCase[];
+  credentials: LLMProviderCredentials;
+  modelOverride?: { provider: string; model: string };
+  runNote?: string;
+  iterations: number;
+  userId: string;
+  parallelExecution: boolean;
+  maxConcurrency: number;
+}
+
+async function handleStreamingRun({
+  request,
+  projectId,
+  testSuite,
+  project,
+  target,
+  testCasesToRun,
+  credentials,
+  modelOverride,
+  runNote,
+  iterations,
+  userId,
+  parallelExecution,
+  maxConcurrency,
+}: StreamingRunParams): Promise<Response> {
+  const sse = createSSEStream();
+  const stopHeartbeat = startHeartbeat(sse, 15000);
+
+  const runId = new mongoose.Types.ObjectId();
+  const totalTestCount = testCasesToRun.length * iterations;
+
+  // Start async execution
+  (async () => {
+    try {
+      // Send connected event
+      await sendSSEEvent(sse, "connected", {
+        runId: runId.toString(),
+        total: totalTestCount,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Execute with streaming callbacks
+      const { testRun, aborted } = await executeTestSuiteWithStreaming(
+        {
+          testCases: testCasesToRun,
+          targetType: testSuite.targetType,
+          target,
+          targetVersion: testSuite.targetVersion,
+          validationRules: testSuite.validationRules,
+          judgeConfig: testSuite.llmJudgeConfig,
+          credentials,
+          modelOverride: modelOverride ? {
+            provider: modelOverride.provider as "openai" | "anthropic" | "gemini",
+            model: modelOverride.model,
+          } : undefined,
+          iterations,
+          runId,
+          runBy: new mongoose.Types.ObjectId(userId),
+          note: runNote,
+          parallelExecution,
+          maxConcurrency,
+        },
+        {
+          onProgress: async (progress) => {
+            await sendSSEEvent(sse, "progress", progress);
+          },
+          onResult: async (result) => {
+            await sendSSEEvent(sse, "result", result);
+          },
+          onError: async (error, testCaseId) => {
+            await sendSSEEvent(sse, "error", {
+              message: error.message,
+              testCaseId,
+            });
+          },
+        },
+        request.signal
+      );
+
+      // Save to database
+      testSuite.lastRun = testRun;
+      testSuite.runHistory.unshift(testRun);
+      if (testSuite.runHistory.length > 10) {
+        testSuite.runHistory = testSuite.runHistory.slice(0, 10);
+      }
+      testSuite.markModified("lastRun");
+      testSuite.markModified("runHistory");
+      await testSuite.save();
+
+      // Get previous run for regression detection
+      const previousRun = testSuite.runHistory[1];
+
+      // Dispatch webhooks (async, don't block)
+      dispatchWebhooks(
+        projectId,
+        { id: projectId, name: project.name },
+        {
+          id: testRun._id.toString(),
+          suiteId: testSuite._id.toString(),
+          suiteName: testSuite.name,
+          status: testRun.status,
+          summary: testRun.summary,
+          previousRun: previousRun
+            ? {
+                passed: previousRun.summary.passed,
+                failed: previousRun.summary.failed,
+              }
+            : undefined,
+        }
+      ).catch((error) => {
+        console.error("Error dispatching webhooks:", error);
+      });
+
+      // Send complete event
+      await sendSSEEvent(sse, "complete", {
+        runId: runId.toString(),
+        status: aborted ? "incomplete" : "completed",
+        testRun,
+      });
+    } catch (error) {
+      console.error("Streaming execution error:", error);
+      try {
+        await sendSSEEvent(sse, "error", {
+          message: error instanceof Error ? error.message : "Execution failed",
+          code: "EXECUTION_ERROR",
+        });
+      } catch {
+        // Stream may be closed
+      }
+    } finally {
+      stopHeartbeat();
+      await closeSSEStream(sse);
+    }
+  })();
+
+  return createSSEResponse(sse.stream.readable);
 }

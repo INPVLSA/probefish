@@ -3,13 +3,25 @@ import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
 import { authenticateToken, hasScope } from "@/lib/auth/tokenAuth";
 import TestSuite from "@/lib/db/models/testSuite";
+import User from "@/lib/db/models/user";
+import {
+  resolveProjectAcrossOrgs,
+  resolveTestSuiteByIdentifier,
+} from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string; testCaseId: string }>;
 }
 
-// Helper to authenticate and get organization context
-async function authenticate(request: NextRequest, requiredScope: "test-suites:read" | "test-suites:write") {
+// Helper to authenticate and resolve test suite
+async function authenticateAndResolve(
+  request: NextRequest,
+  projectId: string,
+  suiteId: string,
+  requiredScope: "test-suites:read" | "test-suites:write"
+): Promise<{ error?: string; status?: number; testSuiteId?: string }> {
+  await connectDB();
+
   const authHeader = request.headers.get("authorization");
 
   if (authHeader?.startsWith("Bearer ")) {
@@ -22,13 +34,42 @@ async function authenticate(request: NextRequest, requiredScope: "test-suites:re
       return { error: `Missing required scope: ${requiredScope}`, status: 403 };
     }
 
-    return { organizationId: tokenResult.organizationId };
+    // For token auth, use organization scoped query
+    const query: Record<string, unknown> = {
+      _id: suiteId,
+      projectId,
+    };
+    if (tokenResult.organizationId) {
+      query.organizationId = tokenResult.organizationId;
+    }
+    const suite = await TestSuite.findOne(query).select("_id");
+    if (!suite) {
+      return { error: "Test suite not found", status: 404 };
+    }
+    return { testSuiteId: suite._id.toString() };
   } else {
     const session = await getSession();
     if (!session) {
       return { error: "Unauthorized", status: 401 };
     }
-    return { userId: session.userId };
+
+    const user = await User.findById(session.userId);
+    if (!user || user.organizationIds.length === 0) {
+      return { error: "No organization found", status: 404 };
+    }
+
+    // Resolve project by ID or slug
+    const project = await resolveProjectAcrossOrgs(projectId, user.organizationIds);
+    if (!project) {
+      return { error: "Project not found", status: 404 };
+    }
+
+    // Resolve test suite by ID or slug
+    const resolvedSuite = await resolveTestSuiteByIdentifier(suiteId, project._id);
+    if (!resolvedSuite) {
+      return { error: "Test suite not found", status: 404 };
+    }
+    return { testSuiteId: resolvedSuite._id.toString() };
   }
 }
 
@@ -37,22 +78,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { projectId, suiteId, testCaseId } = await params;
 
-    const auth = await authenticate(request, "test-suites:read");
-    if ("error" in auth) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const result = await authenticateAndResolve(request, projectId, suiteId, "test-suites:read");
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    await connectDB();
-
-    const query: Record<string, unknown> = {
-      _id: suiteId,
-      projectId,
-    };
-    if (auth.organizationId) {
-      query.organizationId = auth.organizationId;
-    }
-
-    const testSuite = await TestSuite.findOne(query);
+    const testSuite = await TestSuite.findById(result.testSuiteId);
 
     if (!testSuite) {
       return NextResponse.json({ error: "Test suite not found" }, { status: 404 });
@@ -78,22 +109,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { projectId, suiteId, testCaseId } = await params;
 
-    const auth = await authenticate(request, "test-suites:write");
-    if ("error" in auth) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const result = await authenticateAndResolve(request, projectId, suiteId, "test-suites:write");
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    await connectDB();
-
-    const query: Record<string, unknown> = {
-      _id: suiteId,
-      projectId,
-    };
-    if (auth.organizationId) {
-      query.organizationId = auth.organizationId;
-    }
-
-    const testSuite = await TestSuite.findOne(query);
+    const testSuite = await TestSuite.findById(result.testSuiteId);
 
     if (!testSuite) {
       return NextResponse.json({ error: "Test suite not found" }, { status: 404 });
@@ -155,22 +176,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { projectId, suiteId, testCaseId } = await params;
 
-    const auth = await authenticate(request, "test-suites:write");
-    if ("error" in auth) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const result = await authenticateAndResolve(request, projectId, suiteId, "test-suites:write");
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    await connectDB();
-
-    const query: Record<string, unknown> = {
-      _id: suiteId,
-      projectId,
-    };
-    if (auth.organizationId) {
-      query.organizationId = auth.organizationId;
-    }
-
-    const testSuite = await TestSuite.findOne(query);
+    const testSuite = await TestSuite.findById(result.testSuiteId);
 
     if (!testSuite) {
       return NextResponse.json({ error: "Test suite not found" }, { status: 404 });

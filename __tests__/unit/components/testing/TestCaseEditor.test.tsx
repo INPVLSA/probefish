@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TestCaseEditor, TestCase } from '@/components/testing/TestCaseEditor';
 
 // Mock @dnd-kit to avoid complex drag simulation
@@ -312,6 +313,261 @@ describe('TestCaseEditor', () => {
 
       const checkboxes = screen.queryAllByRole('checkbox');
       expect(checkboxes.length).toBe(0);
+    });
+  });
+
+  describe('Search and Filtering', () => {
+    const testCasesWithVariety: TestCase[] = [
+      { _id: 'tc-1', name: 'Login test', inputs: { username: 'admin' }, tags: ['smoke', 'auth'], enabled: true },
+      { _id: 'tc-2', name: 'Checkout flow', inputs: { product: 'shoes' }, tags: ['regression'], enabled: true },
+      { _id: 'tc-3', name: 'Error handling', inputs: { error: 'timeout' }, tags: ['smoke'], enabled: false },
+      { _id: 'tc-4', name: 'Payment validation', inputs: { amount: '100' }, tags: ['critical'], expectedOutput: 'Success', enabled: true },
+      { _id: 'tc-5', name: 'User profile', inputs: { userId: '123' }, tags: [], notes: 'Important edge case', enabled: true },
+    ];
+
+    it('should render search input when test cases exist', () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByPlaceholderText('Search test cases...')).toBeInTheDocument();
+    });
+
+    it('should not render search input when no test cases', () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={[]}
+          variables={[]}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.queryByPlaceholderText('Search test cases...')).not.toBeInTheDocument();
+    });
+
+    it('should filter test cases by name', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'Login');
+
+      expect(screen.getByText('Login test')).toBeInTheDocument();
+      expect(screen.queryByText('Checkout flow')).not.toBeInTheDocument();
+      expect(screen.queryByText('Error handling')).not.toBeInTheDocument();
+    });
+
+    it('should filter test cases by input values', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'shoes');
+
+      expect(screen.getByText('Checkout flow')).toBeInTheDocument();
+      expect(screen.queryByText('Login test')).not.toBeInTheDocument();
+    });
+
+    it('should filter test cases by notes', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'edge case');
+
+      expect(screen.getByText('User profile')).toBeInTheDocument();
+      expect(screen.queryByText('Login test')).not.toBeInTheDocument();
+    });
+
+    it('should show results count when filters are active', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'test');
+
+      expect(screen.getByText(/Showing 1 of 5 test cases/)).toBeInTheDocument();
+    });
+
+    it('should show empty state when no matches found', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'nonexistent');
+
+      expect(screen.getByText('No test cases match the current filters.')).toBeInTheDocument();
+    });
+
+    it('should clear filters when clear button is clicked', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'Login');
+
+      // Only Login test should be visible
+      expect(screen.getByText('Login test')).toBeInTheDocument();
+      expect(screen.queryByText('Checkout flow')).not.toBeInTheDocument();
+
+      // Click clear filters
+      const clearButton = screen.getByText('Clear filters');
+      await userEvent.click(clearButton);
+
+      // All test cases should be visible again
+      expect(screen.getByText('Login test')).toBeInTheDocument();
+      expect(screen.getByText('Checkout flow')).toBeInTheDocument();
+    });
+
+    it('should render status filter dropdown', () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByText('All Status')).toBeInTheDocument();
+    });
+
+    it('should render tag filter button when tags exist', () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByText('Filter by tags')).toBeInTheDocument();
+    });
+
+    it('should not render tag filter button when no tags exist', () => {
+      const onChange = vi.fn();
+      const testCasesWithoutTags: TestCase[] = [
+        { _id: 'tc-1', name: 'Test 1', inputs: {}, tags: [] },
+        { _id: 'tc-2', name: 'Test 2', inputs: {} },
+      ];
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithoutTags}
+          variables={[]}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.queryByText('Filter by tags')).not.toBeInTheDocument();
+    });
+
+    it('should be case-insensitive when searching', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'LOGIN');
+
+      expect(screen.getByText('Login test')).toBeInTheDocument();
+    });
+
+    it('should filter by tag in search query', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'smoke');
+
+      // Should show both test cases with 'smoke' tag
+      expect(screen.getByText('Login test')).toBeInTheDocument();
+      expect(screen.getByText('Error handling')).toBeInTheDocument();
+      expect(screen.queryByText('Checkout flow')).not.toBeInTheDocument();
+    });
+
+    it('should filter by expected output', async () => {
+      const onChange = vi.fn();
+
+      render(
+        <TestCaseEditor
+          testCases={testCasesWithVariety}
+          variables={['username', 'product', 'error', 'amount', 'userId']}
+          onChange={onChange}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search test cases...');
+      await userEvent.type(searchInput, 'Success');
+
+      expect(screen.getByText('Payment validation')).toBeInTheDocument();
+      expect(screen.queryByText('Login test')).not.toBeInTheDocument();
     });
   });
 });

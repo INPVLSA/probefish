@@ -69,7 +69,7 @@ export default function NewEndpointPage({
       }
 
       toast.success("Endpoint created successfully!");
-      router.push(`/projects/${projectId}/endpoints/${data.endpoint._id}`);
+      router.push(`/projects/${projectId}/endpoints/${data.endpoint.slug}`);
     } catch {
       setError("An unexpected error occurred");
     } finally {
