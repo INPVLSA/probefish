@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/authorization";
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import TestSuite, { ITestRun } from "@/lib/db/models/testSuite";
+import { resolveTestSuiteByIdentifier } from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string }>;
@@ -30,12 +31,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    });
+    // Use resolved project ID from auth context
+    const resolvedProjectId = auth.context.project!.id;
 
-    if (!testSuite) {
+    // Resolve suite by ID or slug
+    const resolvedSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      resolvedProjectId
+    );
+
+    if (!resolvedSuite) {
       return NextResponse.json(
         { error: "Test suite not found" },
         { status: 404 }
@@ -43,7 +48,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({
-      sessions: testSuite.comparisonSessions || [],
+      sessions: resolvedSuite.comparisonSessions || [],
     });
   } catch (error) {
     console.error("Error fetching comparison sessions:", error);
@@ -73,10 +78,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    });
+    // Use resolved project ID from auth context
+    const resolvedProjectId = auth.context.project!.id;
+
+    // Resolve suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      resolvedProjectId
+    );
 
     if (!testSuite) {
       return NextResponse.json(

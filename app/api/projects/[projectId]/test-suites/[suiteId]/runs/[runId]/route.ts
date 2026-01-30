@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth/authorization";
 import { PROJECT_PERMISSIONS } from "@/lib/auth/projectPermissions";
 import TestSuite from "@/lib/db/models/testSuite";
+import { resolveTestSuiteByIdentifier } from "@/lib/utils/resolve-identifier";
 
 interface RouteParams {
   params: Promise<{ projectId: string; suiteId: string; runId: string }>;
@@ -28,10 +29,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    }).select("runHistory");
+    // Use resolved project ID from auth context
+    const resolvedProjectId = auth.context.project!.id;
+
+    // Resolve suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      resolvedProjectId
+    );
 
     if (!testSuite) {
       return NextResponse.json(
@@ -78,10 +83,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
 
-    const testSuite = await TestSuite.findOne({
-      _id: suiteId,
-      projectId,
-    });
+    // Use resolved project ID from auth context
+    const resolvedProjectId = auth.context.project!.id;
+
+    // Resolve suite by ID or slug
+    const testSuite = await resolveTestSuiteByIdentifier(
+      suiteId,
+      resolvedProjectId
+    );
 
     if (!testSuite) {
       return NextResponse.json(
