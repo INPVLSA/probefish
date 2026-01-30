@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useHotkeyContext } from "@/lib/hotkeys";
 import { Search } from "lucide-react";
@@ -134,6 +134,7 @@ export function CommandPalette() {
         showCloseButton={false}
         onKeyDown={handleKeyDown}
       >
+        <DialogTitle className="sr-only">Command Palette</DialogTitle>
         <div className="flex items-center border-b px-3">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input

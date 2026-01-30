@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useCallback, useMemo } from "react";
 import { useHotkeyContext, useAppHotkey } from "@/lib/hotkeys";
+import { ShortcutHint } from "@/components/hotkeys";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -699,6 +700,7 @@ export default function TestSuiteDetailPage({
         <Button onClick={handleSave} disabled={saving || !hasChanges}>
           <Save className="mr-2 h-4 w-4" />
           {saving ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
+          {!saving && <ShortcutHint keys="mod+s" />}
         </Button>
       </div>
 
@@ -724,44 +726,51 @@ export default function TestSuiteDetailPage({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList>
-              <TabsTrigger value="test-cases">
-                Test Cases
-                {testCases.length > 0 && (
-                  <Badge variant="secondary">
-                    {testCases.length}
+            <div className="flex items-center gap-3">
+              <TabsList>
+                <TabsTrigger value="test-cases">
+                  Test Cases
+                  {testCases.length > 0 && (
+                    <Badge variant="secondary">
+                      {testCases.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="validation">
+                  Validation
+                  {validationRules.length > 0 && (
+                    <Badge variant="secondary">
+                      {validationRules.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="judge">
+                  LLM Judge
+                  <Badge
+                    variant={llmJudgeConfig.enabled ? "default" : "destructive"}
+                  >
+                    {llmJudgeConfig.enabled ? "On" : "Off"}
                   </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="validation">
-                Validation
-                {validationRules.length > 0 && (
-                  <Badge variant="secondary">
-                    {validationRules.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="judge">
-                LLM Judge
-                <Badge
-                  variant={llmJudgeConfig.enabled ? "default" : "destructive"}
-                >
-                  {llmJudgeConfig.enabled ? "On" : "Off"}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-              <TabsTrigger value="history">
-                History
-                {runHistory.length > 0 && (
-                  <Badge variant="secondary">
-                    {runHistory.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="compare">
-                Compare
-              </TabsTrigger>
-            </TabsList>
+                </TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="history">
+                  History
+                  {runHistory.length > 0 && (
+                    <Badge variant="secondary">
+                      {runHistory.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="compare">
+                  Compare
+                </TabsTrigger>
+              </TabsList>
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <kbd className="font-mono text-primary-foreground bg-primary px-1 py-0.5 rounded">⌘1</kbd>
+                <span>–</span>
+                <kbd className="font-mono text-primary-foreground bg-primary px-1 py-0.5 rounded">⌘6</kbd>
+              </span>
+            </div>
 
             <TabsContent value="test-cases" className="mt-4">
               <TestCaseEditor
