@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useAppHotkey } from "@/lib/hotkeys";
+import { ShortcutHint } from "@/components/hotkeys";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -149,6 +151,18 @@ export function TestExecutionPanel({
   };
 
   const primaryModel = selectedModels.find((m) => m.isPrimary) || selectedModels[0];
+
+  // Register run-tests hotkey action
+  useAppHotkey(
+    "run-tests",
+    useCallback(() => {
+      if (!running && primaryModel && testCaseCount > 0) {
+        // Trigger click on primary model button - will be handled by runSingleModel
+        const runButton = document.querySelector('[data-hotkey-run-tests]') as HTMLButtonElement;
+        runButton?.click();
+      }
+    }, [running, primaryModel, testCaseCount])
+  );
 
   const runSingleModel = async (model: ModelSelection) => {
     if (!model) return;
@@ -745,7 +759,8 @@ export function TestExecutionPanel({
         <Button
           onClick={() => primaryModel && runSingleModel(primaryModel)}
           disabled={!canRunPrimary}
-          className="w-full"
+          className="w-full relative"
+          data-hotkey-run-tests
           onMouseEnter={() => airplaneRef.current?.startAnimation()}
           onMouseLeave={() => airplaneRef.current?.stopAnimation()}
         >
@@ -763,6 +778,7 @@ export function TestExecutionPanel({
             <>
               <AirplaneIcon ref={airplaneRef} size={16} className="mr-2" />
               Run tests
+              <ShortcutHint keys="mod+enter" absolute />
             </>
           )}
         </Button>
