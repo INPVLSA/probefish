@@ -175,6 +175,7 @@ function SortableTestCaseRow({
   } = useSortable({ id: testCase._id || `temp-${index}` });
 
   const isEnabled = testCase.enabled !== false;
+  const isRunning = runningCaseId === testCase._id;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -187,9 +188,11 @@ function SortableTestCaseRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-3 p-3 rounded-lg group cursor-pointer transition-colors ${
-        isEnabled
-          ? "bg-muted/50 hover:bg-muted"
-          : "bg-muted/20 opacity-60"
+        isRunning
+          ? "bg-muted ring-1 ring-primary/40 animate-pulse"
+          : isEnabled
+            ? "bg-muted/50 hover:bg-muted"
+            : "bg-muted/20 opacity-60"
       }`}
       onClick={() => onEdit(testCase, index)}
     >
