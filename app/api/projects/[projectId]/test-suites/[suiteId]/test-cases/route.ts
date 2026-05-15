@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { getSession } from "@/lib/auth/session";
 import { authenticateToken, hasScope } from "@/lib/auth/tokenAuth";
-import TestSuite from "@/lib/db/models/testSuite";
+import TestSuite, { ITestCase } from "@/lib/db/models/testSuite";
 import User from "@/lib/db/models/user";
 import mongoose from "mongoose";
 import {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         throw new Error("Test case name is required");
       }
 
-      return {
+      const normalized: Record<string, unknown> = {
         _id: new mongoose.Types.ObjectId(),
         name: tc.name.trim(),
         inputs: tc.inputs || {},
@@ -115,10 +115,60 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         tags: Array.isArray(tc.tags) ? tc.tags : [],
         enabled: tc.enabled !== false,
       };
+
+      // Optional validation configuration fields
+      if (tc.validationMode !== undefined) {
+        if (tc.validationMode !== "text" && tc.validationMode !== "rules") {
+          throw new Error('validationMode must be "text" or "rules"');
+        }
+        normalized.validationMode = tc.validationMode;
+      }
+
+      if (tc.validationRules !== undefined) {
+        if (!Array.isArray(tc.validationRules)) {
+          throw new Error("validationRules must be an array");
+        }
+        normalized.validationRules = tc.validationRules;
+      }
+
+      if (tc.judgeValidationRules !== undefined) {
+        if (!Array.isArray(tc.judgeValidationRules)) {
+          throw new Error("judgeValidationRules must be an array");
+        }
+        normalized.judgeValidationRules = tc.judgeValidationRules;
+      }
+
+      // Multi-message conversation support
+      if (tc.isConversation !== undefined) {
+        normalized.isConversation = Boolean(tc.isConversation);
+      }
+
+      if (tc.conversation !== undefined) {
+        if (!Array.isArray(tc.conversation)) {
+          throw new Error("conversation must be an array");
+        }
+        normalized.conversation = tc.conversation;
+      }
+
+      if (tc.validationTiming !== undefined) {
+        if (tc.validationTiming !== "per-turn" && tc.validationTiming !== "final-only") {
+          throw new Error('validationTiming must be "per-turn" or "final-only"');
+        }
+        normalized.validationTiming = tc.validationTiming;
+      }
+
+      if (tc.sessionConfig !== undefined) {
+        if (typeof tc.sessionConfig !== "object" || tc.sessionConfig === null || Array.isArray(tc.sessionConfig)) {
+          throw new Error("sessionConfig must be an object");
+        }
+        normalized.sessionConfig = tc.sessionConfig;
+      }
+
+      return normalized;
     });
 
     // Add test cases to the suite
-    testSuite.testCases.push(...newTestCases);
+    testSuite.testCases.push(...(newTestCases as unknown as ITestCase[]));
     await testSuite.save();
 
     return NextResponse.json(

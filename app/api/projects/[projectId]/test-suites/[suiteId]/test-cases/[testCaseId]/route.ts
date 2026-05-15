@@ -129,7 +129,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const allowedUpdates = ["name", "inputs", "expectedOutput", "notes", "tags", "enabled"];
+    const allowedUpdates = [
+      "name",
+      "inputs",
+      "expectedOutput",
+      "notes",
+      "tags",
+      "enabled",
+      "validationMode",
+      "validationRules",
+      "judgeValidationRules",
+      "isConversation",
+      "conversation",
+      "validationTiming",
+      "sessionConfig",
+    ];
 
     for (const key of allowedUpdates) {
       if (body[key] !== undefined) {
@@ -154,6 +168,60 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           testSuite.testCases[testCaseIndex].tags = body.tags;
         } else if (key === "enabled") {
           testSuite.testCases[testCaseIndex].enabled = Boolean(body.enabled);
+        } else if (key === "validationMode") {
+          if (body.validationMode !== "text" && body.validationMode !== "rules") {
+            return NextResponse.json(
+              { error: 'validationMode must be "text" or "rules"' },
+              { status: 400 }
+            );
+          }
+          testSuite.testCases[testCaseIndex].validationMode = body.validationMode;
+        } else if (key === "validationRules") {
+          if (!Array.isArray(body.validationRules)) {
+            return NextResponse.json(
+              { error: "validationRules must be an array" },
+              { status: 400 }
+            );
+          }
+          testSuite.testCases[testCaseIndex].validationRules = body.validationRules;
+        } else if (key === "judgeValidationRules") {
+          if (!Array.isArray(body.judgeValidationRules)) {
+            return NextResponse.json(
+              { error: "judgeValidationRules must be an array" },
+              { status: 400 }
+            );
+          }
+          testSuite.testCases[testCaseIndex].judgeValidationRules = body.judgeValidationRules;
+        } else if (key === "isConversation") {
+          testSuite.testCases[testCaseIndex].isConversation = Boolean(body.isConversation);
+        } else if (key === "conversation") {
+          if (!Array.isArray(body.conversation)) {
+            return NextResponse.json(
+              { error: "conversation must be an array" },
+              { status: 400 }
+            );
+          }
+          testSuite.testCases[testCaseIndex].conversation = body.conversation;
+        } else if (key === "validationTiming") {
+          if (body.validationTiming !== "per-turn" && body.validationTiming !== "final-only") {
+            return NextResponse.json(
+              { error: 'validationTiming must be "per-turn" or "final-only"' },
+              { status: 400 }
+            );
+          }
+          testSuite.testCases[testCaseIndex].validationTiming = body.validationTiming;
+        } else if (key === "sessionConfig") {
+          if (
+            typeof body.sessionConfig !== "object" ||
+            body.sessionConfig === null ||
+            Array.isArray(body.sessionConfig)
+          ) {
+            return NextResponse.json(
+              { error: "sessionConfig must be an object" },
+              { status: 400 }
+            );
+          }
+          testSuite.testCases[testCaseIndex].sessionConfig = body.sessionConfig;
         }
       }
     }
@@ -167,7 +235,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     });
   } catch (error) {
     console.error("Error updating test case:", error);
-    return NextResponse.json({ error: "Failed to update test case" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to update test case";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
