@@ -338,14 +338,80 @@ export async function judgeOutput(
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    // Extract scores per criterion
+    // Normalize a string for fuzzy key matching: lowercase, alphanumerics only.
+    const normalizeKey = (s: string): string =>
+      s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // Extract a numeric score from a judge entry that may be either:
+    //   - a bare number (e.g. 8)
+    //   - an object with `score` (preferred), or `rating`/`value`/`points`
+    const extractScore = (entry: unknown): number | undefined => {
+      if (typeof entry === "number") return entry;
+      if (entry && typeof entry === "object") {
+        const obj = entry as Record<string, unknown>;
+        for (const key of ["score", "rating", "value", "points"]) {
+          const v = obj[key];
+          if (typeof v === "number") return v;
+        }
+      }
+      return undefined;
+    };
+
+    // Find the best matching score in parsed.scores for a given criterion name.
+    // 1) Exact case-insensitive (normalized) match.
+    // 2) Containment match (criterion contained in key, or key contained
+    //    in criterion) using normalized strings to tolerate suffixes/prefixes
+    //    like "Score", "Rating", or "_score".
+    const rawScores: Record<string, unknown> =
+      (parsed.scores && typeof parsed.scores === "object"
+        ? (parsed.scores as Record<string, unknown>)
+        : {}) || {};
+    const scoreEntries = Object.entries(rawScores).map(([k, v]) => ({
+      key: k,
+      normKey: normalizeKey(k),
+      value: v,
+    }));
+
+    const findCriterionScore = (criterionName: string): number | undefined => {
+      const normCriterion = normalizeKey(criterionName);
+      if (!normCriterion) return undefined;
+
+      // Exact normalized match.
+      const exact = scoreEntries.find((e) => e.normKey === normCriterion);
+      if (exact) {
+        const v = extractScore(exact.value);
+        if (typeof v === "number") return v;
+      }
+
+      // Containment match (either direction). Skip empty normalized keys.
+      const contained = scoreEntries.find(
+        (e) =>
+          e.normKey.length > 0 &&
+          (e.normKey.includes(normCriterion) ||
+            normCriterion.includes(e.normKey))
+      );
+      if (contained) {
+        const v = extractScore(contained.value);
+        if (typeof v === "number") return v;
+      }
+
+      return undefined;
+    };
+
+    // Extract scores per criterion using robust lookup.
     const scores: Record<string, number> = {};
     for (const criterion of judgeConfig.criteria) {
-      const criterionScore = parsed.scores?.[criterion.name]?.score;
+      const criterionScore = findCriterionScore(criterion.name);
       if (typeof criterionScore === "number") {
         scores[criterion.name] = criterionScore;
       }
     }
+
+    // Score range tolerance: the prompt asks for 0-10, but some models return
+    // 0-100. If ANY extracted criterion score exceeds 10, treat all scores in
+    // this response as 0-100 and divide by 100 instead of 10.
+    const scoreValues = Object.values(scores);
+    const divisor = scoreValues.some((v) => v > 10) ? 100 : 10;
 
     // Calculate weighted score (normalized to 0-1)
     let weightedScore = 0;
@@ -353,7 +419,7 @@ export async function judgeOutput(
     for (const criterion of judgeConfig.criteria) {
       const score = scores[criterion.name];
       if (typeof score === "number") {
-        weightedScore += (score / 10) * criterion.weight;
+        weightedScore += (score / divisor) * criterion.weight;
         totalWeight += criterion.weight;
       }
     }

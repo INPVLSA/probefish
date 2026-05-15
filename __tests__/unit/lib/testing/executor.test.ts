@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { replaceVariables, getValueByPath, ModelOverride } from '@/lib/testing/executor';
+
+// Mock the LLM service so we can drive judgeOutput's parser with canned responses.
+vi.mock('@/lib/llm', () => ({
+  llmService: {
+    simpleComplete: vi.fn(),
+  },
+}));
+
+import { replaceVariables, getValueByPath, ModelOverride, judgeOutput } from '@/lib/testing/executor';
+import { llmService } from '@/lib/llm';
 import { DEFAULT_MODELS } from '@/lib/llm/types';
 
 describe('replaceVariables', () => {
@@ -781,6 +790,100 @@ describe('Per-case validation rule merging', () => {
       expect(effectiveJudgeConfig.criteria![0].name).toBe('Quality');
       expect(effectiveJudgeConfig.validationRules).toHaveLength(2);
     });
+  });
+});
+
+describe('judgeOutput robust score parsing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const baseJudgeConfig = {
+    enabled: true,
+    criteria: [
+      { name: 'Accuracy', description: 'Is the answer correct', weight: 1 },
+      { name: 'Helpfulness', description: 'Is the answer helpful', weight: 1 },
+    ],
+  } as Parameters<typeof judgeOutput>[3];
+
+  const credentials = {} as Parameters<typeof judgeOutput>[4];
+
+  const mockJudgeResponse = (content: string) => {
+    vi.mocked(llmService.simpleComplete).mockResolvedValue({
+      content,
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+    } as Awaited<ReturnType<typeof llmService.simpleComplete>>);
+  };
+
+  it('should produce a non-zero weighted score for lowercase keys with flat numbers', async () => {
+    mockJudgeResponse(
+      JSON.stringify({
+        scores: { accuracy: 8, helpfulness: 9 },
+        overall_reasoning: 'highly helpful, accurate',
+      })
+    );
+
+    const result = await judgeOutput(
+      'q',
+      undefined,
+      'a',
+      baseJudgeConfig,
+      credentials
+    );
+
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.scores.Accuracy).toBe(8);
+    expect(result.scores.Helpfulness).toBe(9);
+    // (8/10 + 9/10) / 2 = 0.85
+    expect(result.score).toBeCloseTo(0.85, 2);
+  });
+
+  it('should match keys with suffix like "Score" and "_score"', async () => {
+    mockJudgeResponse(
+      JSON.stringify({
+        scores: {
+          'Accuracy Score': { score: 7, reason: 'ok' },
+          helpfulness_score: { score: 6, reason: 'ok' },
+        },
+      })
+    );
+
+    const result = await judgeOutput('q', undefined, 'a', baseJudgeConfig, credentials);
+
+    expect(result.scores.Accuracy).toBe(7);
+    expect(result.scores.Helpfulness).toBe(6);
+    expect(result.score).toBeCloseTo(0.65, 2);
+  });
+
+  it('should fall back to rating/value/points fields when score is missing', async () => {
+    mockJudgeResponse(
+      JSON.stringify({
+        scores: {
+          Accuracy: { rating: 8 },
+          Helpfulness: { value: 9 },
+        },
+      })
+    );
+
+    const result = await judgeOutput('q', undefined, 'a', baseJudgeConfig, credentials);
+
+    expect(result.scores.Accuracy).toBe(8);
+    expect(result.scores.Helpfulness).toBe(9);
+  });
+
+  it('should rescale when model returns 0-100 instead of 0-10', async () => {
+    mockJudgeResponse(
+      JSON.stringify({
+        scores: { Accuracy: 85, Helpfulness: 90 },
+      })
+    );
+
+    const result = await judgeOutput('q', undefined, 'a', baseJudgeConfig, credentials);
+
+    // Should be (85/100 + 90/100) / 2 = 0.875, not >1. The implementation
+    // rounds to 2 decimal places, so we allow a 1-cent tolerance.
+    expect(result.score).toBeLessThanOrEqual(1);
+    expect(result.score).toBeCloseTo(0.875, 1);
   });
 });
 
